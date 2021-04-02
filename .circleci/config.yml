@@ -33,7 +33,10 @@ workflows:
   version: 2
   deploy:
     jobs:
-      - build
+      - build:
+          filters:
+            tags:
+              only: /^v.*/
 
 orbs:
   docker: circleci/docker@1.0.1
