@@ -19,7 +19,7 @@ if [ -S "$DOCKER_SOCK" ]; then
   TEMPFILE="$(mktemp)"
   docker ps \
     --format "{{.ID}}" \
-    --filter "label=offen.stop-during-backup=true" \
+    --filter "label=docker-volume-backup.stop-during-backup=true" \
     > "$TEMPFILE"
   CONTAINERS_TO_STOP="$(cat $TEMPFILE | tr '\n' ' ')"
   CONTAINERS_TO_STOP_TOTAL="$(cat $TEMPFILE | wc -l)"
