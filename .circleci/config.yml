@@ -1,0 +1,39 @@
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: cimg/base:2020.06
+    working_directory: ~/docker-volume-backup
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build
+          command: make build
+      - run:
+          name: Check if image needs to be pushed
+          command: |
+            if [[ -z "$CIRCLE_TAG" ]]; then
+              echo "Not a git tag, nothing to do ..."
+              circleci-agent step halt
+            fi
+      - docker/install-docker-credential-helper
+      - docker/configure-docker-credentials-store
+      - run:
+          name: Push to Docker Hub
+          command: |
+            echo "$DOCKER_ACCESSTOKEN" | docker login --username offen --password-stdin
+            docker tag offen/docker-volume-backup:local offen/docker-volume-backup:$CIRCLE_TAG
+            docker tag offen/docker-volume-backup:local offen/docker-volume-backup:latest
+            docker push offen/docker-volume-backup:$CIRCLE_TAG
+            docker push offen/docker-volume-backup:latest
+
+workflows:
+  version: 2
+  deploy:
+    jobs:
+      - build
+
+orbs:
+  docker: circleci/docker@1.0.1
