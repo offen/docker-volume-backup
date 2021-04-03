@@ -27,9 +27,9 @@ source env.sh
 mc alias set backup-target "https://$AWS_ENDPOINT" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
 
 # Add our cron entry, and direct stdout & stderr to Docker commands stdout
-echo "Installing cron.d entry with expression $BACKUP_CRON_EXPRESSION"
+echo "Installing cron.d entry with expression $BACKUP_CRON_EXPRESSION."
 echo "$BACKUP_CRON_EXPRESSION backup 2>&1" | crontab -
 
 # Let cron take the wheel
-echo "Starting cron in foreground"
+echo "Starting cron in foreground."
 crond -f -l 8

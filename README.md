@@ -28,7 +28,7 @@ AWS_SECRET_ACCESS_KEY="<xxx>"
 AWS_S3_BUCKET_NAME="<xxx>"
 
 # This is the FQDN of your storage server, e.g. `storage.example.com`.
-# You can leave it blank when working against AWS S3.
+# Do not set this when working against AWS S3.
 # AWS_ENDPOINT="<xxx>"
 
 ########### BACKUP PRUNING
