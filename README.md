@@ -38,6 +38,15 @@ AWS_S3_BUCKET_NAME="<xxx>"
 
 # BACKUP_RETENTION_DAYS="7"
 
+# In case the duration a backup takes fluctuates noticeably in your setup
+# you can adjust this setting to make sure there are no race conditions
+# between the backup finishing and the pruning not deleting backups that
+# sit on the very edge of the time window. Set this value to a duration
+# that is expected to be bigger than the maximum difference of backups.
+# Valid values have a suffix of (s)econds, (m)inutes, (h)ours, or (d)ays.
+
+# BACKUP_PRUNING_LEEWAY="10m"
+
 ########### BACKUP ENCRYPTION
 
 # Backups can be encrypted using gpg in case a passphrase is given
