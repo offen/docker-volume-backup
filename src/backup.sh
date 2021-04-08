@@ -72,6 +72,7 @@ echo "Will wait for next scheduled backup."
 
 if [ ! -z "$BACKUP_RETENTION_DAYS" ]; then
   info "Pruning old backups"
+  echo "Sleeping ${BACKUP_PRUNING_LEEWAY} before checking eligibility."
   bucket=$AWS_S3_BUCKET_NAME
 
   rule_applies_to=$(mc rm --fake --recursive -force --older-than "${BACKUP_RETENTION_DAYS}d" "backup-target/$bucket" | wc -l)
