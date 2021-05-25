@@ -22,12 +22,12 @@ AWS_ENDPOINT="${AWS_ENDPOINT:-s3.amazonaws.com}"
 
 GPG_PASSPHRASE="${GPG_PASSPHRASE:-}"
 
-MC_EXTRA_FLAGS="${MC_EXTRA_FLAGS:-}"
+MC_GLOBAL_OPTIONS="${MC_GLOBAL_OPTIONS:-}"
 EOF
 chmod a+x env.sh
 source env.sh
 
-mc $MC_EXTRA_FLAGS alias set backup-target "https://$AWS_ENDPOINT" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
+mc $MC_GLOBAL_OPTIONS alias set backup-target "https://$AWS_ENDPOINT" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
 
 # Add our cron entry, and direct stdout & stderr to Docker commands stdout
 echo "Installing cron.d entry with expression $BACKUP_CRON_EXPRESSION."

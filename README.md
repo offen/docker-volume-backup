@@ -57,9 +57,10 @@ AWS_S3_BUCKET_NAME="<xxx>"
 
 # Pass these additional flags to all MinIO client `mc` invocations.
 # This can be used for example to pass `--insecure` when using self
-# signed certificates.
+# signed certificates, or passing `--debug` to gain insights on
+# unexpected behavior.
 
-# MC_EXTRA_FLAGS="<xxx>"
+# MC_GLOBAL_OPTIONS="<xxx>"
 ```
 
 ## Example in a docker-compose setup
