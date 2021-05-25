@@ -58,7 +58,7 @@ fi
 if [ ! -z "$AWS_S3_BUCKET_NAME" ]; then
   info "Uploading backup to remote storage"
   echo "Will upload to bucket \"$AWS_S3_BUCKET_NAME\"."
-  mc cp "$BACKUP_FILENAME" "backup-target/$AWS_S3_BUCKET_NAME"
+  mc cp $MC_GLOBAL_OPTIONS "$BACKUP_FILENAME" "backup-target/$AWS_S3_BUCKET_NAME"
   echo "Upload finished."
 fi
 
@@ -76,14 +76,14 @@ if [ ! -z "$BACKUP_RETENTION_DAYS" ]; then
   sleep "$BACKUP_PRUNING_LEEWAY"
   bucket=$AWS_S3_BUCKET_NAME
 
-  rule_applies_to=$(mc rm --fake --recursive -force --older-than "${BACKUP_RETENTION_DAYS}d" "backup-target/$bucket" | wc -l)
+  rule_applies_to=$(mc rm $MC_GLOBAL_OPTIONS --fake --recursive -force --older-than "${BACKUP_RETENTION_DAYS}d" "backup-target/$bucket" | wc -l)
   if [ "$rule_applies_to" == "0" ]; then
     echo "No backups found older than the configured retention period of $BACKUP_RETENTION_DAYS days."
     echo "Doing nothing."
     exit 0
   fi
 
-  total=$(mc ls "backup-target/$bucket" | wc -l)
+  total=$(mc ls $MC_GLOBAL_OPTIONS "backup-target/$bucket" | wc -l)
 
   if [ "$rule_applies_to" == "$total" ]; then
     echo "Using a retention of ${BACKUP_RETENTION_DAYS} days would prune all currently existing backups, will not continue."
@@ -91,6 +91,6 @@ if [ ! -z "$BACKUP_RETENTION_DAYS" ]; then
     exit 1
   fi
 
-  mc rm --recursive -force --older-than "${BACKUP_RETENTION_DAYS}d" "backup-target/$bucket"
+  mc rm $MC_GLOBAL_OPTIONS --recursive -force --older-than "${BACKUP_RETENTION_DAYS}d" "backup-target/$bucket"
   echo "Successfully pruned ${rule_applies_to} backups older than ${BACKUP_RETENTION_DAYS} days."
 fi

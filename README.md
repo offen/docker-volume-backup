@@ -52,6 +52,15 @@ AWS_S3_BUCKET_NAME="<xxx>"
 # Backups can be encrypted using gpg in case a passphrase is given
 
 # GPG_PASSPHRASE="<xxx>"
+
+########### MINIO CLIENT CONFIGURATION
+
+# Pass these additional flags to all MinIO client `mc` invocations.
+# This can be used for example to pass `--insecure` when using self
+# signed certificates, or passing `--debug` to gain insights on
+# unexpected behavior.
+
+# MC_GLOBAL_OPTIONS="<xxx>"
 ```
 
 ## Example in a docker-compose setup
