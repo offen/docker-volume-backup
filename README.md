@@ -53,6 +53,16 @@ AWS_S3_BUCKET_NAME="<xxx>"
 
 # GPG_PASSPHRASE="<xxx>"
 
+########### STOPPING CONTAINERS DURING BACKUP
+
+# Containers can be stopped by applying a
+# `docker-volume-backup.stop-during-backup` label. By default, all containers
+# that are labeled with `true` will be stopped. If you need more fine grained
+# control (e.g. when running multiple containers based on this image), you can
+# override this default by specifying a different value here.
+
+# BACKUP_STOP_CONTAINER_LABEL="service1"
+
 ########### MINIO CLIENT CONFIGURATION
 
 # Pass these additional flags to all MinIO client `mc` invocations.
