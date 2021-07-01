@@ -114,3 +114,4 @@ This image is heavily inspired by the `futurice/docker-volume-backup`. We decide
 - This image makes use of the MinIO client `mc` instead of the full blown AWS CLI for uploading backups.
 - The original image proposed to handle backup rotation through AWS S3 lifecycle policies. This image adds the option to rotate old backups through the same script so this functionality can also be offered for non-AWS storage backends like MinIO.
 - InfluxDB specific functionality was removed.
+- `arm64` Architecture is supported.
