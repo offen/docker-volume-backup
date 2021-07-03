@@ -3,7 +3,7 @@
 
 FROM golang:1.16-alpine as builder
 ARG MC_VERSION=RELEASE.2021-06-13T17-48-22Z
-RUN go install github.com/minio/mc@$MC_VERSION
+RUN go install -ldflags "-X github.com/minio/mc/cmd.ReleaseTag=$MC_VERSION" github.com/minio/mc@$MC_VERSION
 
 FROM alpine:3.14
 
