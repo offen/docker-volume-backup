@@ -106,6 +106,12 @@ volumes:
   data:
 ```
 
+## Using with Docker Swarm
+
+By default, Docker Swarm will restart stopped containers automatically, even when manually stopped. If you plan to have your containers / services stopped during backup, this means you need to apply the `on-failure` restart policy to your service's definitions. A restart policy of `always` is not compatible with this tool.
+
+---
+
 ## Differences to `futurice/docker-volume-backup`
 
 This image is heavily inspired by the `futurice/docker-volume-backup`. We decided to publish this image as a simpler and more lightweight alternative because of the following requirements:
@@ -115,3 +121,4 @@ This image is heavily inspired by the `futurice/docker-volume-backup`. We decide
 - The original image proposed to handle backup rotation through AWS S3 lifecycle policies. This image adds the option to rotate old backups through the same script so this functionality can also be offered for non-AWS storage backends like MinIO.
 - InfluxDB specific functionality was removed.
 - `arm64` and `arm/v7` architectures are supported.
+- Docker in Swarm mode is supported.

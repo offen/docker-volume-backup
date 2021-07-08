@@ -39,7 +39,7 @@ if [ "$CONTAINERS_TO_STOP_TOTAL" != "0" ]; then
 fi
 
 info "Creating backup"
-BACKUP_FILENAME="$(date +"${BACKUP_FILENAME:-backup-%Y-%m-%dT%H-%M-%S.tar.gz}")"
+BACKUP_FILENAME="$(date +"$BACKUP_FILENAME")"
 tar -czvf "$BACKUP_FILENAME" $BACKUP_SOURCES # allow the var to expand, in case we have multiple sources
 
 if [ ! -z "$GPG_PASSPHRASE" ]; then
@@ -51,8 +51,31 @@ if [ ! -z "$GPG_PASSPHRASE" ]; then
 fi
 
 if [ "$CONTAINERS_TO_STOP_TOTAL" != "0" ]; then
-  info "Starting containers back up"
-  docker start $CONTAINERS_TO_STOP
+  info "Starting containers/services back up"
+  # The container might be part of a stack when running in swarm mode, so
+  # its parent service needs to be restarted instead once backup is finished.
+  SERVICES_REQUIRING_UPDATE=""
+  for CONTAINER_ID in $CONTAINERS_TO_STOP; do
+    SWARM_SERVICE_NAME=$(
+      docker inspect \
+        --format "{{ index .Config.Labels \"com.docker.swarm.service.name\" }}" \
+        $CONTAINER_ID
+    )
+    if [ -z "$SWARM_SERVICE_NAME" ]; then
+      echo "Restarting $(docker start $CONTAINER_ID)"
+    else
+      echo "Removing $(docker rm $CONTAINER_ID)"
+      # Multiple containers might belong to the same service, so they will
+      # be restarted only after all names are known.
+      SERVICES_REQUIRING_UPDATE="${SERVICES_REQUIRING_UPDATE} ${SWARM_SERVICE_NAME}"
+    fi
+  done
+
+  if [ -n "$SERVICES_REQUIRING_UPDATE" ]; then
+    for SERVICE_NAME in "$(echo -n "$SERVICES_REQUIRING_UPDATE" | tr ' ' '\n' | sort -u)"; do
+      docker service update --force $SERVICE_NAME
+    done
+  fi
 fi
 
 if [ ! -z "$AWS_S3_BUCKET_NAME" ]; then
