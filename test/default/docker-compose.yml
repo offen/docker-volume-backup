@@ -24,6 +24,7 @@ services:
       AWS_ENDPOINT_PROTO: http
       AWS_S3_BUCKET_NAME: backup
       BACKUP_FILENAME: test.tar.gz
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
     volumes:
       - app_data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock
