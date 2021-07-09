@@ -14,10 +14,8 @@ jobs:
       - run:
           name: Run tests
           command: |
-            which docker
-            which docker-compose
             for test in test/**/test.sh; do
-              . $test
+              /bin/sh $test
             done
 
   build:
