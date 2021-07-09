@@ -2,29 +2,21 @@ version: 2.1
 
 jobs:
   canary:
-    docker:
-      - image: cimg/base:2020.06
+    machine:
+      image: ubuntu-1604:202007-01
     working_directory: ~/docker-volume-backup
     steps:
       - checkout
-      - setup_remote_docker:
-          version: 20.10.6
       - run:
           name: Build
           command: |
             docker build . -t offen/docker-volume-backup:canary
       - run:
-          name: Create container from image
+          name: Run tests
           command: |
-            docker run -d offen/docker-volume-backup:canary
-            echo "Sleeping for 30s before checking if container is still running."
-            sleep 30
-            count=$(docker ps -q | wc -l)
-            if [[ $count != "1" ]]; then
-              echo "Expected one container to be running, found $count."
-              exit 1
-            fi
-            docker stop $(docker ps -q)
+            for test in test/**/test.sh; do
+              /bin/sh $test
+            done
 
   build:
     docker:

@@ -17,13 +17,12 @@ DOCKER_SOCK="/var/run/docker.sock"
 
 if [ -S "$DOCKER_SOCK" ]; then
   TEMPFILE="$(mktemp)"
-  docker ps \
-    --format "{{.ID}}" \
+  docker ps -q \
     --filter "label=docker-volume-backup.stop-during-backup=$BACKUP_STOP_CONTAINER_LABEL" \
     > "$TEMPFILE"
   CONTAINERS_TO_STOP="$(cat $TEMPFILE | tr '\n' ' ')"
   CONTAINERS_TO_STOP_TOTAL="$(cat $TEMPFILE | wc -l)"
-  CONTAINERS_TOTAL="$(docker ps --format "{{.ID}}" | wc -l)"
+  CONTAINERS_TOTAL="$(docker ps -q | wc -l)"
   rm "$TEMPFILE"
   echo "$CONTAINERS_TOTAL containers running on host in total."
   echo "$CONTAINERS_TO_STOP_TOTAL containers marked to be stopped during backup."
@@ -99,7 +98,12 @@ if [ ! -z "$BACKUP_RETENTION_DAYS" ]; then
   sleep "$BACKUP_PRUNING_LEEWAY"
   bucket=$AWS_S3_BUCKET_NAME
 
-  rule_applies_to=$(mc rm $MC_GLOBAL_OPTIONS --fake --recursive -force --older-than "${BACKUP_RETENTION_DAYS}d" "backup-target/$bucket" | wc -l)
+  rule_applies_to=$(
+    mc rm $MC_GLOBAL_OPTIONS --fake --recursive -force \
+      --older-than "${BACKUP_RETENTION_DAYS}d" \
+      "backup-target/$bucket" \
+      | wc -l
+  )
   if [ "$rule_applies_to" == "0" ]; then
     echo "No backups found older than the configured retention period of $BACKUP_RETENTION_DAYS days."
     echo "Doing nothing."
@@ -114,6 +118,8 @@ if [ ! -z "$BACKUP_RETENTION_DAYS" ]; then
     exit 1
   fi
 
-  mc rm $MC_GLOBAL_OPTIONS --recursive -force --older-than "${BACKUP_RETENTION_DAYS}d" "backup-target/$bucket"
+  mc rm $MC_GLOBAL_OPTIONS \
+    --recursive -force \
+    --older-than "${BACKUP_RETENTION_DAYS}d" "backup-target/$bucket"
   echo "Successfully pruned ${rule_applies_to} backups older than ${BACKUP_RETENTION_DAYS} days."
 fi

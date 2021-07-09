@@ -19,6 +19,7 @@ BACKUP_PRUNING_LEEWAY="${BACKUP_PRUNING_LEEWAY:-10m}"
 
 AWS_S3_BUCKET_NAME="${AWS_S3_BUCKET_NAME:-}"
 AWS_ENDPOINT="${AWS_ENDPOINT:-s3.amazonaws.com}"
+AWS_ENDPOINT_PROTO="${AWS_ENDPOINT_PROTO:-https}"
 
 GPG_PASSPHRASE="${GPG_PASSPHRASE:-}"
 
@@ -29,7 +30,7 @@ EOF
 chmod a+x env.sh
 source env.sh
 
-mc $MC_GLOBAL_OPTIONS alias set backup-target "https://$AWS_ENDPOINT" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
+mc $MC_GLOBAL_OPTIONS alias set backup-target "$AWS_ENDPOINT_PROTO://$AWS_ENDPOINT" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
 
 # Add our cron entry, and direct stdout & stderr to Docker commands stdout
 echo "Installing cron.d entry with expression $BACKUP_CRON_EXPRESSION."
