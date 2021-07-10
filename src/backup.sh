@@ -71,7 +71,7 @@ if [ "$CONTAINERS_TO_STOP_TOTAL" != "0" ]; then
   done
 
   if [ -n "$SERVICES_REQUIRING_UPDATE" ]; then
-    for SERVICE_NAME in "$(echo -n "$SERVICES_REQUIRING_UPDATE" | tr ' ' '\n' | sort -u)"; do
+    for SERVICE_NAME in $(echo -n "$SERVICES_REQUIRING_UPDATE" | tr ' ' '\n' | sort -u); do
       docker service update --force $SERVICE_NAME
     done
   fi
