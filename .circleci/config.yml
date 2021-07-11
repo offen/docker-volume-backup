@@ -15,7 +15,7 @@ jobs:
           name: Run tests
           working_directory: ~/docker-volume-backup/test
           command: |
-            ./test.sh
+            ./test.sh canary
 
   build:
     docker:

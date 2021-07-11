@@ -23,6 +23,7 @@ docker exec minio mkdir -p /data/backup
 docker run -d \
   --name offen \
   --network test_network \
+  --label "docker-volume-backup.stop-during-backup=true" \
   -v app_data:/var/opt/offen/ \
   offen/offen:latest
 
@@ -40,7 +41,7 @@ docker run -d \
   --env AWS_S3_BUCKET_NAME=backup \
   --env BACKUP_FILENAME=test.tar.gz \
   --env BACKUP_CRON_EXPRESSION="0 0 5 31 2 ?" \
-  offen/docker-volume-backup:canary
+  offen/docker-volume-backup:$TEST_VERSION
 
 docker exec backup backup
 
