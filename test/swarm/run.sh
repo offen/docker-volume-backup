@@ -13,7 +13,7 @@ while [ -z $(docker ps -q -f name=backup) ]; do
   sleep 1
 done
 
-sleep 5
+sleep 20
 
 docker exec $(docker ps -q -f name=backup) backup
 
