@@ -110,6 +110,14 @@ volumes:
 
 By default, Docker Swarm will restart stopped containers automatically, even when manually stopped. If you plan to have your containers / services stopped during backup, this means you need to apply the `on-failure` restart policy to your service's definitions. A restart policy of `always` is not compatible with this tool.
 
+## Manually triggering a backup
+
+You can manually trigger a backup run outside of the defined cron schedule by executing the `backup` command inside the container:
+
+```
+docker exec <container_ref> backup
+```
+
 ---
 
 ## Differences to `futurice/docker-volume-backup`
