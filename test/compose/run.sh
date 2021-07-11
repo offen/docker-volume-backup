@@ -10,7 +10,7 @@ sleep 5
 docker-compose exec backup backup
 
 docker run --rm -it \
-  -v default_backup_data:/data alpine \
+  -v compose_backup_data:/data alpine \
   ash -c 'tar -xf /data/backup/test.tar.gz && test -f /backup/app_data/offen.db'
 
 echo "[TEST:PASS] Found relevant files in untared backup."

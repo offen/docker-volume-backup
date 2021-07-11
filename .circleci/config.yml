@@ -13,17 +13,9 @@ jobs:
             docker build . -t offen/docker-volume-backup:canary
       - run:
           name: Run tests
+          working_directory: ~/docker-volume-backup/test
           command: |
-            for test in test/**/run.sh; do
-              echo "################################################"
-              echo "Now running $test"
-              echo "################################################"
-              echo ""
-              /bin/sh $test
-              echo ""
-              echo "$test passed"
-              echo ""
-            done
+            ./test.sh
 
   build:
     docker:
