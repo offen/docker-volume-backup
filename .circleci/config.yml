@@ -14,8 +14,15 @@ jobs:
       - run:
           name: Run tests
           command: |
-            for test in test/**/test.sh; do
+            for test in test/**/run.sh; do
+              echo "################################################"
+              echo "Now running $test"
+              echo "################################################"
+              echo ""
               /bin/sh $test
+              echo ""
+              echo "$test passed"
+              echo ""
             done
 
   build:
