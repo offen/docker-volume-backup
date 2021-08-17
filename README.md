@@ -31,6 +31,11 @@ AWS_S3_BUCKET_NAME="<xxx>"
 # Do not set this when working against AWS S3.
 # AWS_ENDPOINT="<xxx>"
 
+# The protocol to be used when communicating with your storage server.
+# Defaults to "https". You can set this to "http" when communicating with
+# a different Docker container on the same host for example.
+# AWS_ENDPOINT_PROTO="https"
+
 ########### BACKUP PRUNING
 
 # Define this value to enable automatic pruning of old backups. The value
