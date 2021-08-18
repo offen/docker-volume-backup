@@ -117,7 +117,7 @@ By default, Docker Swarm will restart stopped containers automatically, even whe
 
 ---
 
-When running in Swarm mode, it's also advised to set a hard memory limit on your service (~25MB should be enough in that case):
+When running in Swarm mode, it's also advised to set a hard memory limit on your service (~25MB should be enough in most cases, but if you backup large files above half a gigabyte or similar, you might have to raise this in case the backup exits with `Killed`):
 
 ```yml
 services:
