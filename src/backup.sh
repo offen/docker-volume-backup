@@ -141,7 +141,7 @@ if [ ! -z "$BACKUP_RETENTION_DAYS" ]; then
   sleep "$BACKUP_PRUNING_LEEWAY"
   if [ ! -z "$AWS_S3_BUCKET_NAME" ]; then
     info "Pruning old backups from remote storage"
-    prune "backup-target/$bucket"
+    prune "backup-target/$AWS_S3_BUCKET_NAME"
   fi
   if [ -d "$BACKUP_ARCHIVE" ]; then
     info "Pruning old backups from local archive"
