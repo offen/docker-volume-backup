@@ -105,6 +105,10 @@ echo "Will wait for next scheduled backup."
 
 prune () {
   target=$1
+  if [ ! -z "$BACKUP_PRUNING_PREFIX" ]; then
+    target="$target/${BACKUP_PRUNING_PREFIX}"
+  fi
+
   rule_applies_to=$(
     mc rm $MC_GLOBAL_OPTIONS --fake --recursive --force \
       --older-than "${BACKUP_RETENTION_DAYS}d" \
