@@ -51,11 +51,12 @@ AWS_S3_BUCKET_NAME="<xxx>"
 
 # **IMPORTANT, PLEASE READ THIS BEFORE USING THIS FEATURE**:
 # The mechanism used for pruning backups is not very sophisticated
-# and applies its rules to **all files in the target directory**,
+# and applies its rules to **all files in the target directory** by default,
 # which means that if you are storing your backups next to other files,
 # these might become subject to deletion too. When using this option
 # make sure the backup files are stored in a directory used exclusively
-# for storing them or you might lose data.
+# for storing them or to configure BACKUP_PRUNING_PREFIX to limit
+# removal to certain files.
 
 # Define this value to enable automatic pruning of old backups. The value
 # declares the number of days for which a backup is kept.
@@ -70,6 +71,15 @@ AWS_S3_BUCKET_NAME="<xxx>"
 # Valid values have a suffix of (s)econds, (m)inutes, (h)ours, or (d)ays.
 
 # BACKUP_PRUNING_LEEWAY="10m"
+
+# In case your target bucket or directory contains other files than the ones
+# managed by this container, you can limit the scope of rotation by setting
+# a prefix value. This would usually be the non-parametrized part of your
+# BACKUP_FILENAME. E.g. if BACKUP_FILENAME is `db-backup-%Y-%m-%dT%H-%M-%S.tar.gz`,
+# you can set BACKUP_PRUNING_PREFIX to `db-backup-` and make sure
+# unrelated files are not affected.
+
+# BACKUP_PRUNING_PREFIX="backup-"
 
 ########### BACKUP ENCRYPTION
 
