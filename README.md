@@ -1,8 +1,8 @@
 # docker-volume-backup
 
-Backup Docker volumes to any S3 compatible storage.
+Backup Docker volumes locally or to any S3 compatible storage.
 
-The [offen/docker-volume-backup](https://hub.docker.com/r/offen/docker-volume-backup) Docker image can be used as a sidecar container to an existing Docker setup. It handles recurring backups of Docker volumes to any S3 compatible storage and rotates away old backups if configured.
+The [offen/docker-volume-backup](https://hub.docker.com/r/offen/docker-volume-backup) Docker image can be used as a sidecar container to an existing Docker setup. It handles recurring backups of Docker volumes to a local directory or any S3 compatible storage (or both) and rotates away old backups if configured.
 
 ## Configuration
 
@@ -30,14 +30,32 @@ AWS_S3_BUCKET_NAME="<xxx>"
 # This is the FQDN of your storage server, e.g. `storage.example.com`.
 # Do not set this when working against AWS S3. If you need to set a
 # specific protocol, you will need to use the option below.
+
 # AWS_ENDPOINT="<xxx>"
 
 # The protocol to be used when communicating with your storage server.
 # Defaults to "https". You can set this to "http" when communicating with
 # a different Docker container on the same host for example.
+
 # AWS_ENDPOINT_PROTO="https"
 
+# In addition to backing up you can also store backups locally. Pass in
+# a local path to store your backups here if needed. You likely want to
+# mount a local folder or Docker volume into that location when running
+# the container. Local paths can also be subject to pruning of old
+# backups as defined below.
+
+# BACKUP_ARCHIVE="/archive"
+
 ########### BACKUP PRUNING
+
+# **IMPORTANT, PLEASE READ THIS BEFORE USING THIS FEATURE**:
+# The mechanism used for pruning backups is not very sophisticated
+# and applies its rules to **all files in the target directory**,
+# which means that if you are storing your backups next to other files,
+# these might become subject to deletion too. When using this option
+# make sure the backup files are stored in a directory used exclusively
+# for storing them or you might lose data.
 
 # Define this value to enable automatic pruning of old backups. The value
 # declares the number of days for which a backup is kept.
@@ -108,6 +126,10 @@ services:
       # to stop the container
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - data:/backup/my-app-backup:ro
+      # If you mount a local directory or volume to `/archive` a local
+      # copy of the backup will be stored there. You can override the
+      # location inside of the container by setting `BACKUP_ARCHIVE`
+      # - /path/to/local_backups:/archive
 volumes:
   data:
 ```
