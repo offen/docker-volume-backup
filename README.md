@@ -15,7 +15,7 @@ Backup targets, schedule and retention are configured in environment variables:
 # template expression.
 
 BACKUP_CRON_EXPRESSION="0 2 * * *"
-BACKUP_FILENAME="offen-db-%Y-%m-%dT%H-%M-%S.tar.gz"
+BACKUP_FILENAME="backup-%Y-%m-%dT%H-%M-%S.tar.gz"
 
 ########### BACKUP STORAGE
 
@@ -28,7 +28,8 @@ AWS_SECRET_ACCESS_KEY="<xxx>"
 AWS_S3_BUCKET_NAME="<xxx>"
 
 # This is the FQDN of your storage server, e.g. `storage.example.com`.
-# Do not set this when working against AWS S3.
+# Do not set this when working against AWS S3. If you need to set a
+# specific protocol, you will need to use the option below.
 # AWS_ENDPOINT="<xxx>"
 
 # The protocol to be used when communicating with your storage server.
