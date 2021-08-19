@@ -1,7 +1,7 @@
 # Copyright 2021 - Offen Authors <hioffen@posteo.de>
 # SPDX-License-Identifier: MPL-2.0
 
-FROM golang:1.16-alpine as builder
+FROM golang:1.17-alpine as builder
 ARG MC_VERSION=RELEASE.2021-06-13T17-48-22Z
 RUN go install -ldflags "-X github.com/minio/mc/cmd.ReleaseTag=$MC_VERSION" github.com/minio/mc@$MC_VERSION
 
