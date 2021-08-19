@@ -77,11 +77,22 @@ if [ "$CONTAINERS_TO_STOP_TOTAL" != "0" ]; then
   fi
 fi
 
+copy_backup () {
+  mc cp $MC_GLOBAL_OPTIONS "$BACKUP_FILENAME" "$1"
+}
+
 if [ ! -z "$AWS_S3_BUCKET_NAME" ]; then
   info "Uploading backup to remote storage"
   echo "Will upload to bucket \"$AWS_S3_BUCKET_NAME\"."
-  mc cp $MC_GLOBAL_OPTIONS "$BACKUP_FILENAME" "backup-target/$AWS_S3_BUCKET_NAME"
+  copy_backup "backup-target/$AWS_S3_BUCKET_NAME"
   echo "Upload finished."
+fi
+
+if [ -d "$BACKUP_ARCHIVE" ]; then
+  info "Copying backup to local archive"
+  echo "Will copy to \"$BACKUP_ARCHIVE\"."
+  copy_backup "$BACKUP_ARCHIVE"
+  echo "Finished copying."
 fi
 
 if [ -f "$BACKUP_FILENAME" ]; then
@@ -92,16 +103,12 @@ fi
 info "Backup finished"
 echo "Will wait for next scheduled backup."
 
-if [ ! -z "$BACKUP_RETENTION_DAYS" ]; then
-  info "Pruning old backups"
-  echo "Sleeping ${BACKUP_PRUNING_LEEWAY} before checking eligibility."
-  sleep "$BACKUP_PRUNING_LEEWAY"
-  bucket=$AWS_S3_BUCKET_NAME
-
+prune () {
+  target=$1
   rule_applies_to=$(
-    mc rm $MC_GLOBAL_OPTIONS --fake --recursive -force \
+    mc rm $MC_GLOBAL_OPTIONS --fake --recursive --force \
       --older-than "${BACKUP_RETENTION_DAYS}d" \
-      "backup-target/$bucket" \
+      "$target" \
       | wc -l
   )
   if [ "$rule_applies_to" == "0" ]; then
@@ -110,7 +117,7 @@ if [ ! -z "$BACKUP_RETENTION_DAYS" ]; then
     exit 0
   fi
 
-  total=$(mc ls $MC_GLOBAL_OPTIONS "backup-target/$bucket" | wc -l)
+  total=$(mc ls $MC_GLOBAL_OPTIONS "$target" | wc -l)
 
   if [ "$rule_applies_to" == "$total" ]; then
     echo "Using a retention of ${BACKUP_RETENTION_DAYS} days would prune all currently existing backups, will not continue."
@@ -119,7 +126,21 @@ if [ ! -z "$BACKUP_RETENTION_DAYS" ]; then
   fi
 
   mc rm $MC_GLOBAL_OPTIONS \
-    --recursive -force \
-    --older-than "${BACKUP_RETENTION_DAYS}d" "backup-target/$bucket"
+    --recursive --force \
+    --older-than "${BACKUP_RETENTION_DAYS}d" "$target"
   echo "Successfully pruned ${rule_applies_to} backups older than ${BACKUP_RETENTION_DAYS} days."
+}
+
+if [ ! -z "$BACKUP_RETENTION_DAYS" ]; then
+  info "Pruning old backups"
+  echo "Sleeping ${BACKUP_PRUNING_LEEWAY} before checking eligibility."
+  sleep "$BACKUP_PRUNING_LEEWAY"
+  if [ ! -z "$AWS_S3_BUCKET_NAME" ]; then
+    info "Pruning old backups from remote storage"
+    prune "backup-target/$bucket"
+  fi
+  if [ -d "$BACKUP_ARCHIVE" ]; then
+    info "Pruning old backups from local archive"
+    prune "$BACKUP_ARCHIVE"
+  fi
 fi
