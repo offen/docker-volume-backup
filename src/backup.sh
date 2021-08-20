@@ -103,36 +103,62 @@ fi
 info "Backup finished"
 echo "Will wait for next scheduled backup."
 
+probe_expired () {
+  local target=$1
+  local is_local=$2
+  if [ -z "$is_local" ]; then
+    mc rm $MC_GLOBAL_OPTIONS --fake --recursive --force \
+      --older-than "${BACKUP_RETENTION_DAYS}d" \
+      "$target"
+  else
+    find $target* -type f -mtime $BACKUP_RETENTION_DAYS
+  fi
+}
+
+probe_all () {
+  local target=$1
+  local is_local=$2
+  if [ -z "$is_local" ]; then
+    mc ls $MC_GLOBAL_OPTIONS "$target"
+  else
+    find $target* -type f
+  fi
+}
+
+delete () {
+  local target=$1
+  local is_local=$2
+  if [ -z "$is_local" ]; then
+    mc rm $MC_GLOBAL_OPTIONS --recursive --force \
+      --older-than "${BACKUP_RETENTION_DAYS}d" \
+      "$target"
+  else
+    find $target* -delete -type f -mtime $BACKUP_RETENTION_DAYS
+  fi
+}
+
 prune () {
-  target=$1
+  local target=$1
+  local is_local=$2
   if [ ! -z "$BACKUP_PRUNING_PREFIX" ]; then
     target="$target/${BACKUP_PRUNING_PREFIX}"
   fi
 
-  rule_applies_to=$(
-    mc rm $MC_GLOBAL_OPTIONS --fake --recursive --force \
-      --older-than "${BACKUP_RETENTION_DAYS}d" \
-      "$target" \
-      | wc -l
-  )
+  rule_applies_to=$(probe_expired "$target" "$is_local" | wc -l)
   if [ "$rule_applies_to" == "0" ]; then
-    echo "No backups found older than the configured retention period of $BACKUP_RETENTION_DAYS days."
+    echo "No backups found older than the configured retention period of ${BACKUP_RETENTION_DAYS} days."
     echo "Doing nothing."
-    exit 0
+  else
+    total=$(probe_all "$target" "$is_local" | wc -l)
+
+    if [ "$rule_applies_to" == "$total" ]; then
+      echo "Using a retention of ${BACKUP_RETENTION_DAYS} days would prune all currently existing backups, will not continue."
+      echo "If this is what you want, please remove files manually instead of using this script."
+    else
+      delete "$target" "$is_local"
+      echo "Successfully pruned ${rule_applies_to} backups older than ${BACKUP_RETENTION_DAYS} days."
+    fi
   fi
-
-  total=$(mc ls $MC_GLOBAL_OPTIONS "$target" | wc -l)
-
-  if [ "$rule_applies_to" == "$total" ]; then
-    echo "Using a retention of ${BACKUP_RETENTION_DAYS} days would prune all currently existing backups, will not continue."
-    echo "If this is what you want, please remove files manually instead of using this script."
-    exit 1
-  fi
-
-  mc rm $MC_GLOBAL_OPTIONS \
-    --recursive --force \
-    --older-than "${BACKUP_RETENTION_DAYS}d" "$target"
-  echo "Successfully pruned ${rule_applies_to} backups older than ${BACKUP_RETENTION_DAYS} days."
 }
 
 if [ ! -z "$BACKUP_RETENTION_DAYS" ]; then
@@ -145,6 +171,6 @@ if [ ! -z "$BACKUP_RETENTION_DAYS" ]; then
   fi
   if [ -d "$BACKUP_ARCHIVE" ]; then
     info "Pruning old backups from local archive"
-    prune "$BACKUP_ARCHIVE"
+    prune "$BACKUP_ARCHIVE" "local"
   fi
 fi
