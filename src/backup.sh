@@ -107,11 +107,14 @@ probe_expired () {
   local target=$1
   local is_local=$2
   if [ -z "$is_local" ]; then
+    if [ ! -z "$BACKUP_PRUNING_PREFIX" ]; then
+      target="${target}/${BACKUP_PRUNING_PREFIX}"
+    fi
     mc rm $MC_GLOBAL_OPTIONS --fake --recursive --force \
       --older-than "${BACKUP_RETENTION_DAYS}d" \
       "$target"
   else
-    find $target* -type f -mtime $BACKUP_RETENTION_DAYS
+    find $target -name "${BACKUP_PRUNING_PREFIX:-*}" -type f -mtime "+${BACKUP_RETENTION_DAYS}"
   fi
 }
 
@@ -119,9 +122,12 @@ probe_all () {
   local target=$1
   local is_local=$2
   if [ -z "$is_local" ]; then
+    if [ ! -z "$BACKUP_PRUNING_PREFIX" ]; then
+      target="${target}/${BACKUP_PRUNING_PREFIX}"
+    fi
     mc ls $MC_GLOBAL_OPTIONS "$target"
   else
-    find $target* -type f
+    find $target -name "${BACKUP_PRUNING_PREFIX:-*}" -type f
   fi
 }
 
@@ -129,21 +135,20 @@ delete () {
   local target=$1
   local is_local=$2
   if [ -z "$is_local" ]; then
+    if [ ! -z "$BACKUP_PRUNING_PREFIX" ]; then
+      target="${target}/${BACKUP_PRUNING_PREFIX}"
+    fi
     mc rm $MC_GLOBAL_OPTIONS --recursive --force \
       --older-than "${BACKUP_RETENTION_DAYS}d" \
       "$target"
   else
-    find $target* -delete -type f -mtime $BACKUP_RETENTION_DAYS
+    find $target -name "${BACKUP_PRUNING_PREFIX:-*}" -type f -mtime "+${BACKUP_RETENTION_DAYS}" -delete
   fi
 }
 
 prune () {
   local target=$1
   local is_local=$2
-  if [ ! -z "$BACKUP_PRUNING_PREFIX" ]; then
-    target="$target/${BACKUP_PRUNING_PREFIX}"
-  fi
-
   rule_applies_to=$(probe_expired "$target" "$is_local" | wc -l)
   if [ "$rule_applies_to" == "0" ]; then
     echo "No backups found older than the configured retention period of ${BACKUP_RETENTION_DAYS} days."
