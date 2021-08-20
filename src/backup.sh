@@ -133,7 +133,7 @@ delete () {
       --older-than "${BACKUP_RETENTION_DAYS}d" \
       "$target"
   else
-    find $target* -delete -type f -mtime $BACKUP_RETENTION_DAYS
+    find $target* -type f -mtime $BACKUP_RETENTION_DAYS -exec rm -rf '{}' ';'
   fi
 }
 
