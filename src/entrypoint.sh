@@ -9,7 +9,8 @@
 set -e
 
 # Write cronjob env to file, fill in sensible defaults, and read them back in
-cat <<EOF > env.sh
+mkdir -p /etc/backup
+cat <<EOF > /etc/backup.env
 BACKUP_SOURCES="${BACKUP_SOURCES:-/backup}"
 BACKUP_CRON_EXPRESSION="${BACKUP_CRON_EXPRESSION:-@daily}"
 BACKUP_FILENAME="${BACKUP_FILENAME:-backup-%Y-%m-%dT%H-%M-%S.tar.gz}"
@@ -28,14 +29,8 @@ GPG_PASSPHRASE="${GPG_PASSPHRASE:-}"
 
 MC_GLOBAL_OPTIONS="${MC_GLOBAL_OPTIONS:-}"
 EOF
-chmod a+x env.sh
-source env.sh
-
-if [ ! -z "$AWS_ACCESS_KEY_ID" ] && [ ! -z "$AWS_SECRET_ACCESS_KEY" ]; then
-  mc $MC_GLOBAL_OPTIONS alias set backup-target \
-    "$AWS_ENDPOINT_PROTO://$AWS_ENDPOINT" \
-    "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
-fi
+chmod a+x /etc/backup.env
+source /etc/backup.env
 
 # Add our cron entry, and direct stdout & stderr to Docker commands stdout
 echo "Installing cron.d entry with expression $BACKUP_CRON_EXPRESSION."
