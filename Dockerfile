@@ -12,9 +12,7 @@ FROM alpine:3.14
 
 WORKDIR /root
 
-RUN apk add --update ca-certificates docker openrc gnupg
-RUN update-ca-certificates
-RUN rc-update add docker boot
+RUN apk add --update ca-certificates
 
 COPY --from=builder /app/backup /usr/bin/backup
 
