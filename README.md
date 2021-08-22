@@ -176,9 +176,9 @@ docker exec <container_ref> backup
 
 This image is heavily inspired by the `futurice/docker-volume-backup`. We decided to publish this image as a simpler and more lightweight alternative because of the following requirements:
 
-- The original image is based on `ubuntu`, making it very heavy. This version is roughly 1/3 in compressed size.
+- The original image is based on `ubuntu` and additional tools, making it very heavy. This version is roughly 1/25 in compressed size (it's ~12MB).
 - The original image uses a shell script, when this is written in Go.
-- The original image proposed to handle backup rotation through AWS S3 lifecycle policies. This image adds the option to rotate away old backups through the same command so this functionality can also be offered for non-AWS storage backends like MinIO. Local backups can also be pruned once they reach a certain age.
+- The original image proposed to handle backup rotation through AWS S3 lifecycle policies. This image adds the option to rotate away old backups through the same command so this functionality can also be offered for non-AWS storage backends like MinIO. Local copies of backups can also be pruned once they reach a certain age.
 - InfluxDB specific functionality was removed.
 - `arm64` and `arm/v7` architectures are supported.
 - Docker in Swarm mode is supported.
