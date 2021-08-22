@@ -31,41 +31,37 @@ import (
 )
 
 func main() {
-	unlock, err := lock("/var/dockervolumebackup.lock")
-	if err != nil {
-		panic(err)
-	}
+	unlock := lock("/var/dockervolumebackup.lock")
 	defer unlock()
 
 	s := &script{}
-
-	must(s.init)()
-	err = s.stopContainersAndRun(s.takeBackup)
-	if err != nil {
-		panic(err)
-	}
-	must(s.encryptBackup)()
-	must(s.copyBackup)()
-	must(s.cleanBackup)()
-	must(s.pruneOldBackups)()
+	s.must(s.init())
+	s.must(s.stopContainersAndRun(s.takeBackup))
+	s.must(s.encryptBackup())
+	s.must(s.copyBackup())
+	s.must(s.cleanBackup())
+	s.must(s.pruneOldBackups())
 }
 
 type script struct {
-	ctx     context.Context
-	cli     *client.Client
-	mc      *minio.Client
-	logger  *logrus.Logger
-	file    string
-	bucket  string
-	archive string
+	ctx        context.Context
+	cli        *client.Client
+	mc         *minio.Client
+	logger     *logrus.Logger
+	file       string
+	bucket     string
+	archive    string
+	sources    string
+	passphrase string
 }
 
-// lock opens a lockfile, keeping it open until the caller invokes the returned
-// release func.
-func lock(lockfile string) (func() error, error) {
+// lock opens a lockfile at the given location, keeping it locked until the
+// caller invokes the returned release func. When invoked while the file is
+// still locked the function panics.
+func lock(lockfile string) func() error {
 	lf, err := os.OpenFile(lockfile, os.O_CREATE, os.ModeAppend)
 	if err != nil {
-		return nil, fmt.Errorf("lock: error opening lock file: %w", err)
+		panic(err)
 	}
 	return func() error {
 		if err := lf.Close(); err != nil {
@@ -75,7 +71,7 @@ func lock(lockfile string) (func() error, error) {
 			return fmt.Errorf("lock: error removing lock file: %w", err)
 		}
 		return nil
-	}, nil
+	}
 }
 
 // init creates all resources needed for the script to perform actions against
@@ -120,6 +116,8 @@ func (s *script) init() error {
 	}
 	s.file = path.Join("/tmp", file)
 	s.archive = os.Getenv("BACKUP_ARCHIVE")
+	s.sources = os.Getenv("BACKUP_SOURCES")
+	s.passphrase = os.Getenv("GPG_PASSPHRASE")
 	return nil
 }
 
@@ -137,21 +135,27 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 		return fmt.Errorf("stopContainersAndRun: error querying for containers: %w", err)
 	}
 
+	containerLabel := fmt.Sprintf(
+		"docker-volume-backup.stop-during-backup=%s",
+		os.Getenv("BACKUP_STOP_CONTAINER_LABEL"),
+	)
 	containersToStop, err := s.cli.ContainerList(s.ctx, types.ContainerListOptions{
 		Quiet: true,
 		Filters: filters.NewArgs(filters.KeyValuePair{
-			Key: "label",
-			Value: fmt.Sprintf(
-				"docker-volume-backup.stop-during-backup=%s",
-				os.Getenv("BACKUP_STOP_CONTAINER_LABEL"),
-			),
+			Key:   "label",
+			Value: containerLabel,
 		}),
 	})
 
 	if err != nil {
 		return fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
 	}
-	s.logger.Infof("Stopping %d out of %d running containers\n", len(containersToStop), len(allContainers))
+	s.logger.Infof(
+		"Stopping %d containers labeled `%s` out of %d running containers.",
+		len(containersToStop),
+		containerLabel,
+		len(allContainers),
+	)
 
 	var stoppedContainers []types.Container
 	var errors []error
@@ -237,10 +241,10 @@ func (s *script) takeBackup() error {
 		return fmt.Errorf("takeBackup: error formatting filename template: %w", err)
 	}
 	s.file = strings.TrimSpace(string(outBytes))
-	if err := targz.Compress(os.Getenv("BACKUP_SOURCES"), s.file); err != nil {
+	if err := targz.Compress(s.sources, s.file); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
-	s.logger.Infof("Successfully created backup from %s at %s", os.Getenv("BACKUP_SOURCES"), s.file)
+	s.logger.Infof("Successfully created backup of `%s` at `%s`.", s.sources, s.file)
 	return nil
 }
 
@@ -248,14 +252,13 @@ func (s *script) takeBackup() error {
 // In case no passphrase is given it returns early, leaving the backup file
 //  untouched.
 func (s *script) encryptBackup() error {
-	passphrase := os.Getenv("GPG_PASSPHRASE")
-	if passphrase == "" {
+	if s.passphrase == "" {
 		return nil
 	}
 
 	buf := bytes.NewBuffer(nil)
 	_, name := path.Split(s.file)
-	pt, err := openpgp.SymmetricallyEncrypt(buf, []byte(passphrase), &openpgp.FileHints{
+	pt, err := openpgp.SymmetricallyEncrypt(buf, []byte(s.passphrase), &openpgp.FileHints{
 		IsBinary: true,
 		FileName: name,
 	}, nil)
@@ -284,7 +287,7 @@ func (s *script) encryptBackup() error {
 		return fmt.Errorf("encryptBackup: error removing unencrpyted backup: %w", err)
 	}
 	s.file = gpgFile
-	s.logger.Info("Successfully encrypted backup using given passphrase.")
+	s.logger.Infof("Successfully encrypted backup using given passphrase, saving as `%s`.", s.file)
 	return nil
 }
 
@@ -299,7 +302,7 @@ func (s *script) copyBackup() error {
 		if err != nil {
 			return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
 		}
-		s.logger.Infof("Successfully uploaded backup %s to bucket %s", s.file, s.bucket)
+		s.logger.Infof("Successfully uploaded a copy of backup `%s` to bucket `%s`", s.file, s.bucket)
 	}
 
 	if s.archive != "" {
@@ -308,7 +311,7 @@ func (s *script) copyBackup() error {
 				return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 			}
 		}
-		s.logger.Infof("Successfully stored copy of backup %s in local archive %s", s.file, s.archive)
+		s.logger.Infof("Successfully stored copy of backup `%s` in local archive `%s`", s.file, s.archive)
 	}
 	return nil
 }
@@ -334,11 +337,12 @@ func (s *script) pruneOldBackups() error {
 	if err != nil {
 		return fmt.Errorf("pruneOldBackups: error parsing BACKUP_RETENTION_DAYS as int: %w", err)
 	}
-	sleepFor, err := time.ParseDuration(os.Getenv("BACKUP_PRUNING_LEEWAY"))
+	leeway := os.Getenv("BACKUP_PRUNING_LEEWAY")
+	sleepFor, err := time.ParseDuration(leeway)
 	if err != nil {
 		return fmt.Errorf("pruneBackups: error parsing given leeway value: %w", err)
 	}
-	s.logger.Infof("Sleeping for %s before pruning backups.", os.Getenv("BACKUP_PRUNING_LEEWAY"))
+	s.logger.Infof("Sleeping for %s before pruning backups.", leeway)
 	time.Sleep(sleepFor)
 
 	s.logger.Infof("Trying to prune backups older than %d days now.", retentionDays)
@@ -391,7 +395,10 @@ func (s *script) pruneOldBackups() error {
 				lenCandidates,
 			)
 		} else if len(matches) != 0 && len(matches) == lenCandidates {
-			s.logger.Warnf("The current configuration would delete all %d remote backups. Refusing to do so.", len(matches))
+			s.logger.Warnf(
+				"The current configuration would delete all %d remote backup copies. Refusing to do so, please check your configuration.",
+				len(matches),
+			)
 		} else {
 			s.logger.Infof("None of %d remote backups were pruned.", lenCandidates)
 		}
@@ -443,7 +450,10 @@ func (s *script) pruneOldBackups() error {
 				len(candidates),
 			)
 		} else if len(matches) != 0 && len(matches) == len(candidates) {
-			s.logger.Warnf("The current configuration would delete all %d local backups. Refusing to do so.", len(matches))
+			s.logger.Warnf(
+				"The current configuration would delete all %d local backup copies. Refusing to do so, please check your configuration.",
+				len(matches),
+			)
 		} else {
 			s.logger.Infof("None of %d local backups were pruned.", len(candidates))
 		}
@@ -451,11 +461,13 @@ func (s *script) pruneOldBackups() error {
 	return nil
 }
 
-func must(f func() error) func() {
-	return func() {
-		if err := f(); err != nil {
+func (s *script) must(err error) {
+	if err != nil {
+		if s.logger == nil {
 			panic(err)
 		}
+		s.logger.Errorf("Fatal error running backup: %s", err)
+		os.Exit(1)
 	}
 }
 
