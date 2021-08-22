@@ -2,7 +2,13 @@ module github.com/offen/docker-volume-backup
 
 go 1.17
 
-require github.com/docker/docker v20.10.8+incompatible
+require (
+	github.com/docker/docker v20.10.8+incompatible
+	github.com/joho/godotenv v1.3.0
+	github.com/minio/minio-go/v7 v7.0.12
+	github.com/walle/targz v0.0.0-20140417120357-57fe4206da5a
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
+)
 
 require (
 	github.com/Microsoft/go-winio v0.4.17 // indirect
@@ -14,12 +20,9 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.0 // indirect
 	github.com/google/uuid v1.2.0 // indirect
-	github.com/joho/godotenv v1.3.0 // indirect
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/klauspost/cpuid v1.3.1 // indirect
 	github.com/minio/md5-simd v1.1.0 // indirect
-	github.com/minio/minio-go v6.0.14+incompatible
-	github.com/minio/minio-go/v7 v7.0.12 // indirect
 	github.com/minio/sha256-simd v0.1.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -30,7 +33,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/xid v1.2.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110 // indirect
 	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1 // indirect
 	golang.org/x/text v0.3.4 // indirect
@@ -38,9 +40,4 @@ require (
 	google.golang.org/grpc v1.33.2 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/ini.v1 v1.57.0 // indirect
-)
-
-require (
-	github.com/go-ini/ini v1.25.4 // indirect
-	github.com/walle/targz v0.0.0-20140417120357-57fe4206da5a // indirect
 )
