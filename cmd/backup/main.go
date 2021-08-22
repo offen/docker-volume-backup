@@ -1,3 +1,6 @@
+// Copyright 2021 - Offen Authors <hioffen@posteo.de>
+// SPDX-License-Identifier: MPL-2.0
+
 package main
 
 import (
@@ -28,7 +31,7 @@ import (
 )
 
 func main() {
-	unlock, err := lock()
+	unlock, err := lock("/var/dockervolumebackup.lock")
 	if err != nil {
 		panic(err)
 	}
@@ -57,10 +60,9 @@ type script struct {
 	archive string
 }
 
-// lock opens a lock file without releasing it and returns a function that
-// can be called once the lock shall be released again.
-func lock() (func() error, error) {
-	lockfile := "/var/dockervolumebackup.lock"
+// lock opens a lockfile, keeping it open until the caller invokes the returned
+// release func.
+func lock(lockfile string) (func() error, error) {
 	lf, err := os.OpenFile(lockfile, os.O_CREATE, os.ModeAppend)
 	if err != nil {
 		return nil, fmt.Errorf("lock: error opening lock file: %w", err)
@@ -316,7 +318,7 @@ func (s *script) cleanBackup() error {
 	if err := os.Remove(s.file); err != nil {
 		return fmt.Errorf("cleanBackup: error removing file: %w", err)
 	}
-	s.logger.Info("Successfully cleaned local backup.")
+	s.logger.Info("Successfully cleaned up local artifacts.")
 	return nil
 }
 
@@ -391,7 +393,7 @@ func (s *script) pruneOldBackups() error {
 		} else if len(matches) != 0 && len(matches) == lenCandidates {
 			s.logger.Warnf("The current configuration would delete all %d remote backups. Refusing to do so.", len(matches))
 		} else {
-			s.logger.Info("No remote backups were pruned.")
+			s.logger.Infof("None of %d remote backups were pruned.", lenCandidates)
 		}
 	}
 
@@ -443,7 +445,7 @@ func (s *script) pruneOldBackups() error {
 		} else if len(matches) != 0 && len(matches) == len(candidates) {
 			s.logger.Warnf("The current configuration would delete all %d local backups. Refusing to do so.", len(matches))
 		} else {
-			s.logger.Info("No local backups were pruned.")
+			s.logger.Infof("None of %d local backups were pruned.", len(candidates))
 		}
 	}
 	return nil

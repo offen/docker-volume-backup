@@ -5,8 +5,8 @@ FROM golang:1.17-alpine as builder
 
 WORKDIR /app
 COPY go.mod go.sum ./
-COPY src/main.go ./src/main.go
-RUN go build -o backup src/main.go
+COPY cmd/backup/main.go ./cmd/backup/main.go
+RUN go build -o backup cmd/backup/main.go
 
 FROM alpine:3.14
 
@@ -16,7 +16,7 @@ RUN apk add --update ca-certificates
 
 COPY --from=builder /app/backup /usr/bin/backup
 
-COPY src/entrypoint.sh /root/
+COPY ./entrypoint.sh /root/
 RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["/root/entrypoint.sh"]
