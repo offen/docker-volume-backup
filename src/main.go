@@ -22,6 +22,7 @@ import (
 	"github.com/joho/godotenv"
 	minio "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/sirupsen/logrus"
 	"github.com/walle/targz"
 	"golang.org/x/crypto/openpgp"
 )
@@ -36,28 +37,24 @@ func main() {
 	s := &script{}
 
 	must(s.init)()
-	fmt.Println("Successfully initialized resources.")
 	err = s.stopContainersAndRun(s.takeBackup)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Successfully took backup.")
 	must(s.encryptBackup)()
-	fmt.Println("Successfully encrypted backup.")
 	must(s.copyBackup)()
-	fmt.Println("Successfully copied backup.")
 	must(s.cleanBackup)()
-	fmt.Println("Successfully cleaned local backup.")
 	must(s.pruneOldBackups)()
-	fmt.Println("Successfully pruned old backups.")
 }
 
 type script struct {
-	ctx    context.Context
-	cli    *client.Client
-	mc     *minio.Client
-	file   string
-	bucket string
+	ctx     context.Context
+	cli     *client.Client
+	mc      *minio.Client
+	logger  *logrus.Logger
+	file    string
+	bucket  string
+	archive string
 }
 
 // lock opens a lock file without releasing it and returns a function that
@@ -83,6 +80,8 @@ func lock() (func() error, error) {
 // remote resources like the Docker engine or remote storage locations.
 func (s *script) init() error {
 	s.ctx = context.Background()
+	s.logger = logrus.New()
+	s.logger.SetOutput(os.Stdout)
 
 	if err := godotenv.Load("/etc/backup.env"); err != nil {
 		return fmt.Errorf("init: failed to load env file: %w", err)
@@ -92,7 +91,7 @@ func (s *script) init() error {
 	if !os.IsNotExist(err) {
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
-			return fmt.Errorf("init: failied to create docker client")
+			return fmt.Errorf("init: failed to create docker client")
 		}
 		s.cli = cli
 	}
@@ -112,11 +111,13 @@ func (s *script) init() error {
 		}
 		s.mc = mc
 	}
+
 	file := os.Getenv("BACKUP_FILENAME")
 	if file == "" {
 		return errors.New("init: BACKUP_FILENAME not given")
 	}
 	s.file = path.Join("/tmp", file)
+	s.archive = os.Getenv("BACKUP_ARCHIVE")
 	return nil
 }
 
@@ -148,7 +149,7 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 	if err != nil {
 		return fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
 	}
-	fmt.Printf("Stopping %d out of %d running containers\n", len(containersToStop), len(allContainers))
+	s.logger.Infof("Stopping %d out of %d running containers\n", len(containersToStop), len(allContainers))
 
 	var stoppedContainers []types.Container
 	var errors []error
@@ -207,6 +208,7 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 				err,
 			)
 		}
+		s.logger.Infof("Successfully restarted %d containers.", len(stoppedContainers))
 		return nil
 	}()
 
@@ -236,6 +238,7 @@ func (s *script) takeBackup() error {
 	if err := targz.Compress(os.Getenv("BACKUP_SOURCES"), s.file); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
+	s.logger.Infof("Successfully created backup from %s at %s", os.Getenv("BACKUP_SOURCES"), s.file)
 	return nil
 }
 
@@ -279,6 +282,7 @@ func (s *script) encryptBackup() error {
 		return fmt.Errorf("encryptBackup: error removing unencrpyted backup: %w", err)
 	}
 	s.file = gpgFile
+	s.logger.Info("Successfully encrypted backup using given passphrase.")
 	return nil
 }
 
@@ -293,14 +297,16 @@ func (s *script) copyBackup() error {
 		if err != nil {
 			return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
 		}
+		s.logger.Infof("Successfully uploaded backup %s to bucket %s", s.file, s.bucket)
 	}
 
-	if archive := os.Getenv("BACKUP_ARCHIVE"); archive != "" {
-		if _, err := os.Stat(archive); !os.IsNotExist(err) {
-			if err := copy(s.file, path.Join(archive, name)); err != nil {
+	if s.archive != "" {
+		if _, err := os.Stat(s.archive); !os.IsNotExist(err) {
+			if err := copy(s.file, path.Join(s.archive, name)); err != nil {
 				return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 			}
 		}
+		s.logger.Infof("Successfully stored copy of backup %s in local archive %s", s.file, s.archive)
 	}
 	return nil
 }
@@ -310,6 +316,7 @@ func (s *script) cleanBackup() error {
 	if err := os.Remove(s.file); err != nil {
 		return fmt.Errorf("cleanBackup: error removing file: %w", err)
 	}
+	s.logger.Info("Successfully cleaned local backup.")
 	return nil
 }
 
@@ -329,8 +336,10 @@ func (s *script) pruneOldBackups() error {
 	if err != nil {
 		return fmt.Errorf("pruneBackups: error parsing given leeway value: %w", err)
 	}
+	s.logger.Infof("Sleeping for %s before pruning backups.", os.Getenv("BACKUP_PRUNING_LEEWAY"))
 	time.Sleep(sleepFor)
 
+	s.logger.Infof("Trying to prune backups older than %d days now.", retentionDays)
 	deadline := time.Now().AddDate(0, 0, -retentionDays)
 
 	if s.bucket != "" {
@@ -340,17 +349,22 @@ func (s *script) pruneOldBackups() error {
 		})
 
 		var matches []minio.ObjectInfo
+		var lenCandidates int
 		for candidate := range candidates {
+			lenCandidates++
+			if candidate.Err != nil {
+				return fmt.Errorf("pruneOldBackups: error looking up candidates from remote storage: %w", candidate.Err)
+			}
 			if candidate.LastModified.Before(deadline) {
 				matches = append(matches, candidate)
 			}
 		}
 
-		if len(matches) != len(candidates) {
+		if len(matches) != 0 && len(matches) != lenCandidates {
 			objectsCh := make(chan minio.ObjectInfo)
 			go func() {
-				for _, candidate := range matches {
-					objectsCh <- candidate
+				for _, match := range matches {
+					objectsCh <- match
 				}
 				close(objectsCh)
 			}()
@@ -369,14 +383,21 @@ func (s *script) pruneOldBackups() error {
 					errors[0],
 				)
 			}
-		} else if len(candidates) != 0 {
-			fmt.Println("Refusing to delete all backups. Check your configuration.")
+			s.logger.Infof(
+				"Successfully pruned %d out of %d remote backups as their age exceeded the configured retention period.",
+				len(matches),
+				lenCandidates,
+			)
+		} else if len(matches) != 0 && len(matches) == lenCandidates {
+			s.logger.Warnf("The current configuration would delete all %d remote backups. Refusing to do so.", len(matches))
+		} else {
+			s.logger.Info("No remote backups were pruned.")
 		}
 	}
 
-	if archive := os.Getenv("BACKUP_ARCHIVE"); archive != "" {
+	if s.archive != "" {
 		candidates, err := filepath.Glob(
-			path.Join(archive, fmt.Sprintf("%s%s", os.Getenv("BACKUP_PRUNING_PREFIX"), "*")),
+			path.Join(s.archive, fmt.Sprintf("%s*", os.Getenv("BACKUP_PRUNING_PREFIX"))),
 		)
 		if err != nil {
 			return fmt.Errorf(
@@ -400,7 +421,7 @@ func (s *script) pruneOldBackups() error {
 			}
 		}
 
-		if len(matches) != len(candidates) {
+		if len(matches) != 0 && len(matches) != len(candidates) {
 			var errors []error
 			for _, candidate := range matches {
 				if err := os.Remove(candidate.Name()); err != nil {
@@ -414,8 +435,15 @@ func (s *script) pruneOldBackups() error {
 					errors[0],
 				)
 			}
-		} else if len(candidates) != 0 {
-			fmt.Println("Refusing to delete all backups. Check your configuration.")
+			s.logger.Infof(
+				"Successfully pruned %d out of %d local backups as their age exceeded the configured retention period.",
+				len(matches),
+				len(candidates),
+			)
+		} else if len(matches) != 0 && len(matches) == len(candidates) {
+			s.logger.Warnf("The current configuration would delete all %d local backups. Refusing to do so.", len(matches))
+		} else {
+			s.logger.Info("No local backups were pruned.")
 		}
 	}
 	return nil
