@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
+	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -21,17 +24,25 @@ import (
 func main() {
 	s := &script{}
 
-	s.lock()
+	must(s.lock)()
 	defer s.unlock()
 
 	must(s.init)()
+	fmt.Println("Successfully initialized resources.")
 	must(s.stopContainers)()
+	fmt.Println("Successfully stopped containers.")
 	must(s.takeBackup)()
+	fmt.Println("Successfully took backup.")
 	must(s.restartContainers)()
+	fmt.Println("Successfully restarted containers.")
 	must(s.encryptBackup)()
+	fmt.Println("Successfully encrypted backup.")
 	must(s.copyBackup)()
+	fmt.Println("Successfully copied backup.")
 	must(s.cleanBackup)()
-	must(s.pruneBackups)()
+	fmt.Println("Successfully cleaned local backup.")
+	must(s.pruneOldBackups)()
+	fmt.Println("Successfully pruned old backup.")
 }
 
 type script struct {
@@ -39,11 +50,28 @@ type script struct {
 	cli               *client.Client
 	mc                *minio.Client
 	stoppedContainers []types.Container
+	releaseLock       func() error
 	file              string
 }
 
-func (s *script) lock()   {}
-func (s *script) unlock() {}
+func (s *script) lock() error {
+	lf, err := os.OpenFile("/var/dockervolumebackup.lock", os.O_CREATE, os.ModeAppend)
+	if err != nil {
+		return fmt.Errorf("lock: error opening lock file: %w", err)
+	}
+	s.releaseLock = lf.Close
+	return nil
+}
+
+func (s *script) unlock() error {
+	if err := s.releaseLock(); err != nil {
+		return fmt.Errorf("unlock: error releasing file lock: %w", err)
+	}
+	if err := os.Remove("/var/dockervolumebackup.lock"); err != nil {
+		return fmt.Errorf("unlock: error removing lock file: %w", err)
+	}
+	return nil
+}
 
 func (s *script) init() error {
 	s.ctx = context.Background()
@@ -85,7 +113,14 @@ func (s *script) stopContainers() error {
 	if s.cli == nil {
 		return nil
 	}
-	stoppedContainers, err := s.cli.ContainerList(s.ctx, types.ContainerListOptions{
+	allContainers, err := s.cli.ContainerList(s.ctx, types.ContainerListOptions{
+		Quiet: true,
+	})
+	if err != nil {
+		return fmt.Errorf("stopContainers: error querying for containers: %w", err)
+	}
+
+	containersToStop, err := s.cli.ContainerList(s.ctx, types.ContainerListOptions{
 		Quiet: true,
 		Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "label",
@@ -96,9 +131,9 @@ func (s *script) stopContainers() error {
 	if err != nil {
 		return fmt.Errorf("stopContainers: error querying for containers to stop: %w", err)
 	}
-	fmt.Printf("Stopping %d containers\n", len(stoppedContainers))
+	fmt.Printf("Stopping %d out of %d running containers\n", len(containersToStop), len(allContainers))
 
-	if len(stoppedContainers) != 0 {
+	if len(containersToStop) != 0 {
 		fmt.Println("Stopping containers")
 		for _, container := range s.stoppedContainers {
 			if err := s.cli.ContainerStop(s.ctx, container.ID, nil); err != nil {
@@ -107,15 +142,21 @@ func (s *script) stopContainers() error {
 		}
 	}
 
-	s.stoppedContainers = stoppedContainers
+	s.stoppedContainers = containersToStop
 	return nil
 }
 
 func (s *script) takeBackup() error {
-	file := os.Getenv("BACKUP_FILENAME")
-	if file == "" {
+	if os.Getenv("BACKUP_FILENAME") == "" {
 		return errors.New("takeBackup: BACKUP_FILENAME not given")
 	}
+
+	outBytes, err := exec.Command("date", fmt.Sprintf("+%s", os.Getenv("BACKUP_FILENAME"))).Output()
+	if err != nil {
+		return fmt.Errorf("takeBackup: error formatting filename template: %w", err)
+	}
+	file := fmt.Sprintf("/tmp/%s", strings.TrimSpace(string(outBytes)))
+
 	s.file = file
 	if err := targz.Compress(os.Getenv("BACKUP_SOURCES"), s.file); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
@@ -124,7 +165,6 @@ func (s *script) takeBackup() error {
 }
 
 func (s *script) restartContainers() error {
-	fmt.Println("Starting containers/services back up")
 	servicesRequiringUpdate := map[string]struct{}{}
 	for _, container := range s.stoppedContainers {
 		if swarmServiceName, ok := container.Labels["com.docker.swarm.service.name"]; ok {
@@ -156,6 +196,8 @@ func (s *script) restartContainers() error {
 			)
 		}
 	}
+
+	s.stoppedContainers = []types.Container{}
 	return nil
 }
 
@@ -194,17 +236,28 @@ func (s *script) cleanBackup() error {
 	return nil
 }
 
-func (s *script) pruneBackups() error {
+func (s *script) pruneOldBackups() error {
 	retention := os.Getenv("BACKUP_RETENTION_DAYS")
 	if retention == "" {
 		return nil
 	}
-	return errors.New("pruneBackups: not implemented yet")
+
+	sleepFor, err := time.ParseDuration(os.Getenv("BACKUP_PRUNING_LEEWAY"))
+	if err != nil {
+		return fmt.Errorf("pruneBackups: error parsing given leeway value: %w", err)
+	}
+	time.Sleep(sleepFor)
+
+	if bucket := os.Getenv("AWS_S3_BUCKET_NAME"); bucket != "" {
+	}
+	if archive := os.Getenv("BACKUP_ARCHIVE"); archive != "" {
+	}
+	return nil
 }
 
 func fileExists(location string) (bool, error) {
 	_, err := os.Stat(location)
-	if err != nil && err != os.ErrNotExist {
+	if err != nil && !os.IsNotExist(err) {
 		return false, err
 	}
 	return err == nil, nil
@@ -229,10 +282,10 @@ func copy(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
 
 	_, err = io.Copy(out, in)
 	if err != nil {
+		out.Close()
 		return err
 	}
 	return out.Close()
