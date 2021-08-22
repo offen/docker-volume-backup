@@ -44,16 +44,22 @@ func main() {
 }
 
 type script struct {
-	ctx        context.Context
-	cli        *client.Client
-	mc         *minio.Client
-	logger     *logrus.Logger
-	file       string
-	bucket     string
-	archive    string
-	sources    string
-	passphrase string
-	now        time.Time
+	ctx    context.Context
+	cli    *client.Client
+	mc     *minio.Client
+	logger *logrus.Logger
+
+	start time.Time
+
+	file           string
+	bucket         string
+	archive        string
+	sources        string
+	passphrase     []byte
+	retentionDays  *int
+	leeway         *time.Duration
+	containerLabel string
+	pruningPrefix  string
 }
 
 // lock opens a lockfile at the given location, keeping it locked until the
@@ -118,9 +124,27 @@ func (s *script) init() error {
 	s.file = path.Join("/tmp", file)
 	s.archive = os.Getenv("BACKUP_ARCHIVE")
 	s.sources = os.Getenv("BACKUP_SOURCES")
-	s.passphrase = os.Getenv("GPG_PASSPHRASE")
+	if v := os.Getenv("GPG_PASSPHRASE"); v != "" {
+		s.passphrase = []byte(v)
+	}
+	if v := os.Getenv("BACKUP_RETENTION_DAYS"); v != "" {
+		i, err := strconv.Atoi(v)
+		if err != nil {
+			return fmt.Errorf("init: error parsing BACKUP_RETENTION_DAYS as int: %w", err)
+		}
+		s.retentionDays = &i
+	}
+	if v := os.Getenv("BACKUP_PRUNING_LEEWAY"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			return fmt.Errorf("init: error parsing BACKUP_PRUNING_LEEWAY as duration: %w", err)
+		}
+		s.leeway = &d
+	}
+	s.containerLabel = os.Getenv("BACKUP_STOP_CONTAINER_LABEL")
+	s.pruningPrefix = os.Getenv("BACKUP_PRUNING_PREFIX")
+	s.start = time.Now()
 
-	s.now = time.Now()
 	return nil
 }
 
@@ -140,7 +164,7 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 
 	containerLabel := fmt.Sprintf(
 		"docker-volume-backup.stop-during-backup=%s",
-		os.Getenv("BACKUP_STOP_CONTAINER_LABEL"),
+		s.containerLabel,
 	)
 	containersToStop, err := s.cli.ContainerList(s.ctx, types.ContainerListOptions{
 		Quiet: true,
@@ -154,7 +178,7 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 		return fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
 	}
 	s.logger.Infof(
-		"Stopping %d containers labeled `%s` out of %d running containers.",
+		"Stopping %d containers labeled `%s` out of %d running container(s).",
 		len(containersToStop),
 		containerLabel,
 		len(allContainers),
@@ -217,7 +241,7 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 				err,
 			)
 		}
-		s.logger.Infof("Successfully restarted %d containers.", len(stoppedContainers))
+		s.logger.Infof("Successfully restarted %d container(s) and the matching service(s).", len(stoppedContainers))
 		return nil
 	}()
 
@@ -239,7 +263,7 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 // takeBackup creates a tar archive of the configured backup location and
 // saves it to disk.
 func (s *script) takeBackup() error {
-	s.file = timeutil.Strftime(&s.now, s.file)
+	s.file = timeutil.Strftime(&s.start, s.file)
 	if err := targz.Compress(s.sources, s.file); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
@@ -251,7 +275,7 @@ func (s *script) takeBackup() error {
 // In case no passphrase is given it returns early, leaving the backup file
 //  untouched.
 func (s *script) encryptBackup() error {
-	if s.passphrase == "" {
+	if s.passphrase == nil {
 		return nil
 	}
 
@@ -285,6 +309,7 @@ func (s *script) encryptBackup() error {
 	if err := os.Remove(s.file); err != nil {
 		return fmt.Errorf("encryptBackup: error removing unencrpyted backup: %w", err)
 	}
+
 	s.file = gpgFile
 	s.logger.Infof("Successfully encrypted backup using given passphrase, saving as `%s`.", s.file)
 	return nil
@@ -326,29 +351,22 @@ func (s *script) cleanBackup() error {
 // the given configuration. In case the given configuration would delete all
 // backups, it does nothing instead.
 func (s *script) pruneOldBackups() error {
-	retention := os.Getenv("BACKUP_RETENTION_DAYS")
-	if retention == "" {
+	if s.retentionDays == nil {
 		return nil
 	}
-	retentionDays, err := strconv.Atoi(retention)
-	if err != nil {
-		return fmt.Errorf("pruneOldBackups: error parsing BACKUP_RETENTION_DAYS as int: %w", err)
-	}
-	leeway := os.Getenv("BACKUP_PRUNING_LEEWAY")
-	sleepFor, err := time.ParseDuration(leeway)
-	if err != nil {
-		return fmt.Errorf("pruneBackups: error parsing given leeway value: %w", err)
-	}
-	s.logger.Infof("Sleeping for %s before pruning backups.", leeway)
-	time.Sleep(sleepFor)
 
-	s.logger.Infof("Trying to prune backups older than %d days now.", retentionDays)
-	deadline := s.now.AddDate(0, 0, -retentionDays)
+	if s.leeway != nil {
+		s.logger.Infof("Sleeping for %s before pruning backups.", s.leeway)
+		time.Sleep(*s.leeway)
+	}
+
+	s.logger.Infof("Trying to prune backups older than %d day(s) now.", *s.retentionDays)
+	deadline := s.start.AddDate(0, 0, -*s.retentionDays)
 
 	if s.bucket != "" {
 		candidates := s.mc.ListObjects(s.ctx, s.bucket, minio.ListObjectsOptions{
 			WithMetadata: true,
-			Prefix:       os.Getenv("BACKUP_PRUNING_PREFIX"),
+			Prefix:       s.pruningPrefix,
 		})
 
 		var matches []minio.ObjectInfo
@@ -381,13 +399,13 @@ func (s *script) pruneOldBackups() error {
 
 			if len(errors) != 0 {
 				return fmt.Errorf(
-					"pruneOldBackups: %d errors removing files from remote storage: %w",
+					"pruneOldBackups: %d error(s) removing files from remote storage: %w",
 					len(errors),
 					errors[0],
 				)
 			}
 			s.logger.Infof(
-				"Successfully pruned %d out of %d remote backups as their age exceeded the configured retention period.",
+				"Successfully pruned %d out of %d remote backup(s) as their age exceeded the configured retention period.",
 				len(matches),
 				lenCandidates,
 			)
@@ -397,13 +415,13 @@ func (s *script) pruneOldBackups() error {
 				len(matches),
 			)
 		} else {
-			s.logger.Infof("None of %d remote backups were pruned.", lenCandidates)
+			s.logger.Infof("None of %d remote backup(s) were pruned.", lenCandidates)
 		}
 	}
 
 	if _, err := os.Stat(s.archive); !os.IsNotExist(err) {
 		candidates, err := filepath.Glob(
-			path.Join(s.archive, fmt.Sprintf("%s*", os.Getenv("BACKUP_PRUNING_PREFIX"))),
+			path.Join(s.archive, fmt.Sprintf("%s*", s.pruningPrefix)),
 		)
 		if err != nil {
 			return fmt.Errorf(
@@ -436,13 +454,13 @@ func (s *script) pruneOldBackups() error {
 			}
 			if len(errors) != 0 {
 				return fmt.Errorf(
-					"pruneOldBackups: %d errors deleting local files, starting with: %w",
+					"pruneOldBackups: %d error(s) deleting local files, starting with: %w",
 					len(errors),
 					errors[0],
 				)
 			}
 			s.logger.Infof(
-				"Successfully pruned %d out of %d local backups as their age exceeded the configured retention period.",
+				"Successfully pruned %d out of %d local backup(s) as their age exceeded the configured retention period.",
 				len(matches),
 				len(candidates),
 			)
@@ -452,7 +470,7 @@ func (s *script) pruneOldBackups() error {
 				len(matches),
 			)
 		} else {
-			s.logger.Infof("None of %d local backups were pruned.", len(candidates))
+			s.logger.Infof("None of %d local backup(s) were pruned.", len(candidates))
 		}
 	}
 	return nil
