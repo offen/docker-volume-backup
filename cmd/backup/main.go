@@ -41,6 +41,7 @@ func main() {
 	s.must(s.copyBackup())
 	s.must(s.cleanBackup())
 	s.must(s.pruneOldBackups())
+	s.logger.Info("Finished running backup tasks.")
 }
 
 type script struct {
@@ -305,11 +306,9 @@ func (s *script) copyBackup() error {
 		s.logger.Infof("Successfully uploaded a copy of backup `%s` to bucket `%s`", s.file, s.bucket)
 	}
 
-	if s.archive != "" {
-		if _, err := os.Stat(s.archive); !os.IsNotExist(err) {
-			if err := copy(s.file, path.Join(s.archive, name)); err != nil {
-				return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
-			}
+	if _, err := os.Stat(s.archive); !os.IsNotExist(err) {
+		if err := copy(s.file, path.Join(s.archive, name)); err != nil {
+			return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 		}
 		s.logger.Infof("Successfully stored copy of backup `%s` in local archive `%s`", s.file, s.archive)
 	}
@@ -404,7 +403,7 @@ func (s *script) pruneOldBackups() error {
 		}
 	}
 
-	if s.archive != "" {
+	if _, err := os.Stat(s.archive); !os.IsNotExist(err) {
 		candidates, err := filepath.Glob(
 			path.Join(s.archive, fmt.Sprintf("%s*", os.Getenv("BACKUP_PRUNING_PREFIX"))),
 		)
