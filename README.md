@@ -15,6 +15,9 @@ Backup targets, schedule and retention are configured in environment variables:
 # template expression.
 
 BACKUP_CRON_EXPRESSION="0 2 * * *"
+# Format verbs will be replaced as in the `date` command. Omitting them
+# will result in the same filename for every backup run, which means previous
+# versions will be overwritten.
 BACKUP_FILENAME="backup-%Y-%m-%dT%H-%M-%S.tar.gz"
 
 ########### BACKUP STORAGE
@@ -38,6 +41,12 @@ AWS_S3_BUCKET_NAME="<xxx>"
 # a different Docker container on the same host for example.
 
 # AWS_ENDPOINT_PROTO="https"
+
+# Setting this variable to any value will disable verification of
+# SSL certificates. You shouldn't use this unless you use self-signed
+# certificates for your remote storage backend.
+
+# AWS_ENDPOINT_INSECURE="true"
 
 # In addition to backing up you can also store backups locally. Pass in
 # a local path to store your backups here if needed. You likely want to
@@ -65,10 +74,10 @@ AWS_S3_BUCKET_NAME="<xxx>"
 
 # In case the duration a backup takes fluctuates noticeably in your setup
 # you can adjust this setting to make sure there are no race conditions
-# between the backup finishing and the pruning not deleting backups that
+# between the backup finishing and the rotation not deleting backups that
 # sit on the very edge of the time window. Set this value to a duration
 # that is expected to be bigger than the maximum difference of backups.
-# Valid values have a suffix of (s)econds, (m)inutes, (h)ours, or (d)ays.
+# Valid values have a suffix of (s)econds, (m)inutes or (h)ours.
 
 # BACKUP_PRUNING_LEEWAY="10m"
 
@@ -96,15 +105,6 @@ AWS_S3_BUCKET_NAME="<xxx>"
 # override this default by specifying a different value here.
 
 # BACKUP_STOP_CONTAINER_LABEL="service1"
-
-########### MINIO CLIENT CONFIGURATION
-
-# Pass these additional flags to all MinIO client `mc` invocations.
-# This can be used for example to pass `--insecure` when using self
-# signed certificates, or passing `--debug` to gain insights on
-# unexpected behavior.
-
-# MC_GLOBAL_OPTIONS="<xxx>"
 ```
 
 ## Example in a docker-compose setup
@@ -177,8 +177,8 @@ docker exec <container_ref> backup
 This image is heavily inspired by the `futurice/docker-volume-backup`. We decided to publish this image as a simpler and more lightweight alternative because of the following requirements:
 
 - The original image is based on `ubuntu`, making it very heavy. This version is roughly 1/3 in compressed size.
-- This image makes use of the MinIO client `mc` instead of the full blown AWS CLI for uploading backups.
-- The original image proposed to handle backup rotation through AWS S3 lifecycle policies. This image adds the option to rotate old backups through the same script so this functionality can also be offered for non-AWS storage backends like MinIO.
+- The original image uses a shell script, when this is written in Go.
+- The original image proposed to handle backup rotation through AWS S3 lifecycle policies. This image adds the option to rotate away old backups through the same command so this functionality can also be offered for non-AWS storage backends like MinIO. Local backups can also be pruned once they reach a certain age.
 - InfluxDB specific functionality was removed.
 - `arm64` and `arm/v7` architectures are supported.
 - Docker in Swarm mode is supported.

@@ -106,7 +106,7 @@ func (s *script) init() error {
 				os.Getenv("AWS_SECRET_ACCESS_KEY"),
 				"",
 			),
-			Secure: os.Getenv("AWS_ENDPOINT_PROTO") == "https",
+			Secure: os.Getenv("AWS_ENDPOINT_INSECURE") == "" && os.Getenv("AWS_ENDPOINT_PROTO") == "https",
 		})
 		if err != nil {
 			return fmt.Errorf("init: error setting up minio client: %w", err)
