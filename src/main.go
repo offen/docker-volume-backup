@@ -141,7 +141,11 @@ func (s *script) stopContainers() error {
 	if len(containersToStop) != 0 {
 		for _, container := range s.stoppedContainers {
 			if err := s.cli.ContainerStop(s.ctx, container.ID, nil); err != nil {
-				return fmt.Errorf("stopContainers: error stopping container %s: %w", container.Names[0], err)
+				return fmt.Errorf(
+					"stopContainers: error stopping container %s: %w",
+					container.Names[0],
+					err,
+				)
 			}
 		}
 	}
@@ -255,6 +259,7 @@ func (s *script) copyBackup() error {
 			return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
 		}
 	}
+
 	if archive := os.Getenv("BACKUP_ARCHIVE"); archive != "" {
 		if _, err := os.Stat(archive); !os.IsNotExist(err) {
 			if err := copy(s.file, path.Join(archive, name)); err != nil {
@@ -290,34 +295,86 @@ func (s *script) pruneOldBackups() error {
 	deadline := time.Now().AddDate(0, 0, -retentionDays)
 
 	if bucket := os.Getenv("AWS_S3_BUCKET_NAME"); bucket != "" {
+		candidates := s.mc.ListObjects(s.ctx, bucket, minio.ListObjectsOptions{
+			WithMetadata: true,
+			Prefix:       os.Getenv("BACKUP_PRUNING_PREFIX"),
+		})
+
+		var matches []minio.ObjectInfo
+		for candidate := range candidates {
+			if candidate.LastModified.Before(deadline) {
+				matches = append(matches, candidate)
+			}
+		}
+
+		if len(matches) != len(candidates) {
+			objectsCh := make(chan minio.ObjectInfo)
+			go func() {
+				for _, candidate := range matches {
+					objectsCh <- candidate
+				}
+			}()
+			errChan := s.mc.RemoveObjects(s.ctx, bucket, objectsCh, minio.RemoveObjectsOptions{})
+			var errors []error
+			for result := range errChan {
+				if result.Err != nil {
+					errors = append(errors, result.Err)
+				}
+			}
+
+			if len(errors) != 0 {
+				return fmt.Errorf(
+					"pruneOldBackups: %d errors removing files from remote storage: %w",
+					len(errors),
+					errors[0],
+				)
+			}
+		} else if len(candidates) != 0 {
+			fmt.Println("Refusing to delete all backups. Check your configuration.")
+		}
 	}
+
 	if archive := os.Getenv("BACKUP_ARCHIVE"); archive != "" {
-		matches, err := filepath.Glob(
+		candidates, err := filepath.Glob(
 			path.Join(archive, fmt.Sprintf("%s%s", os.Getenv("BACKUP_PRUNING_PREFIX"), "*")),
 		)
 		if err != nil {
-			return fmt.Errorf("pruneOldBackups: error looking up matching files: %w", err)
+			return fmt.Errorf(
+				"pruneOldBackups: error looking up matching files, starting with: %w", err,
+			)
 		}
 
-		var candidates []os.FileInfo
-		for _, match := range matches {
-			fi, err := os.Stat(match)
+		var matches []os.FileInfo
+		for _, candidate := range candidates {
+			fi, err := os.Stat(candidate)
 			if err != nil {
-				return fmt.Errorf("pruneOldBackups: error calling stat on file %s: %w", match, err)
+				return fmt.Errorf(
+					"pruneOldBackups: error calling stat on file %s: %w",
+					candidate,
+					err,
+				)
 			}
 
 			if fi.ModTime().Before(deadline) {
-				candidates = append(candidates, fi)
+				matches = append(matches, fi)
 			}
 		}
 
-		if len(candidates) != len(matches) {
-			for _, candidate := range candidates {
+		if len(matches) != len(candidates) {
+			var errors []error
+			for _, candidate := range matches {
 				if err := os.Remove(candidate.Name()); err != nil {
-					return fmt.Errorf("pruneOldBackups: error deleting file %s: %w", candidate.Name(), err)
+					errors = append(errors, err)
 				}
 			}
-		} else if len(matches) != 0 {
+			if len(errors) != 0 {
+				return fmt.Errorf(
+					"pruneOldBackups: %d errors deleting local files, starting with: %w",
+					len(errors),
+					errors[0],
+				)
+			}
+		} else if len(candidates) != 0 {
 			fmt.Println("Refusing to delete all backups. Check your configuration.")
 		}
 	}
