@@ -23,12 +23,11 @@ services:
       AWS_ENDPOINT: minio:9000
       AWS_ENDPOINT_PROTO: http
       AWS_S3_BUCKET_NAME: backup
-      BACKUP_FILENAME: test.tar.gz
+      # BACKUP_FILENAME: test.tar.gz
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
-      BACKUP_FORCE_PRUNE: ${BACKUP_FORCE_PRUNE:-}
       BACKUP_PRUNING_LEEWAY: 5s
-      BACKUP_PRUNING_PREFIX: test
+      # BACKUP_PRUNING_PREFIX: test
     volumes:
       - ./local:/archive
       - app_data:/backup/app_data:ro

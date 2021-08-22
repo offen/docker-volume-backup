@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -134,7 +136,6 @@ func (s *script) stopContainers() error {
 	fmt.Printf("Stopping %d out of %d running containers\n", len(containersToStop), len(allContainers))
 
 	if len(containersToStop) != 0 {
-		fmt.Println("Stopping containers")
 		for _, container := range s.stoppedContainers {
 			if err := s.cli.ContainerStop(s.ctx, container.ID, nil); err != nil {
 				return fmt.Errorf("stopContainers: error stopping container %s: %w", container.Names[0], err)
@@ -241,16 +242,49 @@ func (s *script) pruneOldBackups() error {
 	if retention == "" {
 		return nil
 	}
-
+	retentionDays, err := strconv.Atoi(retention)
+	if err != nil {
+		return fmt.Errorf("pruneOldBackups: error parsing BACKUP_RETENTION_DAYS as int: %w", err)
+	}
 	sleepFor, err := time.ParseDuration(os.Getenv("BACKUP_PRUNING_LEEWAY"))
 	if err != nil {
 		return fmt.Errorf("pruneBackups: error parsing given leeway value: %w", err)
 	}
 	time.Sleep(sleepFor)
 
+	deadline := time.Now().AddDate(0, 0, -retentionDays)
+
 	if bucket := os.Getenv("AWS_S3_BUCKET_NAME"); bucket != "" {
 	}
 	if archive := os.Getenv("BACKUP_ARCHIVE"); archive != "" {
+		matches, err := filepath.Glob(
+			path.Join(archive, fmt.Sprintf("%s%s", os.Getenv("BACKUP_PRUNING_PREFIX"), "*")),
+		)
+		if err != nil {
+			return fmt.Errorf("pruneOldBackups: error looking up matching files: %w", err)
+		}
+
+		var candidates []os.FileInfo
+		for _, match := range matches {
+			fi, err := os.Stat(match)
+			if err != nil {
+				return fmt.Errorf("pruneOldBackups: error calling stat on file %s: %w", match, err)
+			}
+
+			if fi.ModTime().Before(deadline) {
+				candidates = append(candidates, fi)
+			}
+		}
+
+		if len(candidates) != len(matches) {
+			for _, candidate := range candidates {
+				if err := os.Remove(candidate.Name()); err != nil {
+					return fmt.Errorf("pruneOldBackups: error deleting file %s: %w", candidate.Name(), err)
+				}
+			}
+		} else if len(matches) != 0 {
+			fmt.Println("Refusing to delete all backups. Check your configuration.")
+		}
 	}
 	return nil
 }
