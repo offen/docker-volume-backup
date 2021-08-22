@@ -11,11 +11,9 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -23,6 +21,7 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
 	"github.com/joho/godotenv"
+	"github.com/leekchan/timeutil"
 	minio "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/sirupsen/logrus"
@@ -54,6 +53,7 @@ type script struct {
 	archive    string
 	sources    string
 	passphrase string
+	now        time.Time
 }
 
 // lock opens a lockfile at the given location, keeping it locked until the
@@ -119,6 +119,8 @@ func (s *script) init() error {
 	s.archive = os.Getenv("BACKUP_ARCHIVE")
 	s.sources = os.Getenv("BACKUP_SOURCES")
 	s.passphrase = os.Getenv("GPG_PASSPHRASE")
+
+	s.now = time.Now()
 	return nil
 }
 
@@ -237,11 +239,7 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 // takeBackup creates a tar archive of the configured backup location and
 // saves it to disk.
 func (s *script) takeBackup() error {
-	outBytes, err := exec.Command("date", fmt.Sprintf("+%s", s.file)).Output()
-	if err != nil {
-		return fmt.Errorf("takeBackup: error formatting filename template: %w", err)
-	}
-	s.file = strings.TrimSpace(string(outBytes))
+	s.file = timeutil.Strftime(&s.now, s.file)
 	if err := targz.Compress(s.sources, s.file); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
@@ -345,7 +343,7 @@ func (s *script) pruneOldBackups() error {
 	time.Sleep(sleepFor)
 
 	s.logger.Infof("Trying to prune backups older than %d days now.", retentionDays)
-	deadline := time.Now().AddDate(0, 0, -retentionDays)
+	deadline := s.now.AddDate(0, 0, -retentionDays)
 
 	if s.bucket != "" {
 		candidates := s.mc.ListObjects(s.ctx, s.bucket, minio.ListObjectsOptions{

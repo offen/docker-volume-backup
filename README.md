@@ -79,7 +79,7 @@ AWS_S3_BUCKET_NAME="<xxx>"
 # that is expected to be bigger than the maximum difference of backups.
 # Valid values have a suffix of (s)econds, (m)inutes or (h)ours.
 
-# BACKUP_PRUNING_LEEWAY="10m"
+# BACKUP_PRUNING_LEEWAY="1m"
 
 # In case your target bucket or directory contains other files than the ones
 # managed by this container, you can limit the scope of rotation by setting
