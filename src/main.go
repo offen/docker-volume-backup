@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -21,6 +23,7 @@ import (
 	minio "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/walle/targz"
+	"golang.org/x/crypto/openpgp"
 )
 
 func main() {
@@ -203,11 +206,43 @@ func (s *script) restartContainers() error {
 }
 
 func (s *script) encryptBackup() error {
-	key := os.Getenv("GPG_PASSPHRASE")
-	if key == "" {
+	passphrase := os.Getenv("GPG_PASSPHRASE")
+	if passphrase == "" {
 		return nil
 	}
-	return errors.New("encryptBackup: not implemented yet")
+
+	buf := bytes.NewBuffer(nil)
+	_, name := path.Split(s.file)
+	pt, err := openpgp.SymmetricallyEncrypt(buf, []byte(passphrase), &openpgp.FileHints{
+		IsBinary: true,
+		FileName: name,
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("encryptBackup: error encrypting backup file: %w", err)
+	}
+
+	unencrypted, err := ioutil.ReadFile(s.file)
+	if err != nil {
+		pt.Close()
+		return fmt.Errorf("encryptBackup: error reading unencrypted backup file: %w", err)
+	}
+	_, err = pt.Write(unencrypted)
+	if err != nil {
+		pt.Close()
+		return fmt.Errorf("encryptBackup: error writing backup contents: %w", err)
+	}
+	pt.Close()
+
+	gpgFile := fmt.Sprintf("%s.gpg", s.file)
+	if err := ioutil.WriteFile(gpgFile, buf.Bytes(), os.ModeAppend); err != nil {
+		return fmt.Errorf("encryptBackup: error writing encrypted version of backup: %w", err)
+	}
+
+	if err := os.Remove(s.file); err != nil {
+		return fmt.Errorf("encryptBackup: error removing unencrpyted backup: %w", err)
+	}
+	s.file = gpgFile
+	return nil
 }
 
 func (s *script) copyBackup() error {
