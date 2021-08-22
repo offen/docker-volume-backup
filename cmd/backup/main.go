@@ -153,8 +153,9 @@ func (s *script) init() error {
 // sure containers are being restarted if required.
 func (s *script) stopContainersAndRun(thunk func() error) error {
 	if s.cli == nil {
-		return nil
+		return thunk()
 	}
+
 	allContainers, err := s.cli.ContainerList(s.ctx, types.ContainerListOptions{
 		Quiet: true,
 	})
