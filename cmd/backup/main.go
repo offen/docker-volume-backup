@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -43,6 +44,8 @@ func main() {
 	s.logger.Info("Finished running backup tasks.")
 }
 
+// script holds all the stateful information required to orchestrate a
+// single backup run.
 type script struct {
 	ctx    context.Context
 	cli    *client.Client
@@ -62,27 +65,10 @@ type script struct {
 	pruningPrefix  string
 }
 
-// lock opens a lockfile at the given location, keeping it locked until the
-// caller invokes the returned release func. When invoked while the file is
-// still locked the function panics.
-func lock(lockfile string) func() error {
-	lf, err := os.OpenFile(lockfile, os.O_CREATE, os.ModeAppend)
-	if err != nil {
-		panic(err)
-	}
-	return func() error {
-		if err := lf.Close(); err != nil {
-			return fmt.Errorf("lock: error releasing file lock: %w", err)
-		}
-		if err := os.Remove(lockfile); err != nil {
-			return fmt.Errorf("lock: error removing lock file: %w", err)
-		}
-		return nil
-	}
-}
-
 // init creates all resources needed for the script to perform actions against
-// remote resources like the Docker engine or remote storage locations.
+// remote resources like the Docker engine or remote storage locations. All
+// reading from env vars or other configuration sources is expected to happen
+// in this method.
 func (s *script) init() error {
 	s.ctx = context.Background()
 	s.logger = logrus.New()
@@ -178,22 +164,25 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 	if err != nil {
 		return fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
 	}
+
+	if len(containersToStop) == 0 {
+		return thunk()
+	}
+
 	s.logger.Infof(
-		"Stopping %d containers labeled `%s` out of %d running container(s).",
+		"Stopping %d container(s) labeled `%s` out of %d running container(s).",
 		len(containersToStop),
 		containerLabel,
 		len(allContainers),
 	)
 
 	var stoppedContainers []types.Container
-	var errors []error
-	if len(containersToStop) != 0 {
-		for _, container := range containersToStop {
-			if err := s.cli.ContainerStop(s.ctx, container.ID, nil); err != nil {
-				errors = append(errors, err)
-			} else {
-				stoppedContainers = append(stoppedContainers, container)
-			}
+	var stopErrors []error
+	for _, container := range containersToStop {
+		if err := s.cli.ContainerStop(s.ctx, container.ID, nil); err != nil {
+			stopErrors = append(stopErrors, err)
+		} else {
+			stoppedContainers = append(stoppedContainers, container)
 		}
 	}
 
@@ -246,16 +235,12 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 		return nil
 	}()
 
-	var stopErr error
-	if len(errors) != 0 {
-		stopErr = fmt.Errorf(
-			"stopContainersAndRun: %d errors stopping containers: %w",
-			len(errors),
+	if len(stopErrors) != 0 {
+		return fmt.Errorf(
+			"stopContainersAndRun: %d error(s) stopping containers: %w",
+			len(stopErrors),
 			err,
 		)
-	}
-	if stopErr != nil {
-		return stopErr
 	}
 
 	return thunk()
@@ -280,9 +265,10 @@ func (s *script) encryptBackup() error {
 		return nil
 	}
 
-	buf := bytes.NewBuffer(nil)
+	output := bytes.NewBuffer(nil)
 	_, name := path.Split(s.file)
-	pt, err := openpgp.SymmetricallyEncrypt(buf, []byte(s.passphrase), &openpgp.FileHints{
+
+	pt, err := openpgp.SymmetricallyEncrypt(output, []byte(s.passphrase), &openpgp.FileHints{
 		IsBinary: true,
 		FileName: name,
 	}, nil)
@@ -290,20 +276,30 @@ func (s *script) encryptBackup() error {
 		return fmt.Errorf("encryptBackup: error encrypting backup file: %w", err)
 	}
 
-	unencrypted, err := ioutil.ReadFile(s.file)
+	file, err := os.Open(s.file)
 	if err != nil {
-		pt.Close()
-		return fmt.Errorf("encryptBackup: error reading unencrypted backup file: %w", err)
+		return fmt.Errorf("encryptBackup: error opening unencrypted backup file: %w", err)
 	}
-	_, err = pt.Write(unencrypted)
-	if err != nil {
-		pt.Close()
-		return fmt.Errorf("encryptBackup: error writing backup contents: %w", err)
+
+	// backup files might be very large, so they are being read in chunks instead
+	// of loading them into memory once.
+	scanner := bufio.NewScanner(file)
+	chunk := make([]byte, 0, 1024*1024)
+	scanner.Buffer(chunk, 10*1024*1024)
+	for scanner.Scan() {
+		_, err = pt.Write(scanner.Bytes())
+		if err != nil {
+			file.Close()
+			pt.Close()
+			return fmt.Errorf("encryptBackup: error encrypting backup contents: %w", err)
+		}
 	}
+
+	file.Close()
 	pt.Close()
 
 	gpgFile := fmt.Sprintf("%s.gpg", s.file)
-	if err := ioutil.WriteFile(gpgFile, buf.Bytes(), os.ModeAppend); err != nil {
+	if err := ioutil.WriteFile(gpgFile, output.Bytes(), os.ModeAppend); err != nil {
 		return fmt.Errorf("encryptBackup: error writing encrypted version of backup: %w", err)
 	}
 
@@ -487,6 +483,26 @@ func (s *script) must(err error) {
 	}
 }
 
+// lock opens a lockfile at the given location, keeping it locked until the
+// caller invokes the returned release func. When invoked while the file is
+// still locked the function panics.
+func lock(lockfile string) func() error {
+	lf, err := os.OpenFile(lockfile, os.O_CREATE|os.O_RDWR, os.ModeAppend)
+	if err != nil {
+		panic(err)
+	}
+	return func() error {
+		if err := lf.Close(); err != nil {
+			return fmt.Errorf("lock: error releasing file lock: %w", err)
+		}
+		if err := os.Remove(lockfile); err != nil {
+			return fmt.Errorf("lock: error removing lock file: %w", err)
+		}
+		return nil
+	}
+}
+
+// copy creates a copy of the file located at `dst` at `src`.
 func copy(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {

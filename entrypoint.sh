@@ -9,7 +9,6 @@
 set -e
 
 # Write cronjob env to file, fill in sensible defaults, and read them back in
-mkdir -p /etc/backup
 cat <<EOF > /etc/backup.env
 BACKUP_SOURCES="${BACKUP_SOURCES:-/backup}"
 BACKUP_CRON_EXPRESSION="${BACKUP_CRON_EXPRESSION:-@daily}"

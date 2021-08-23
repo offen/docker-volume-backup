@@ -2,7 +2,7 @@
 
 Backup Docker volumes locally or to any S3 compatible storage.
 
-The [offen/docker-volume-backup](https://hub.docker.com/r/offen/docker-volume-backup) Docker image can be used as a sidecar container to an existing Docker setup. It handles recurring backups of Docker volumes to a local directory or any S3 compatible storage (or both) and rotates away old backups if configured.
+The [offen/docker-volume-backup](https://hub.docker.com/r/offen/docker-volume-backup) Docker image can be used as a lightweight (below 15MB) sidecar container to an existing Docker setup. It handles recurring backups of Docker volumes to a local directory or any S3 compatible storage (or both), and rotates away old backups if configured.
 
 ## Configuration
 
@@ -177,8 +177,8 @@ docker exec <container_ref> backup
 This image is heavily inspired by the `futurice/docker-volume-backup`. We decided to publish this image as a simpler and more lightweight alternative because of the following requirements:
 
 - The original image is based on `ubuntu` and additional tools, making it very heavy. This version is roughly 1/25 in compressed size (it's ~12MB).
-- The original image uses a shell script, when this is written in Go.
+- The original image uses a shell script, when this is written in Go, which makes it easier to extend and maintain (more verbose also).
 - The original image proposed to handle backup rotation through AWS S3 lifecycle policies. This image adds the option to rotate away old backups through the same command so this functionality can also be offered for non-AWS storage backends like MinIO. Local copies of backups can also be pruned once they reach a certain age.
-- InfluxDB specific functionality was removed.
+- InfluxDB specific functionality from the original image was removed.
 - `arm64` and `arm/v7` architectures are supported.
 - Docker in Swarm mode is supported.
