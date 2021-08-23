@@ -18,6 +18,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
+	"github.com/gofrs/flock"
 	"github.com/joho/godotenv"
 	"github.com/leekchan/timeutil"
 	minio "github.com/minio/minio-go/v7"
@@ -228,7 +229,10 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 				err,
 			)
 		}
-		s.logger.Infof("Restarted %d container(s) and the matching service(s).", len(stoppedContainers))
+		s.logger.Infof(
+			"Restarted %d container(s) and the matching service(s).",
+			len(stoppedContainers),
+		)
 		return nil
 	}()
 
@@ -356,7 +360,10 @@ func (s *script) pruneOldBackups() error {
 		for candidate := range candidates {
 			lenCandidates++
 			if candidate.Err != nil {
-				return fmt.Errorf("pruneOldBackups: error looking up candidates from remote storage: %w", candidate.Err)
+				return fmt.Errorf(
+					"pruneOldBackups: error looking up candidates from remote storage: %w",
+					candidate.Err,
+				)
 			}
 			if candidate.LastModified.Before(deadline) {
 				matches = append(matches, candidate)
@@ -393,9 +400,10 @@ func (s *script) pruneOldBackups() error {
 			)
 		} else if len(matches) != 0 && len(matches) == lenCandidates {
 			s.logger.Warnf(
-				"The current configuration would delete all %d remote backup copies. Refusing to do so, please check your configuration.",
+				"The current configuration would delete all %d remote backup copies.",
 				len(matches),
 			)
+			s.logger.Warn("Refusing to do so, please check your configuration.")
 		} else {
 			s.logger.Infof("None of %d remote backup(s) were pruned.", lenCandidates)
 		}
@@ -448,9 +456,10 @@ func (s *script) pruneOldBackups() error {
 			)
 		} else if len(matches) != 0 && len(matches) == len(candidates) {
 			s.logger.Warnf(
-				"The current configuration would delete all %d local backup copies. Refusing to do so, please check your configuration.",
+				"The current configuration would delete all %d local backup copies.",
 				len(matches),
 			)
+			s.logger.Warn("Refusing to do so, please check your configuration.")
 		} else {
 			s.logger.Infof("None of %d local backup(s) were pruned.", len(candidates))
 		}
@@ -472,19 +481,15 @@ func (s *script) must(err error) {
 // caller invokes the returned release func. When invoked while the file is
 // still locked the function panics.
 func lock(lockfile string) func() error {
-	lf, err := os.OpenFile(lockfile, os.O_CREATE|os.O_RDWR, os.ModeAppend)
+	fileLock := flock.New(lockfile)
+	acquired, err := fileLock.TryLock()
 	if err != nil {
 		panic(err)
 	}
-	return func() error {
-		if err := lf.Close(); err != nil {
-			return fmt.Errorf("lock: error releasing file lock: %w", err)
-		}
-		if err := os.Remove(lockfile); err != nil {
-			return fmt.Errorf("lock: error removing lock file: %w", err)
-		}
-		return nil
+	if !acquired {
+		panic("unable to acquire file lock")
 	}
+	return fileLock.Unlock
 }
 
 // copy creates a copy of the file located at `dst` at `src`.
