@@ -4,7 +4,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -276,26 +275,11 @@ func (s *script) encryptBackup() error {
 		return fmt.Errorf("encryptBackup: error encrypting backup file: %w", err)
 	}
 
-	file, err := os.Open(s.file)
+	b, err := ioutil.ReadFile(s.file)
 	if err != nil {
 		return fmt.Errorf("encryptBackup: error opening unencrypted backup file: %w", err)
 	}
-
-	// backup files might be very large, so they are being read in chunks instead
-	// of loading them into memory once.
-	scanner := bufio.NewScanner(file)
-	chunk := make([]byte, 0, 1024*1024)
-	scanner.Buffer(chunk, 10*1024*1024)
-	for scanner.Scan() {
-		_, err = pt.Write(scanner.Bytes())
-		if err != nil {
-			file.Close()
-			pt.Close()
-			return fmt.Errorf("encryptBackup: error encrypting backup contents: %w", err)
-		}
-	}
-
-	file.Close()
+	pt.Write(b)
 	pt.Close()
 
 	gpgFile := fmt.Sprintf("%s.gpg", s.file)
