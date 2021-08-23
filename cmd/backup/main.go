@@ -4,12 +4,10 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -264,27 +262,30 @@ func (s *script) encryptBackup() error {
 		return nil
 	}
 
-	output := bytes.NewBuffer(nil)
-	_, name := path.Split(s.file)
+	gpgFile := fmt.Sprintf("%s.gpg", s.file)
+	outFile, err := os.Create(gpgFile)
+	defer outFile.Close()
+	if err != nil {
+		return fmt.Errorf("encryptBackup: error opening out file: %w", err)
+	}
 
-	pt, err := openpgp.SymmetricallyEncrypt(output, []byte(s.passphrase), &openpgp.FileHints{
+	_, name := path.Split(s.file)
+	dst, err := openpgp.SymmetricallyEncrypt(outFile, []byte(s.passphrase), &openpgp.FileHints{
 		IsBinary: true,
 		FileName: name,
 	}, nil)
+	defer dst.Close()
 	if err != nil {
 		return fmt.Errorf("encryptBackup: error encrypting backup file: %w", err)
 	}
 
-	b, err := ioutil.ReadFile(s.file)
+	src, err := os.Open(s.file)
 	if err != nil {
-		return fmt.Errorf("encryptBackup: error opening unencrypted backup file: %w", err)
+		return fmt.Errorf("encryptBackup: error opening backup file %s: %w", s.file, err)
 	}
-	pt.Write(b)
-	pt.Close()
 
-	gpgFile := fmt.Sprintf("%s.gpg", s.file)
-	if err := ioutil.WriteFile(gpgFile, output.Bytes(), os.ModeAppend); err != nil {
-		return fmt.Errorf("encryptBackup: error writing encrypted version of backup: %w", err)
+	if _, err := io.Copy(dst, src); err != nil {
+		return fmt.Errorf("encryptBackup: error writing ciphertext to file: %w", err)
 	}
 
 	if err := os.Remove(s.file); err != nil {
