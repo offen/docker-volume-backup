@@ -426,7 +426,7 @@ func (s *script) pruneOldBackups() error {
 			)
 		}
 
-		var matches []os.FileInfo
+		var matches []string
 		for _, candidate := range candidates {
 			fi, err := os.Stat(candidate)
 			if err != nil {
@@ -438,14 +438,14 @@ func (s *script) pruneOldBackups() error {
 			}
 
 			if fi.ModTime().Before(deadline) {
-				matches = append(matches, fi)
+				matches = append(matches, candidate)
 			}
 		}
 
 		if len(matches) != 0 && len(matches) != len(candidates) {
 			var errors []error
 			for _, candidate := range matches {
-				if err := os.Remove(candidate.Name()); err != nil {
+				if err := os.Remove(candidate); err != nil {
 					errors = append(errors, err)
 				}
 			}
