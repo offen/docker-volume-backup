@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -275,11 +276,12 @@ func (s *script) encryptBackup() error {
 		return fmt.Errorf("encryptBackup: error encrypting backup file: %w", err)
 	}
 
-	b, err := ioutil.ReadFile(s.file)
+	file, err := os.Open(s.file)
 	if err != nil {
-		return fmt.Errorf("encryptBackup: error opening unencrypted backup file: %w", err)
+		return fmt.Errorf("encryptBackup: error opening backup file %s: %w", s.file, err)
 	}
-	pt.Write(b)
+	fileReader := bufio.NewReader(file)
+	fileReader.WriteTo(pt)
 	pt.Close()
 
 	gpgFile := fmt.Sprintf("%s.gpg", s.file)
