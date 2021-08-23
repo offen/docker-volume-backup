@@ -12,6 +12,10 @@ jobs:
           command: |
             docker build . -t offen/docker-volume-backup:canary
       - run:
+          name: Install gnupg
+          command: |
+            sudo apt-get install -y gnupg
+      - run:
           name: Run tests
           working_directory: ~/docker-volume-backup/test
           command: |

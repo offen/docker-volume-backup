@@ -26,9 +26,9 @@ services:
       BACKUP_FILENAME: test.tar.gz
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
-      BACKUP_FORCE_PRUNE: ${BACKUP_FORCE_PRUNE:-}
       BACKUP_PRUNING_LEEWAY: 5s
       BACKUP_PRUNING_PREFIX: test
+      GPG_PASSPHRASE: 1234secret
     volumes:
       - ./local:/archive
       - app_data:/backup/app_data:ro
