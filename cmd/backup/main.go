@@ -242,7 +242,7 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 				err,
 			)
 		}
-		s.logger.Infof("Successfully restarted %d container(s) and the matching service(s).", len(stoppedContainers))
+		s.logger.Infof("Restarted %d container(s) and the matching service(s).", len(stoppedContainers))
 		return nil
 	}()
 
@@ -268,7 +268,7 @@ func (s *script) takeBackup() error {
 	if err := targz.Compress(s.sources, s.file); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
-	s.logger.Infof("Successfully created backup of `%s` at `%s`.", s.sources, s.file)
+	s.logger.Infof("Created backup of `%s` at `%s`.", s.sources, s.file)
 	return nil
 }
 
@@ -312,7 +312,7 @@ func (s *script) encryptBackup() error {
 	}
 
 	s.file = gpgFile
-	s.logger.Infof("Successfully encrypted backup using given passphrase, saving as `%s`.", s.file)
+	s.logger.Infof("Encrypted backup using given passphrase, saving as `%s`.", s.file)
 	return nil
 }
 
@@ -327,14 +327,14 @@ func (s *script) copyBackup() error {
 		if err != nil {
 			return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
 		}
-		s.logger.Infof("Successfully uploaded a copy of backup `%s` to bucket `%s`", s.file, s.bucket)
+		s.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`", s.file, s.bucket)
 	}
 
 	if _, err := os.Stat(s.archive); !os.IsNotExist(err) {
 		if err := copy(s.file, path.Join(s.archive, name)); err != nil {
 			return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 		}
-		s.logger.Infof("Successfully stored copy of backup `%s` in local archive `%s`", s.file, s.archive)
+		s.logger.Infof("Stored copy of backup `%s` in local archive `%s`", s.file, s.archive)
 	}
 	return nil
 }
@@ -344,7 +344,7 @@ func (s *script) cleanBackup() error {
 	if err := os.Remove(s.file); err != nil {
 		return fmt.Errorf("cleanBackup: error removing file: %w", err)
 	}
-	s.logger.Info("Successfully cleaned up local artifacts.")
+	s.logger.Info("Cleaned up local artifacts.")
 	return nil
 }
 
@@ -406,7 +406,7 @@ func (s *script) pruneOldBackups() error {
 				)
 			}
 			s.logger.Infof(
-				"Successfully pruned %d out of %d remote backup(s) as their age exceeded the configured retention period.",
+				"Pruned %d out of %d remote backup(s) as their age exceeded the configured retention period.",
 				len(matches),
 				lenCandidates,
 			)
@@ -461,7 +461,7 @@ func (s *script) pruneOldBackups() error {
 				)
 			}
 			s.logger.Infof(
-				"Successfully pruned %d out of %d local backup(s) as their age exceeded the configured retention period.",
+				"Pruned %d out of %d local backup(s) as their age exceeded the configured retention period.",
 				len(matches),
 				len(candidates),
 			)
