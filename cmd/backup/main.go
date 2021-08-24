@@ -331,7 +331,7 @@ func (s *script) pruneOldBackups() error {
 	}
 
 	s.logger.Infof("Trying to prune backups older than %d day(s) now.", s.c.BackupRetentionDays)
-	deadline := s.start.AddDate(0, 0, -int(s.c.BackupRetentionDays))
+	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays))
 
 	if s.c.AwsS3BucketName != "" {
 		candidates := s.mc.ListObjects(s.ctx, s.c.AwsS3BucketName, minio.ListObjectsOptions{
