@@ -19,7 +19,7 @@ import (
 	"github.com/gofrs/flock"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
-	minio "github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/sirupsen/logrus"
 	"github.com/walle/targz"
@@ -30,12 +30,23 @@ func main() {
 	unlock := lock("/var/lock/dockervolumebackup.lock")
 	defer unlock()
 
-	s := &script{}
-	s.must(s.init())
-	s.must(s.stopContainersAndRun(s.takeBackup))
+	s, err := newScript()
+	if err != nil {
+		panic(err)
+	}
+
+	s.must(func() error {
+		restartContainers, err := s.stopContainers()
+		defer restartContainers()
+		if err != nil {
+			return err
+		}
+		return s.takeBackup()
+	}())
+
 	s.must(s.encryptBackup())
 	s.must(s.copyBackup())
-	s.must(s.cleanBackup())
+	s.must(s.removeArtifacts())
 	s.must(s.pruneOldBackups())
 	s.logger.Info("Finished running backup tasks.")
 }
@@ -71,25 +82,34 @@ type config struct {
 	GpgPassphrase            string        `split_words:"true"`
 }
 
-// init creates all resources needed for the script to perform actions against
+// newScript creates all resources needed for the script to perform actions against
 // remote resources like the Docker engine or remote storage locations. All
 // reading from env vars or other configuration sources is expected to happen
 // in this method.
-func (s *script) init() error {
-	s.ctx = context.Background()
-	s.logger = logrus.New()
-	s.logger.SetOutput(os.Stdout)
-
-	s.c = &config{}
-	if err := envconfig.Process("", s.c); err != nil {
-		return fmt.Errorf("init: failed to process configuration values: %w", err)
+func newScript() (*script, error) {
+	s := &script{
+		c:   &config{},
+		ctx: context.Background(),
+		logger: &logrus.Logger{
+			Out:       os.Stdout,
+			Formatter: new(logrus.TextFormatter),
+			Hooks:     make(logrus.LevelHooks),
+			Level:     logrus.InfoLevel,
+		},
+		start: time.Now(),
 	}
+
+	if err := envconfig.Process("", s.c); err != nil {
+		return nil, fmt.Errorf("newScript: failed to process configuration values: %w", err)
+	}
+
+	s.file = path.Join("/tmp", s.c.BackupFilename)
 
 	_, err := os.Stat("/var/run/docker.sock")
 	if !os.IsNotExist(err) {
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
-			return fmt.Errorf("init: failed to create docker client")
+			return nil, fmt.Errorf("newScript: failed to create docker client")
 		}
 		s.cli = cli
 	}
@@ -104,31 +124,29 @@ func (s *script) init() error {
 			Secure: !s.c.AwsEndpointInsecure && s.c.AwsEndpointProto == "https",
 		})
 		if err != nil {
-			return fmt.Errorf("init: error setting up minio client: %w", err)
+			return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
 		}
 		s.mc = mc
 	}
 
-	s.file = path.Join("/tmp", s.c.BackupFilename)
-	s.start = time.Now()
-
-	return nil
+	return s, nil
 }
 
-// stopContainersAndRun stops all Docker containers that are marked as to being
-// stopped during the backup and runs the given thunk. After returning, it makes
-// sure containers are being restarted if required. In case the docker cli
-// is not configured, it will call the given thunk immediately.
-func (s *script) stopContainersAndRun(thunk func() error) error {
+var noop = func() error { return nil }
+
+// stopContainers stops all Docker containers that are marked as to being
+// stopped during the backup and returns a function that can be called to
+// restart everything that has been stopped.
+func (s *script) stopContainers() (func() error, error) {
 	if s.cli == nil {
-		return thunk()
+		return noop, nil
 	}
 
 	allContainers, err := s.cli.ContainerList(s.ctx, types.ContainerListOptions{
 		Quiet: true,
 	})
 	if err != nil {
-		return fmt.Errorf("stopContainersAndRun: error querying for containers: %w", err)
+		return noop, fmt.Errorf("stopContainersAndRun: error querying for containers: %w", err)
 	}
 
 	containerLabel := fmt.Sprintf(
@@ -144,11 +162,11 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 	})
 
 	if err != nil {
-		return fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
+		return noop, fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
 	}
 
 	if len(containersToStop) == 0 {
-		return thunk()
+		return noop, nil
 	}
 
 	s.logger.Infof(
@@ -168,7 +186,15 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 		}
 	}
 
-	defer func() error {
+	if len(stopErrors) != 0 {
+		return noop, fmt.Errorf(
+			"stopContainersAndRun: %d error(s) stopping containers: %w",
+			len(stopErrors),
+			err,
+		)
+	}
+
+	return func() error {
 		servicesRequiringUpdate := map[string]struct{}{}
 
 		var restartErrors []error
@@ -218,17 +244,7 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 			len(stoppedContainers),
 		)
 		return nil
-	}()
-
-	if len(stopErrors) != 0 {
-		return fmt.Errorf(
-			"stopContainersAndRun: %d error(s) stopping containers: %w",
-			len(stopErrors),
-			err,
-		)
-	}
-
-	return thunk()
+	}, nil
 }
 
 // takeBackup creates a tar archive of the configured backup location and
@@ -249,6 +265,7 @@ func (s *script) encryptBackup() error {
 	if s.c.GpgPassphrase == "" {
 		return nil
 	}
+	defer os.Remove(s.file)
 
 	gpgFile := fmt.Sprintf("%s.gpg", s.file)
 	outFile, err := os.Create(gpgFile)
@@ -274,10 +291,6 @@ func (s *script) encryptBackup() error {
 
 	if _, err := io.Copy(dst, src); err != nil {
 		return fmt.Errorf("encryptBackup: error writing ciphertext to file: %w", err)
-	}
-
-	if err := os.Remove(s.file); err != nil {
-		return fmt.Errorf("encryptBackup: error removing unencrpyted backup: %w", err)
 	}
 
 	s.file = gpgFile
@@ -308,12 +321,12 @@ func (s *script) copyBackup() error {
 	return nil
 }
 
-// cleanBackup removes the backup file from disk.
-func (s *script) cleanBackup() error {
+// removeArtifacts removes the backup file from disk.
+func (s *script) removeArtifacts() error {
 	if err := os.Remove(s.file); err != nil {
-		return fmt.Errorf("cleanBackup: error removing file: %w", err)
+		return fmt.Errorf("removeArtifacts: error removing file: %w", err)
 	}
-	s.logger.Info("Cleaned up local artifacts.")
+	s.logger.Info("Removed local artifacts.")
 	return nil
 }
 
@@ -453,11 +466,7 @@ func (s *script) pruneOldBackups() error {
 
 func (s *script) must(err error) {
 	if err != nil {
-		if s.logger == nil {
-			panic(err)
-		}
-		s.logger.Errorf("Fatal error running backup: %s", err)
-		os.Exit(1)
+		s.logger.Fatalf("Fatal error running backup: %s", err)
 	}
 }
 

@@ -2,7 +2,7 @@
 
 Backup Docker volumes locally or to any S3 compatible storage.
 
-The [offen/docker-volume-backup](https://hub.docker.com/r/offen/docker-volume-backup) Docker image can be used as a lightweight (below 15MB) sidecar container to an existing Docker setup. It handles recurring backups of Docker volumes to a local directory or any S3 compatible storage (or both), and rotates away old backups if configured.
+The [offen/docker-volume-backup](https://hub.docker.com/r/offen/docker-volume-backup) Docker image can be used as a lightweight (below 15MB) sidecar container to an existing Docker setup. It handles __recurring or one-off backups of Docker volumes__ to a __local directory__ or __any S3 compatible storage__ (or both), and __rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__.
 
 ## Configuration
 
