@@ -5,13 +5,11 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -19,7 +17,7 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
 	"github.com/gofrs/flock"
-	"github.com/joho/godotenv"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
 	minio "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -29,7 +27,7 @@ import (
 )
 
 func main() {
-	unlock := lock("/var/dockervolumebackup.lock")
+	unlock := lock("/var/lock/dockervolumebackup.lock")
 	defer unlock()
 
 	s := &script{}
@@ -51,16 +49,26 @@ type script struct {
 	logger *logrus.Logger
 
 	start time.Time
+	file  string
 
-	file           string
-	bucket         string
-	archive        string
-	sources        string
-	passphrase     []byte
-	retentionDays  *int
-	leeway         *time.Duration
-	containerLabel string
-	pruningPrefix  string
+	c *config
+}
+
+type config struct {
+	BackupSources            string        `split_words:"true" default:"/backup"`
+	BackupFilename           string        `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.tar.gz"`
+	BackupArchive            string        `split_words:"true" default:"/archive"`
+	BackupRetentionDays      int32         `split_words:"true" default:"-1"`
+	BackupPruningLeeway      time.Duration `split_words:"true" default:"1m"`
+	BackupPruningPrefix      string        `split_words:"true"`
+	BackupStopContainerLabel string        `split_words:"true" default:"true"`
+	AwsS3BucketName          string        `split_words:"true"`
+	AwsEndpoint              string        `split_words:"true" default:"s3.amazonaws.com"`
+	AwsEndpointProto         string        `split_words:"true" default:"https"`
+	AwsEndpointInsecure      bool          `split_words:"true"`
+	AwsAccessKeyID           string        `envconfig:"AWS_ACCESS_KEY_ID"`
+	AwsSecretAccessKey       string        `split_words:"true"`
+	GpgPassphrase            string        `split_words:"true"`
 }
 
 // init creates all resources needed for the script to perform actions against
@@ -72,8 +80,9 @@ func (s *script) init() error {
 	s.logger = logrus.New()
 	s.logger.SetOutput(os.Stdout)
 
-	if err := godotenv.Load("/etc/backup.env"); err != nil {
-		return fmt.Errorf("init: failed to load env file: %w", err)
+	s.c = &config{}
+	if err := envconfig.Process("", s.c); err != nil {
+		return fmt.Errorf("init: failed to process configuration values: %w", err)
 	}
 
 	_, err := os.Stat("/var/run/docker.sock")
@@ -85,15 +94,14 @@ func (s *script) init() error {
 		s.cli = cli
 	}
 
-	if bucket := os.Getenv("AWS_S3_BUCKET_NAME"); bucket != "" {
-		s.bucket = bucket
-		mc, err := minio.New(os.Getenv("AWS_ENDPOINT"), &minio.Options{
+	if s.c.AwsS3BucketName != "" {
+		mc, err := minio.New(s.c.AwsEndpoint, &minio.Options{
 			Creds: credentials.NewStaticV4(
-				os.Getenv("AWS_ACCESS_KEY_ID"),
-				os.Getenv("AWS_SECRET_ACCESS_KEY"),
+				s.c.AwsAccessKeyID,
+				s.c.AwsSecretAccessKey,
 				"",
 			),
-			Secure: os.Getenv("AWS_ENDPOINT_INSECURE") == "" && os.Getenv("AWS_ENDPOINT_PROTO") == "https",
+			Secure: !s.c.AwsEndpointInsecure && s.c.AwsEndpointProto == "https",
 		})
 		if err != nil {
 			return fmt.Errorf("init: error setting up minio client: %w", err)
@@ -101,32 +109,7 @@ func (s *script) init() error {
 		s.mc = mc
 	}
 
-	file := os.Getenv("BACKUP_FILENAME")
-	if file == "" {
-		return errors.New("init: BACKUP_FILENAME not given")
-	}
-	s.file = path.Join("/tmp", file)
-	s.archive = os.Getenv("BACKUP_ARCHIVE")
-	s.sources = os.Getenv("BACKUP_SOURCES")
-	if v := os.Getenv("GPG_PASSPHRASE"); v != "" {
-		s.passphrase = []byte(v)
-	}
-	if v := os.Getenv("BACKUP_RETENTION_DAYS"); v != "" {
-		i, err := strconv.Atoi(v)
-		if err != nil {
-			return fmt.Errorf("init: error parsing BACKUP_RETENTION_DAYS as int: %w", err)
-		}
-		s.retentionDays = &i
-	}
-	if v := os.Getenv("BACKUP_PRUNING_LEEWAY"); v != "" {
-		d, err := time.ParseDuration(v)
-		if err != nil {
-			return fmt.Errorf("init: error parsing BACKUP_PRUNING_LEEWAY as duration: %w", err)
-		}
-		s.leeway = &d
-	}
-	s.containerLabel = os.Getenv("BACKUP_STOP_CONTAINER_LABEL")
-	s.pruningPrefix = os.Getenv("BACKUP_PRUNING_PREFIX")
+	s.file = path.Join("/tmp", s.c.BackupFilename)
 	s.start = time.Now()
 
 	return nil
@@ -134,7 +117,8 @@ func (s *script) init() error {
 
 // stopContainersAndRun stops all Docker containers that are marked as to being
 // stopped during the backup and runs the given thunk. After returning, it makes
-// sure containers are being restarted if required.
+// sure containers are being restarted if required. In case the docker cli
+// is not configured, it will call the given thunk immediately.
 func (s *script) stopContainersAndRun(thunk func() error) error {
 	if s.cli == nil {
 		return thunk()
@@ -149,7 +133,7 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 
 	containerLabel := fmt.Sprintf(
 		"docker-volume-backup.stop-during-backup=%s",
-		s.containerLabel,
+		s.c.BackupStopContainerLabel,
 	)
 	containersToStop, err := s.cli.ContainerList(s.ctx, types.ContainerListOptions{
 		Quiet: true,
@@ -251,10 +235,10 @@ func (s *script) stopContainersAndRun(thunk func() error) error {
 // saves it to disk.
 func (s *script) takeBackup() error {
 	s.file = timeutil.Strftime(&s.start, s.file)
-	if err := targz.Compress(s.sources, s.file); err != nil {
+	if err := targz.Compress(s.c.BackupSources, s.file); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
-	s.logger.Infof("Created backup of `%s` at `%s`.", s.sources, s.file)
+	s.logger.Infof("Created backup of `%s` at `%s`.", s.c.BackupSources, s.file)
 	return nil
 }
 
@@ -262,7 +246,7 @@ func (s *script) takeBackup() error {
 // In case no passphrase is given it returns early, leaving the backup file
 //  untouched.
 func (s *script) encryptBackup() error {
-	if s.passphrase == nil {
+	if s.c.GpgPassphrase == "" {
 		return nil
 	}
 
@@ -274,7 +258,7 @@ func (s *script) encryptBackup() error {
 	}
 
 	_, name := path.Split(s.file)
-	dst, err := openpgp.SymmetricallyEncrypt(outFile, []byte(s.passphrase), &openpgp.FileHints{
+	dst, err := openpgp.SymmetricallyEncrypt(outFile, []byte(s.c.GpgPassphrase), &openpgp.FileHints{
 		IsBinary: true,
 		FileName: name,
 	}, nil)
@@ -305,21 +289,21 @@ func (s *script) encryptBackup() error {
 // as per the given configuration.
 func (s *script) copyBackup() error {
 	_, name := path.Split(s.file)
-	if s.bucket != "" {
-		_, err := s.mc.FPutObject(s.ctx, s.bucket, name, s.file, minio.PutObjectOptions{
+	if s.c.AwsS3BucketName != "" {
+		_, err := s.mc.FPutObject(s.ctx, s.c.AwsS3BucketName, name, s.file, minio.PutObjectOptions{
 			ContentType: "application/tar+gzip",
 		})
 		if err != nil {
 			return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
 		}
-		s.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`", s.file, s.bucket)
+		s.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`", s.file, s.c.AwsS3BucketName)
 	}
 
-	if _, err := os.Stat(s.archive); !os.IsNotExist(err) {
-		if err := copy(s.file, path.Join(s.archive, name)); err != nil {
+	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
+		if err := copy(s.file, path.Join(s.c.BackupArchive, name)); err != nil {
 			return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 		}
-		s.logger.Infof("Stored copy of backup `%s` in local archive `%s`", s.file, s.archive)
+		s.logger.Infof("Stored copy of backup `%s` in local archive `%s`", s.file, s.c.AwsS3BucketName)
 	}
 	return nil
 }
@@ -337,22 +321,22 @@ func (s *script) cleanBackup() error {
 // the given configuration. In case the given configuration would delete all
 // backups, it does nothing instead.
 func (s *script) pruneOldBackups() error {
-	if s.retentionDays == nil {
+	if s.c.BackupRetentionDays < 0 {
 		return nil
 	}
 
-	if s.leeway != nil {
-		s.logger.Infof("Sleeping for %s before pruning backups.", s.leeway)
-		time.Sleep(*s.leeway)
+	if s.c.BackupPruningLeeway != 0 {
+		s.logger.Infof("Sleeping for %s before pruning backups.", s.c.BackupPruningLeeway)
+		time.Sleep(s.c.BackupPruningLeeway)
 	}
 
-	s.logger.Infof("Trying to prune backups older than %d day(s) now.", *s.retentionDays)
-	deadline := s.start.AddDate(0, 0, -*s.retentionDays)
+	s.logger.Infof("Trying to prune backups older than %d day(s) now.", s.c.BackupRetentionDays)
+	deadline := s.start.AddDate(0, 0, -int(s.c.BackupRetentionDays))
 
-	if s.bucket != "" {
-		candidates := s.mc.ListObjects(s.ctx, s.bucket, minio.ListObjectsOptions{
+	if s.c.AwsS3BucketName != "" {
+		candidates := s.mc.ListObjects(s.ctx, s.c.AwsS3BucketName, minio.ListObjectsOptions{
 			WithMetadata: true,
-			Prefix:       s.pruningPrefix,
+			Prefix:       s.c.BackupPruningPrefix,
 		})
 
 		var matches []minio.ObjectInfo
@@ -378,7 +362,7 @@ func (s *script) pruneOldBackups() error {
 				}
 				close(objectsCh)
 			}()
-			errChan := s.mc.RemoveObjects(s.ctx, s.bucket, objectsCh, minio.RemoveObjectsOptions{})
+			errChan := s.mc.RemoveObjects(s.ctx, s.c.AwsS3BucketName, objectsCh, minio.RemoveObjectsOptions{})
 			var errors []error
 			for result := range errChan {
 				if result.Err != nil {
@@ -409,9 +393,9 @@ func (s *script) pruneOldBackups() error {
 		}
 	}
 
-	if _, err := os.Stat(s.archive); !os.IsNotExist(err) {
+	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
 		candidates, err := filepath.Glob(
-			path.Join(s.archive, fmt.Sprintf("%s*", s.pruningPrefix)),
+			path.Join(s.c.BackupArchive, fmt.Sprintf("%s*", s.c.BackupPruningPrefix)),
 		)
 		if err != nil {
 			return fmt.Errorf(

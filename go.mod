@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/docker/docker v20.10.8+incompatible
 	github.com/gofrs/flock v0.8.1
-	github.com/joho/godotenv v1.3.0
+	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.12
 	github.com/sirupsen/logrus v1.8.1
