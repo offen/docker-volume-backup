@@ -37,7 +37,9 @@ func main() {
 
 	s.must(func() error {
 		restartContainers, err := s.stopContainers()
-		defer s.must(restartContainers())
+		defer func() {
+			s.must(restartContainers())
+		}()
 		if err != nil {
 			return err
 		}
