@@ -37,7 +37,7 @@ func main() {
 
 	s.must(func() error {
 		restartContainers, err := s.stopContainers()
-		defer restartContainers()
+		defer s.must(restartContainers())
 		if err != nil {
 			return err
 		}
@@ -391,9 +391,10 @@ func (s *script) pruneOldBackups() error {
 				)
 			}
 			s.logger.Infof(
-				"Pruned %d out of %d remote backup(s) as their age exceeded the configured retention period.",
+				"Pruned %d out of %d remote backup(s) as their age exceeded the configured retention period of %d days.",
 				len(matches),
 				lenCandidates,
+				s.c.BackupRetentionDays,
 			)
 		} else if len(matches) != 0 && len(matches) == lenCandidates {
 			s.logger.Warnf(
@@ -447,9 +448,10 @@ func (s *script) pruneOldBackups() error {
 				)
 			}
 			s.logger.Infof(
-				"Pruned %d out of %d local backup(s) as their age exceeded the configured retention period.",
+				"Pruned %d out of %d local backup(s) as their age exceeded the configured retention period of %d days.",
 				len(matches),
 				len(candidates),
+				s.c.BackupRetentionDays,
 			)
 		} else if len(matches) != 0 && len(matches) == len(candidates) {
 			s.logger.Warnf(
