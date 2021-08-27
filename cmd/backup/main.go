@@ -221,7 +221,7 @@ func (s *script) stopContainers() (func() error, error) {
 					}
 				}
 				if serviceMatch.ID == "" {
-					return fmt.Errorf("stopContainersAndRun: Couldn't find service with name %s", serviceName)
+					return fmt.Errorf("stopContainersAndRun: couldn't find service with name %s", serviceName)
 				}
 				serviceMatch.Spec.TaskTemplate.ForceUpdate = 1
 				_, err := s.cli.ServiceUpdate(
@@ -318,7 +318,7 @@ func (s *script) copyBackup() error {
 		if err := copy(s.file, path.Join(s.c.BackupArchive, name)); err != nil {
 			return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 		}
-		s.logger.Infof("Stored copy of backup `%s` in local archive `%s`", s.file, s.c.AwsS3BucketName)
+		s.logger.Infof("Stored copy of backup `%s` in local archive `%s`", s.file, s.c.BackupArchive)
 	}
 	return nil
 }
