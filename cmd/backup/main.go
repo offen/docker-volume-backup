@@ -186,8 +186,9 @@ func (s *script) stopContainers() (func() error, error) {
 		}
 	}
 
+	var stopError error
 	if len(stopErrors) != 0 {
-		return noop, fmt.Errorf(
+		stopError = fmt.Errorf(
 			"stopContainersAndRun: %d error(s) stopping containers: %w",
 			len(stopErrors),
 			err,
@@ -244,7 +245,7 @@ func (s *script) stopContainers() (func() error, error) {
 			len(stoppedContainers),
 		)
 		return nil
-	}, nil
+	}, stopError
 }
 
 // takeBackup creates a tar archive of the configured backup location and
