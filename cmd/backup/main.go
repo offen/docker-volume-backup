@@ -262,7 +262,7 @@ func (s *script) takeBackup() error {
 
 // encryptBackup encrypts the backup file using PGP and the configured passphrase.
 // In case no passphrase is given it returns early, leaving the backup file
-//  untouched.
+// untouched.
 func (s *script) encryptBackup() error {
 	if s.c.GpgPassphrase == "" {
 		return nil
@@ -311,14 +311,14 @@ func (s *script) copyBackup() error {
 		if err != nil {
 			return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
 		}
-		s.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`", s.file, s.c.AwsS3BucketName)
+		s.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", s.file, s.c.AwsS3BucketName)
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
 		if err := copy(s.file, path.Join(s.c.BackupArchive, name)); err != nil {
 			return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 		}
-		s.logger.Infof("Stored copy of backup `%s` in local archive `%s`", s.file, s.c.BackupArchive)
+		s.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", s.file, s.c.BackupArchive)
 	}
 	return nil
 }
@@ -345,7 +345,6 @@ func (s *script) pruneOldBackups() error {
 		time.Sleep(s.c.BackupPruningLeeway)
 	}
 
-	s.logger.Infof("Trying to prune backups older than %d day(s) now.", s.c.BackupRetentionDays)
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays))
 
 	if s.c.AwsS3BucketName != "" {
@@ -468,6 +467,8 @@ func (s *script) pruneOldBackups() error {
 	return nil
 }
 
+// must exits the script run non-zero and prematurely in case the given error
+// is non-nil.
 func (s *script) must(err error) {
 	if err != nil {
 		s.logger.Fatalf("Fatal error running backup: %s", err)
