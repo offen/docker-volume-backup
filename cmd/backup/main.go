@@ -5,11 +5,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -191,7 +193,7 @@ func (s *script) stopContainers() (func() error, error) {
 		stopError = fmt.Errorf(
 			"stopContainersAndRun: %d error(s) stopping containers: %w",
 			len(stopErrors),
-			err,
+			join(stopErrors...),
 		)
 	}
 
@@ -237,7 +239,7 @@ func (s *script) stopContainers() (func() error, error) {
 			return fmt.Errorf(
 				"stopContainersAndRun: %d error(s) restarting containers and services: %w",
 				len(restartErrors),
-				err,
+				join(restartErrors...),
 			)
 		}
 		s.logger.Infof(
@@ -376,18 +378,18 @@ func (s *script) pruneOldBackups() error {
 				close(objectsCh)
 			}()
 			errChan := s.mc.RemoveObjects(context.Background(), s.c.AwsS3BucketName, objectsCh, minio.RemoveObjectsOptions{})
-			var errors []error
+			var removeErrors []error
 			for result := range errChan {
 				if result.Err != nil {
-					errors = append(errors, result.Err)
+					removeErrors = append(removeErrors, result.Err)
 				}
 			}
 
-			if len(errors) != 0 {
+			if len(removeErrors) != 0 {
 				return fmt.Errorf(
 					"pruneOldBackups: %d error(s) removing files from remote storage: %w",
-					len(errors),
-					errors[0],
+					len(removeErrors),
+					join(removeErrors...),
 				)
 			}
 			s.logger.Infof(
@@ -434,17 +436,17 @@ func (s *script) pruneOldBackups() error {
 		}
 
 		if len(matches) != 0 && len(matches) != len(candidates) {
-			var errors []error
+			var removeErrors []error
 			for _, candidate := range matches {
 				if err := os.Remove(candidate); err != nil {
-					errors = append(errors, err)
+					removeErrors = append(removeErrors, err)
 				}
 			}
-			if len(errors) != 0 {
+			if len(removeErrors) != 0 {
 				return fmt.Errorf(
 					"pruneOldBackups: %d error(s) deleting local files, starting with: %w",
-					len(errors),
-					errors[0],
+					len(removeErrors),
+					join(removeErrors...),
 				)
 			}
 			s.logger.Infof(
@@ -508,4 +510,19 @@ func copy(src, dst string) error {
 		return err
 	}
 	return out.Close()
+}
+
+// join takes a list of errors and joins them into a single error
+func join(errs ...error) error {
+	if len(errs) == 1 {
+		return errs[0]
+	}
+	var msgs []string
+	for _, err := range errs {
+		if err == nil {
+			continue
+		}
+		msgs = append(msgs, err.Error())
+	}
+	return errors.New("[" + strings.Join(msgs, ", ") + "]")
 }
