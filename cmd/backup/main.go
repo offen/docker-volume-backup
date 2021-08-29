@@ -56,7 +56,6 @@ func main() {
 // script holds all the stateful information required to orchestrate a
 // single backup run.
 type script struct {
-	ctx    context.Context
 	cli    *client.Client
 	mc     *minio.Client
 	logger *logrus.Logger
@@ -90,8 +89,7 @@ type config struct {
 // in this method.
 func newScript() (*script, error) {
 	s := &script{
-		c:   &config{},
-		ctx: context.Background(),
+		c: &config{},
 		logger: &logrus.Logger{
 			Out:       os.Stdout,
 			Formatter: new(logrus.TextFormatter),
@@ -144,7 +142,7 @@ func (s *script) stopContainers() (func() error, error) {
 		return noop, nil
 	}
 
-	allContainers, err := s.cli.ContainerList(s.ctx, types.ContainerListOptions{
+	allContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
 		Quiet: true,
 	})
 	if err != nil {
@@ -155,7 +153,7 @@ func (s *script) stopContainers() (func() error, error) {
 		"docker-volume-backup.stop-during-backup=%s",
 		s.c.BackupStopContainerLabel,
 	)
-	containersToStop, err := s.cli.ContainerList(s.ctx, types.ContainerListOptions{
+	containersToStop, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
 		Quiet: true,
 		Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "label",
@@ -181,7 +179,7 @@ func (s *script) stopContainers() (func() error, error) {
 	var stoppedContainers []types.Container
 	var stopErrors []error
 	for _, container := range containersToStop {
-		if err := s.cli.ContainerStop(s.ctx, container.ID, nil); err != nil {
+		if err := s.cli.ContainerStop(context.Background(), container.ID, nil); err != nil {
 			stopErrors = append(stopErrors, err)
 		} else {
 			stoppedContainers = append(stoppedContainers, container)
@@ -205,13 +203,13 @@ func (s *script) stopContainers() (func() error, error) {
 				servicesRequiringUpdate[swarmServiceName] = struct{}{}
 				continue
 			}
-			if err := s.cli.ContainerStart(s.ctx, container.ID, types.ContainerStartOptions{}); err != nil {
+			if err := s.cli.ContainerStart(context.Background(), container.ID, types.ContainerStartOptions{}); err != nil {
 				restartErrors = append(restartErrors, err)
 			}
 		}
 
 		if len(servicesRequiringUpdate) != 0 {
-			services, _ := s.cli.ServiceList(s.ctx, types.ServiceListOptions{})
+			services, _ := s.cli.ServiceList(context.Background(), types.ServiceListOptions{})
 			for serviceName := range servicesRequiringUpdate {
 				var serviceMatch swarm.Service
 				for _, service := range services {
@@ -225,7 +223,7 @@ func (s *script) stopContainers() (func() error, error) {
 				}
 				serviceMatch.Spec.TaskTemplate.ForceUpdate = 1
 				_, err := s.cli.ServiceUpdate(
-					s.ctx, serviceMatch.ID,
+					context.Background(), serviceMatch.ID,
 					serviceMatch.Version, serviceMatch.Spec, types.ServiceUpdateOptions{},
 				)
 				if err != nil {
@@ -304,8 +302,8 @@ func (s *script) encryptBackup() error {
 // as per the given configuration.
 func (s *script) copyBackup() error {
 	_, name := path.Split(s.file)
-	if s.c.AwsS3BucketName != "" {
-		_, err := s.mc.FPutObject(s.ctx, s.c.AwsS3BucketName, name, s.file, minio.PutObjectOptions{
+	if s.mc != nil {
+		_, err := s.mc.FPutObject(context.Background(), s.c.AwsS3BucketName, name, s.file, minio.PutObjectOptions{
 			ContentType: "application/tar+gzip",
 		})
 		if err != nil {
@@ -347,8 +345,8 @@ func (s *script) pruneOldBackups() error {
 
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays))
 
-	if s.c.AwsS3BucketName != "" {
-		candidates := s.mc.ListObjects(s.ctx, s.c.AwsS3BucketName, minio.ListObjectsOptions{
+	if s.mc != nil {
+		candidates := s.mc.ListObjects(context.Background(), s.c.AwsS3BucketName, minio.ListObjectsOptions{
 			WithMetadata: true,
 			Prefix:       s.c.BackupPruningPrefix,
 		})
@@ -376,7 +374,7 @@ func (s *script) pruneOldBackups() error {
 				}
 				close(objectsCh)
 			}()
-			errChan := s.mc.RemoveObjects(s.ctx, s.c.AwsS3BucketName, objectsCh, minio.RemoveObjectsOptions{})
+			errChan := s.mc.RemoveObjects(context.Background(), s.c.AwsS3BucketName, objectsCh, minio.RemoveObjectsOptions{})
 			var errors []error
 			for result := range errChan {
 				if result.Err != nil {
