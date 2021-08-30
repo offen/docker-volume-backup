@@ -41,7 +41,6 @@ services:
     volumes:
       - app_data:/var/opt/offen
 
-
 volumes:
   backup_data:
   app_data:
