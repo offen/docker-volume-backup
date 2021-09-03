@@ -21,10 +21,10 @@ import (
 	"github.com/gofrs/flock"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
+	"github.com/m90/targz"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/sirupsen/logrus"
-	"github.com/walle/targz"
 	"golang.org/x/crypto/openpgp"
 )
 
