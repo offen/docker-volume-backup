@@ -9,6 +9,7 @@ mkdir -p local
 docker-compose up -d
 sleep 5
 
+docker-compose exec offen ln -s /var/opt/offen/offen.db /var/opt/offen/db.link
 docker-compose exec backup backup
 
 docker run --rm -it \
@@ -20,6 +21,7 @@ echo "[TEST:PASS] Found relevant files in untared remote backup."
 echo 1234secret | gpg -d --yes --passphrase-fd 0 ./local/test.tar.gz.gpg > ./local/decrypted.tar.gz
 tar -xf ./local/decrypted.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db
 rm ./local/decrypted.tar.gz
+test -L /tmp/backup/app_data/db.link
 
 echo "[TEST:PASS] Found relevant files in untared local backup."
 

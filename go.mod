@@ -7,9 +7,9 @@ require (
 	github.com/gofrs/flock v0.8.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
+	github.com/m90/targz v0.0.0-20210904082215-2e9a4529a615
 	github.com/minio/minio-go/v7 v7.0.12
 	github.com/sirupsen/logrus v1.8.1
-	github.com/walle/targz v0.0.0-20140417120357-57fe4206da5a
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 )
 
