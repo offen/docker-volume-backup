@@ -60,10 +60,10 @@ func main() {
 // script holds all the stateful information required to orchestrate a
 // single backup run.
 type script struct {
-	cli        *client.Client
-	mc         *minio.Client
-	logger     *logrus.Logger
-	errorHooks []errorHook
+	cli    *client.Client
+	mc     *minio.Client
+	logger *logrus.Logger
+	hooks  []hook
 
 	start  time.Time
 	file   string
@@ -71,8 +71,6 @@ type script struct {
 
 	c *config
 }
-
-type errorHook func(err error, start time.Time, logOutput string) error
 
 type config struct {
 	BackupSources              string        `split_words:"true" default:"/backup"`
@@ -146,7 +144,7 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.EmailNotificationRecipient != "" {
-		s.errorHooks = append(s.errorHooks, func(err error, start time.Time, logOutput string) error {
+		s.hooks = append(s.hooks, hook{hookLevelFailure, func(err error, start time.Time, logOutput string) error {
 			mailer := gomail.NewDialer(
 				s.c.EmailSMTPHost, s.c.EmailSMTPPort, s.c.EmailSMTPUsername, s.c.EmailSMTPPassword,
 			)
@@ -164,7 +162,7 @@ func newScript() (*script, error) {
 			message.SetHeader("Subject", subject)
 			message.SetBody("text/plain", body)
 			return mailer.DialAndSend(message)
-		})
+		}})
 	}
 
 	return s, nil
@@ -504,16 +502,33 @@ func (s *script) pruneOldBackups() error {
 	return nil
 }
 
+// runHooks runs all hooks that have been registered using the
+// given level. In case executing a hook returns an error, the following
+// hooks will still be run before the function returns an error.
+func (s *script) runHooks(err error, targetLevel string) error {
+	var actionErrors []error
+	for _, hook := range s.hooks {
+		if hook.level != targetLevel {
+			continue
+		}
+		if err := hook.action(err, s.start, s.output.String()); err != nil {
+			actionErrors = append(actionErrors, err)
+		}
+	}
+	if len(actionErrors) != 0 {
+		return join(actionErrors...)
+	}
+	return nil
+}
+
 // must exits the script run non-zero and prematurely in case the given error
-// is non-nil. If error hooks are present on the script object, they
+// is non-nil. If failure hooks have been registered on the script object, they
 // will be called, passing the failure and previous log output.
 func (s *script) must(err error) {
 	if err != nil {
 		s.logger.Errorf("Fatal error running backup: %s", err)
-		for _, hook := range s.errorHooks {
-			if hookErr := hook(err, s.start, s.output.String()); hookErr != nil {
-				s.logger.Errorf("An error occurred calling an error hook: %s", hookErr)
-			}
+		if hookErr := s.runHooks(err, hookLevelFailure); hookErr != nil {
+			s.logger.Errorf("An error occurred calling the registered failure hooks: %s", hookErr)
 		}
 		os.Exit(1)
 	}
@@ -588,3 +603,14 @@ func (b *bufferingWriter) Write(p []byte) (n int, err error) {
 	}
 	return b.writer.Write(p)
 }
+
+// hook contains a queued action that can be trigger them when the script
+// reaches a certain point (e.g. unsuccessful backup)
+type hook struct {
+	level  string
+	action func(err error, start time.Time, logOutput string) error
+}
+
+const (
+	hookLevelFailure = "failure"
+)
