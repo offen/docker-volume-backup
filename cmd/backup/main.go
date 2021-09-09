@@ -155,7 +155,7 @@ func newScript() (*script, error) {
 				"Failure running docker-volume-backup at %s", start.Format(time.RFC3339),
 			)
 			body := fmt.Sprintf(
-				"Running docker-volume-backup failed with error: %s\n\nLog output before the error occurred:\n\n%s\n", err, logOutput,
+				"Running docker-volume-backup failed with error: %s\n\nLog output of the failed run was:\n\n%s\n", err, logOutput,
 			)
 
 			message := gomail.NewMessage()
@@ -509,12 +509,13 @@ func (s *script) pruneOldBackups() error {
 // will be called, passing the failure and previous log output.
 func (s *script) must(err error) {
 	if err != nil {
+		s.logger.Errorf("Fatal error running backup: %s", err)
 		for _, hook := range s.errorHooks {
 			if hookErr := hook(err, s.start, s.output.String()); hookErr != nil {
 				s.logger.Errorf("An error occurred calling an error hook: %s", hookErr)
 			}
 		}
-		s.logger.Fatalf("Fatal error running backup: %s", err)
+		os.Exit(1)
 	}
 }
 
