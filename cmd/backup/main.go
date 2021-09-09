@@ -19,6 +19,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
+	"github.com/go-gomail/gomail"
 	"github.com/gofrs/flock"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
@@ -74,20 +75,26 @@ type script struct {
 type errorHook func(err error, start time.Time, logOutput string) error
 
 type config struct {
-	BackupSources            string        `split_words:"true" default:"/backup"`
-	BackupFilename           string        `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.tar.gz"`
-	BackupArchive            string        `split_words:"true" default:"/archive"`
-	BackupRetentionDays      int32         `split_words:"true" default:"-1"`
-	BackupPruningLeeway      time.Duration `split_words:"true" default:"1m"`
-	BackupPruningPrefix      string        `split_words:"true"`
-	BackupStopContainerLabel string        `split_words:"true" default:"true"`
-	AwsS3BucketName          string        `split_words:"true"`
-	AwsEndpoint              string        `split_words:"true" default:"s3.amazonaws.com"`
-	AwsEndpointProto         string        `split_words:"true" default:"https"`
-	AwsEndpointInsecure      bool          `split_words:"true"`
-	AwsAccessKeyID           string        `envconfig:"AWS_ACCESS_KEY_ID"`
-	AwsSecretAccessKey       string        `split_words:"true"`
-	GpgPassphrase            string        `split_words:"true"`
+	BackupSources              string        `split_words:"true" default:"/backup"`
+	BackupFilename             string        `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.tar.gz"`
+	BackupArchive              string        `split_words:"true" default:"/archive"`
+	BackupRetentionDays        int32         `split_words:"true" default:"-1"`
+	BackupPruningLeeway        time.Duration `split_words:"true" default:"1m"`
+	BackupPruningPrefix        string        `split_words:"true"`
+	BackupStopContainerLabel   string        `split_words:"true" default:"true"`
+	AwsS3BucketName            string        `split_words:"true"`
+	AwsEndpoint                string        `split_words:"true" default:"s3.amazonaws.com"`
+	AwsEndpointProto           string        `split_words:"true" default:"https"`
+	AwsEndpointInsecure        bool          `split_words:"true"`
+	AwsAccessKeyID             string        `envconfig:"AWS_ACCESS_KEY_ID"`
+	AwsSecretAccessKey         string        `split_words:"true"`
+	GpgPassphrase              string        `split_words:"true"`
+	EmailNotificationRecipient string        `split_words:"true"`
+	EmailNotificationSender    string        `split_words:"true" default:"noreply@nohost"`
+	EmailSMTPHost              string        `envconfig:"EMAIL_SMTP_HOST"`
+	EmailSMTPPort              int           `envconfig:"EMAIL_SMTP_PORT" default:"587"`
+	EmailSMTPUsername          string        `envconfig:"EMAIL_SMTP_USERNAME"`
+	EmailSMTPPassword          string        `envconfig:"EMAIL_SMTP_PASSWORD"`
 }
 
 // newScript creates all resources needed for the script to perform actions against
@@ -136,6 +143,28 @@ func newScript() (*script, error) {
 			return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
 		}
 		s.mc = mc
+	}
+
+	if s.c.EmailNotificationRecipient != "" {
+		s.errorHooks = append(s.errorHooks, func(err error, start time.Time, logOutput string) error {
+			mailer := gomail.NewDialer(
+				s.c.EmailSMTPHost, s.c.EmailSMTPPort, s.c.EmailSMTPUsername, s.c.EmailSMTPPassword,
+			)
+
+			subject := fmt.Sprintf(
+				"Failure running docker-volume-backup at %s", start.Format(time.RFC3339),
+			)
+			body := fmt.Sprintf(
+				"Running docker-volume-backup failed with error: %s\n\nLog output before the error occurred:\n\n%s\n", err, logOutput,
+			)
+
+			message := gomail.NewMessage()
+			message.SetHeader("From", s.c.EmailNotificationSender)
+			message.SetHeader("To", s.c.EmailNotificationRecipient)
+			message.SetHeader("Subject", subject)
+			message.SetBody("text/plain", body)
+			return mailer.DialAndSend(message)
+		})
 	}
 
 	return s, nil
@@ -482,7 +511,7 @@ func (s *script) must(err error) {
 	if err != nil {
 		for _, hook := range s.errorHooks {
 			if hookErr := hook(err, s.start, s.output.String()); hookErr != nil {
-				s.logger.Errorf("An error occurred calling an error hook: %s", err)
+				s.logger.Errorf("An error occurred calling an error hook: %s", hookErr)
 			}
 		}
 		s.logger.Fatalf("Fatal error running backup: %s", err)

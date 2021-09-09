@@ -12,6 +12,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
 - [How to](#how-to)
   - [Stopping containers during backup](#stopping-containers-during-backup)
   - [Automatically pruning old backups](#automatically-pruning-old-backups)
+  - [Send email notifications on failed backup runs](#send-email-notifications-on-failed-backup-runs)
   - [Encrypting your backup using GPG](#encrypting-your-backup-using-gpg)
   - [Restoring a volume from a backup](#restoring-a-volume-from-a-backup)
   - [Using with Docker Swarm](#using-with-docker-swarm)
@@ -55,6 +56,10 @@ services:
       - docker-volume-backup.stop-during-backup=true
 
   backup:
+    # In production, it is advised to lock your image tag to a proper
+    # release version instead of using `latest`.
+    # Check https://github.com/offen/docker-volume-backup/releases
+    # for a list of available releases.
     image: offen/docker-volume-backup:latest
     restart: always
     env_file: ./backup.env # see below for configuration reference
@@ -188,6 +193,38 @@ You can populate below template according to your requirements and use it as you
 # override this default by specifying a different value here.
 
 # BACKUP_STOP_CONTAINER_LABEL="service1"
+
+########### EMAIL NOTIFICATIONS ON FAILED BACKUP RUNS
+
+# In case SMTP credentials are provided, notification emails can be sent out on
+# failed backup runs. These emails will contain the start time, the error
+# message and all log output prior to the failure.
+
+# The recipient(s) of the notification. Supply a comma separated list
+# of adresses if you want to notify multiple recipients. If this is
+# not set, no emails will be sent.
+
+# EMAIL_NOTIFICATION_RECIPIENT="you@example.com"
+
+# The "From" header of the sent email. Defaults to `noreply@nohost`.
+
+# EMAIL_NOTIFICATION_SENDER="no-reply@example.com"
+
+# The hostname of your SMTP server.
+
+# EMAIL_SMTP_HOST="posteo.de"
+
+# The SMTP password.
+
+# EMAIL_SMTP_PASSWORD="<xxx>"
+
+# The SMTP username.
+
+# EMAIL_SMTP_USERNAME="no-reply@example.com"
+
+The port used when communicating with the server. Defaults to 587.
+
+# EMAIL_SMTP_PORT="<port>"
 ```
 
 ## How to
@@ -245,6 +282,25 @@ services:
 
 volumes:
   data:
+```
+
+### Send email notifications on failed backup runs
+
+To send out email notifications on failed backup runs, provide SMTP credentials, a sender and a recipient:
+
+```yml
+version: '3'
+
+services:
+  backup:
+    image: offen/docker-volume-backup:latest
+    environment:
+      # ... other configuration values go here
+      EMAIL_SMTP_HOST: "smtp.example.com"
+      EMAIL_SMTP_PASSWORD: "password"
+      EMAIL_SMTP_USERNAME: "username"
+      EMAIL_NOTIFICATION_SENDER: "noreply@example.com"
+      EMAIL_NOTIFICATION_RECIPIENT: "notifications@example.com"
 ```
 
 ### Encrypting your backup using GPG
