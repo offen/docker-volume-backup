@@ -222,7 +222,7 @@ You can populate below template according to your requirements and use it as you
 
 # EMAIL_SMTP_USERNAME="no-reply@example.com"
 
-The port used when communicating with the server. Defaults to 587.
+# The port used when communicating with the server. Defaults to 587.
 
 # EMAIL_SMTP_PORT="<port>"
 ```
