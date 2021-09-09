@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
+	"github.com/go-gomail/gomail"
 	"github.com/gofrs/flock"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
@@ -58,31 +60,41 @@ func main() {
 // script holds all the stateful information required to orchestrate a
 // single backup run.
 type script struct {
-	cli    *client.Client
-	mc     *minio.Client
-	logger *logrus.Logger
+	cli        *client.Client
+	mc         *minio.Client
+	logger     *logrus.Logger
+	errorHooks []errorHook
 
-	start time.Time
-	file  string
+	start  time.Time
+	file   string
+	output *bytes.Buffer
 
 	c *config
 }
 
+type errorHook func(err error, start time.Time, logOutput string) error
+
 type config struct {
-	BackupSources            string        `split_words:"true" default:"/backup"`
-	BackupFilename           string        `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.tar.gz"`
-	BackupArchive            string        `split_words:"true" default:"/archive"`
-	BackupRetentionDays      int32         `split_words:"true" default:"-1"`
-	BackupPruningLeeway      time.Duration `split_words:"true" default:"1m"`
-	BackupPruningPrefix      string        `split_words:"true"`
-	BackupStopContainerLabel string        `split_words:"true" default:"true"`
-	AwsS3BucketName          string        `split_words:"true"`
-	AwsEndpoint              string        `split_words:"true" default:"s3.amazonaws.com"`
-	AwsEndpointProto         string        `split_words:"true" default:"https"`
-	AwsEndpointInsecure      bool          `split_words:"true"`
-	AwsAccessKeyID           string        `envconfig:"AWS_ACCESS_KEY_ID"`
-	AwsSecretAccessKey       string        `split_words:"true"`
-	GpgPassphrase            string        `split_words:"true"`
+	BackupSources              string        `split_words:"true" default:"/backup"`
+	BackupFilename             string        `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.tar.gz"`
+	BackupArchive              string        `split_words:"true" default:"/archive"`
+	BackupRetentionDays        int32         `split_words:"true" default:"-1"`
+	BackupPruningLeeway        time.Duration `split_words:"true" default:"1m"`
+	BackupPruningPrefix        string        `split_words:"true"`
+	BackupStopContainerLabel   string        `split_words:"true" default:"true"`
+	AwsS3BucketName            string        `split_words:"true"`
+	AwsEndpoint                string        `split_words:"true" default:"s3.amazonaws.com"`
+	AwsEndpointProto           string        `split_words:"true" default:"https"`
+	AwsEndpointInsecure        bool          `split_words:"true"`
+	AwsAccessKeyID             string        `envconfig:"AWS_ACCESS_KEY_ID"`
+	AwsSecretAccessKey         string        `split_words:"true"`
+	GpgPassphrase              string        `split_words:"true"`
+	EmailNotificationRecipient string        `split_words:"true"`
+	EmailNotificationSender    string        `split_words:"true" default:"noreply@nohost"`
+	EmailSMTPHost              string        `envconfig:"EMAIL_SMTP_HOST"`
+	EmailSMTPPort              int           `envconfig:"EMAIL_SMTP_PORT" default:"587"`
+	EmailSMTPUsername          string        `envconfig:"EMAIL_SMTP_USERNAME"`
+	EmailSMTPPassword          string        `envconfig:"EMAIL_SMTP_PASSWORD"`
 }
 
 // newScript creates all resources needed for the script to perform actions against
@@ -90,15 +102,17 @@ type config struct {
 // reading from env vars or other configuration sources is expected to happen
 // in this method.
 func newScript() (*script, error) {
+	stdOut, logBuffer := buffer(os.Stdout)
 	s := &script{
 		c: &config{},
 		logger: &logrus.Logger{
-			Out:       os.Stdout,
+			Out:       stdOut,
 			Formatter: new(logrus.TextFormatter),
 			Hooks:     make(logrus.LevelHooks),
 			Level:     logrus.InfoLevel,
 		},
-		start: time.Now(),
+		start:  time.Now(),
+		output: logBuffer,
 	}
 
 	if err := envconfig.Process("", s.c); err != nil {
@@ -129,6 +143,28 @@ func newScript() (*script, error) {
 			return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
 		}
 		s.mc = mc
+	}
+
+	if s.c.EmailNotificationRecipient != "" {
+		s.errorHooks = append(s.errorHooks, func(err error, start time.Time, logOutput string) error {
+			mailer := gomail.NewDialer(
+				s.c.EmailSMTPHost, s.c.EmailSMTPPort, s.c.EmailSMTPUsername, s.c.EmailSMTPPassword,
+			)
+
+			subject := fmt.Sprintf(
+				"Failure running docker-volume-backup at %s", start.Format(time.RFC3339),
+			)
+			body := fmt.Sprintf(
+				"Running docker-volume-backup failed with error: %s\n\nLog output before the error occurred:\n\n%s\n", err, logOutput,
+			)
+
+			message := gomail.NewMessage()
+			message.SetHeader("From", s.c.EmailNotificationSender)
+			message.SetHeader("To", s.c.EmailNotificationRecipient)
+			message.SetHeader("Subject", subject)
+			message.SetBody("text/plain", body)
+			return mailer.DialAndSend(message)
+		})
 	}
 
 	return s, nil
@@ -469,9 +505,15 @@ func (s *script) pruneOldBackups() error {
 }
 
 // must exits the script run non-zero and prematurely in case the given error
-// is non-nil.
+// is non-nil. If error hooks are present on the script object, they
+// will be called, passing the failure and previous log output.
 func (s *script) must(err error) {
 	if err != nil {
+		for _, hook := range s.errorHooks {
+			if hookErr := hook(err, s.start, s.output.String()); hookErr != nil {
+				s.logger.Errorf("An error occurred calling an error hook: %s", hookErr)
+			}
+		}
 		s.logger.Fatalf("Fatal error running backup: %s", err)
 	}
 }
@@ -525,4 +567,23 @@ func join(errs ...error) error {
 		msgs = append(msgs, err.Error())
 	}
 	return errors.New("[" + strings.Join(msgs, ", ") + "]")
+}
+
+// buffer takes an io.Writer and returns a wrapped version of the
+// writer that writes to both the original target as well as the returned buffer
+func buffer(w io.Writer) (io.Writer, *bytes.Buffer) {
+	buffering := &bufferingWriter{buf: bytes.Buffer{}, writer: w}
+	return buffering, &buffering.buf
+}
+
+type bufferingWriter struct {
+	buf    bytes.Buffer
+	writer io.Writer
+}
+
+func (b *bufferingWriter) Write(p []byte) (n int, err error) {
+	if n, err := b.buf.Write(p); err != nil {
+		return n, fmt.Errorf("bufferingWriter: error writing to buffer: %w", err)
+	}
+	return b.writer.Write(p)
 }
