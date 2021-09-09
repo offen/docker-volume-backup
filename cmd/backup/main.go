@@ -59,9 +59,10 @@ func main() {
 // script holds all the stateful information required to orchestrate a
 // single backup run.
 type script struct {
-	cli    *client.Client
-	mc     *minio.Client
-	logger *logrus.Logger
+	cli        *client.Client
+	mc         *minio.Client
+	logger     *logrus.Logger
+	errorHooks []errorHook
 
 	start  time.Time
 	file   string
@@ -69,6 +70,8 @@ type script struct {
 
 	c *config
 }
+
+type errorHook func(err error, start time.Time, logOutput string) error
 
 type config struct {
 	BackupSources            string        `split_words:"true" default:"/backup"`
@@ -473,9 +476,15 @@ func (s *script) pruneOldBackups() error {
 }
 
 // must exits the script run non-zero and prematurely in case the given error
-// is non-nil.
+// is non-nil. If error hooks are present on the script object, they
+// will be called, passing the failure and previous log output.
 func (s *script) must(err error) {
 	if err != nil {
+		for _, hook := range s.errorHooks {
+			if hookErr := hook(err, s.start, s.output.String()); hookErr != nil {
+				s.logger.Errorf("An error occurred calling an error hook: %s", err)
+			}
+		}
 		s.logger.Fatalf("Fatal error running backup: %s", err)
 	}
 }
