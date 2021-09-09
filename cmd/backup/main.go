@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -62,8 +63,9 @@ type script struct {
 	mc     *minio.Client
 	logger *logrus.Logger
 
-	start time.Time
-	file  string
+	start  time.Time
+	file   string
+	output *bytes.Buffer
 
 	c *config
 }
@@ -90,15 +92,17 @@ type config struct {
 // reading from env vars or other configuration sources is expected to happen
 // in this method.
 func newScript() (*script, error) {
+	stdOut, logBuffer := buffer(os.Stdout)
 	s := &script{
 		c: &config{},
 		logger: &logrus.Logger{
-			Out:       os.Stdout,
+			Out:       stdOut,
 			Formatter: new(logrus.TextFormatter),
 			Hooks:     make(logrus.LevelHooks),
 			Level:     logrus.InfoLevel,
 		},
-		start: time.Now(),
+		start:  time.Now(),
+		output: logBuffer,
 	}
 
 	if err := envconfig.Process("", s.c); err != nil {
@@ -525,4 +529,23 @@ func join(errs ...error) error {
 		msgs = append(msgs, err.Error())
 	}
 	return errors.New("[" + strings.Join(msgs, ", ") + "]")
+}
+
+// buffer takes an io.Writer and returns a wrapped version of the
+// writer that writes to both the original target as well as the returned buffer
+func buffer(w io.Writer) (io.Writer, *bytes.Buffer) {
+	buffering := &bufferingWriter{buf: bytes.Buffer{}, writer: w}
+	return buffering, &buffering.buf
+}
+
+type bufferingWriter struct {
+	buf    bytes.Buffer
+	writer io.Writer
+}
+
+func (b *bufferingWriter) Write(p []byte) (n int, err error) {
+	if n, err := b.buf.Write(p); err != nil {
+		return n, fmt.Errorf("bufferingWriter: error writing to buffer: %w", err)
+	}
+	return b.writer.Write(p)
 }
