@@ -210,20 +210,12 @@ You can populate below template according to your requirements and use it as you
 
 # EMAIL_NOTIFICATION_SENDER="no-reply@example.com"
 
-# The hostname of your SMTP server.
+# Configuration and credentials for the SMTP server to be used.
+# EMAIL_SMTP_PORT defaults to 587.
 
 # EMAIL_SMTP_HOST="posteo.de"
-
-# The SMTP password.
-
 # EMAIL_SMTP_PASSWORD="<xxx>"
-
-# The SMTP username.
-
 # EMAIL_SMTP_USERNAME="no-reply@example.com"
-
-# The port used when communicating with the server. Defaults to 587.
-
 # EMAIL_SMTP_PORT="<port>"
 ```
 
