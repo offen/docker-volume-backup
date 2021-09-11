@@ -29,8 +29,7 @@ docker run -d \
 
 sleep 10
 
-docker run -d \
-  --name backup \
+docker run --rm \
   --network test_network \
   -v app_data:/backup/app_data \
   -v /var/run/docker.sock:/var/run/docker.sock \
@@ -40,10 +39,8 @@ docker run -d \
   --env AWS_ENDPOINT_PROTO=http \
   --env AWS_S3_BUCKET_NAME=backup \
   --env BACKUP_FILENAME=test.tar.gz \
-  --env BACKUP_CRON_EXPRESSION="0 0 5 31 2 ?" \
+  --entrypoint backup \
   offen/docker-volume-backup:$TEST_VERSION
-
-docker exec backup backup
 
 docker run --rm -it \
   -v backup_data:/data alpine \
@@ -51,7 +48,7 @@ docker run --rm -it \
 
 echo "[TEST:PASS] Found relevant files in untared backup."
 
-if [ "$(docker ps -q | wc -l)" != "3" ]; then
+if [ "$(docker ps -q | wc -l)" != "2" ]; then
   echo "[TEST:FAIL] Expected all containers to be running post backup, instead seen:"
   docker ps
   exit 1

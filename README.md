@@ -3,11 +3,13 @@
 Backup Docker volumes locally or to any S3 compatible storage.
 
 The [offen/docker-volume-backup](https://hub.docker.com/r/offen/docker-volume-backup) Docker image can be used as a lightweight (below 15MB) sidecar container to an existing Docker setup.
-It handles __recurring or one-off backups of Docker volumes__ to a __local directory__ or __any S3 compatible storage__ (or both), and __rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__.
+It handles __recurring or one-off backups of Docker volumes__ to a __local directory__ or __any S3 compatible storage__ (or both), and __rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__ and __sending notifications for failed backup runs__.
 
 <!-- MarkdownTOC -->
 
 - [Quickstart](#quickstart)
+  - [Recurring backups in a compose setup](#recurring-backups-in-a-compose-setup)
+  - [One-off backups using Docker CLI](#one-off-backups-using-docker-cli)
 - [Configuration reference](#configuration-reference)
 - [How to](#how-to)
   - [Stopping containers during backup](#stopping-containers-during-backup)
@@ -37,6 +39,8 @@ Code and documentation for `v1` versions are found on [this branch][v1-branch].
 [v1-branch]: https://github.com/offen/docker-volume-backup/tree/v1
 
 ## Quickstart
+
+### Recurring backups in a compose setup
 
 Add a `backup` service to your compose setup and mount the volumes you would like to see backed up:
 
@@ -77,6 +81,22 @@ services:
 volumes:
   data:
 ```
+
+### One-off backups using Docker CLI
+
+To run a one time backup, mount the volume you would like to see backed up into a container and run the `backup` command:
+
+```console
+docker run --rm \
+  -v data:/backup/data \
+  --env AWS_ACCESS_KEY_ID="<xxx>" \
+  --env AWS_SECRET_ACCESS_KEY="<xxx>" \
+  --env AWS_S3_BUCKET_NAME="<xxx>" \
+  --entrypoint backup \
+  offen/docker-volume-backup:latest
+```
+
+Alternatively, pass a `--env-file` in order to use a full config as described below.
 
 ## Configuration reference
 
