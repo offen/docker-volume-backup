@@ -39,6 +39,15 @@ func main() {
 		panic(err)
 	}
 
+	defer func() {
+		if err := recover(); err != nil {
+			if e, ok := err.(error); ok && strings.Contains(e.Error(), msgBackupFailed) {
+				os.Exit(1)
+			}
+			panic(err)
+		}
+	}()
+
 	s.must(func() error {
 		restartContainers, err := s.stopContainers()
 		defer func() {
@@ -50,9 +59,14 @@ func main() {
 		return s.takeBackup()
 	}())
 
-	s.must(s.encryptBackup())
-	s.must(s.copyBackup())
-	s.must(s.removeArtifacts())
+	s.must(func() error {
+		defer func() {
+			s.must(s.removeArtifacts())
+		}()
+		s.must(s.encryptBackup())
+		return s.copyBackup()
+	}())
+
 	s.must(s.pruneOldBackups())
 	s.logger.Info("Finished running backup tasks.")
 }
@@ -94,6 +108,8 @@ type config struct {
 	EmailSMTPUsername          string        `envconfig:"EMAIL_SMTP_USERNAME"`
 	EmailSMTPPassword          string        `envconfig:"EMAIL_SMTP_PASSWORD"`
 }
+
+var msgBackupFailed = "backup run failed"
 
 // newScript creates all resources needed for the script to perform actions against
 // remote resources like the Docker engine or remote storage locations. All
@@ -360,10 +376,17 @@ func (s *script) copyBackup() error {
 
 // removeArtifacts removes the backup file from disk.
 func (s *script) removeArtifacts() error {
-	if err := os.Remove(s.file); err != nil {
-		return fmt.Errorf("removeArtifacts: error removing file: %w", err)
+	_, err := os.Stat(s.file)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("removeArtifacts: error calling stat on file %s: %w", s.file, err)
 	}
-	s.logger.Info("Removed local artifacts.")
+	if err := os.Remove(s.file); err != nil {
+		return fmt.Errorf("removeArtifacts: error removing file %s: %w", s.file, err)
+	}
+	s.logger.Infof("Removed local artifacts %s.", s.file)
 	return nil
 }
 
@@ -521,7 +544,7 @@ func (s *script) runHooks(err error, targetLevel string) error {
 	return nil
 }
 
-// must exits the script run non-zero and prematurely in case the given error
+// must exits the script run prematurely in case the given error
 // is non-nil. If failure hooks have been registered on the script object, they
 // will be called, passing the failure and previous log output.
 func (s *script) must(err error) {
@@ -530,7 +553,7 @@ func (s *script) must(err error) {
 		if hookErr := s.runHooks(err, hookLevelFailure); hookErr != nil {
 			s.logger.Errorf("An error occurred calling the registered failure hooks: %s", hookErr)
 		}
-		os.Exit(1)
+		panic(errors.New(msgBackupFailed))
 	}
 }
 
