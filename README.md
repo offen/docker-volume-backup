@@ -134,6 +134,13 @@ You can populate below template according to your requirements and use it as you
 # AWS_ACCESS_KEY_ID="<xxx>"
 # AWS_SECRET_ACCESS_KEY="<xxx>"
 
+# Instead of providing static credentials, you can also use IAM instance profiles
+# or similar to provide authentication. Some possible configuration options on AWS:
+# - EC2: http://169.254.169.254
+# - ECS: http://169.254.170.2
+
+# AWS_IAM_ROLE_ENDPOINT="http://169.254.169.254"
+
 # This is the FQDN of your storage server, e.g. `storage.example.com`.
 # Do not set this when working against AWS S3 (the default value is 
 # `s3.amazonaws.com`). If you need to set a specific (non-https) protocol, you
