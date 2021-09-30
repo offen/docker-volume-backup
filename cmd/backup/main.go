@@ -100,6 +100,7 @@ type config struct {
 	AwsEndpointInsecure        bool          `split_words:"true"`
 	AwsAccessKeyID             string        `envconfig:"AWS_ACCESS_KEY_ID"`
 	AwsSecretAccessKey         string        `split_words:"true"`
+	AwsIamRoleEndpoint         string        `split_words:"true"`
 	GpgPassphrase              string        `split_words:"true"`
 	EmailNotificationRecipient string        `split_words:"true"`
 	EmailNotificationSender    string        `split_words:"true" default:"noreply@nohost"`
@@ -145,12 +146,21 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.AwsS3BucketName != "" {
-		mc, err := minio.New(s.c.AwsEndpoint, &minio.Options{
-			Creds: credentials.NewStaticV4(
+		var creds *credentials.Credentials
+		if s.c.AwsAccessKeyID != "" && s.c.AwsSecretAccessKey != "" {
+			creds = credentials.NewStaticV4(
 				s.c.AwsAccessKeyID,
 				s.c.AwsSecretAccessKey,
 				"",
-			),
+			)
+		} else if s.c.AwsIamRoleEndpoint != "" {
+			creds = credentials.NewIAM(s.c.AwsIamRoleEndpoint)
+		} else {
+			return nil, errors.New("newScript: AWS_S3_BUCKET_NAME is defined, but no credentials were provided")
+		}
+
+		mc, err := minio.New(s.c.AwsEndpoint, &minio.Options{
+			Creds:  creds,
 			Secure: !s.c.AwsEndpointInsecure && s.c.AwsEndpointProto == "https",
 		})
 		if err != nil {
