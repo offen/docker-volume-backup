@@ -24,6 +24,7 @@ services:
       AWS_ENDPOINT_PROTO: http
       AWS_S3_BUCKET_NAME: backup
       BACKUP_FILENAME: test.tar.gz
+      BACKUP_LATEST_SYMLINK: test.latest.tar.gz.gpg
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
       BACKUP_PRUNING_LEEWAY: 5s
