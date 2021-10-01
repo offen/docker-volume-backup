@@ -574,7 +574,7 @@ volumes:
 
 ## Differences to `futurice/docker-volume-backup`
 
-This image is heavily inspired by the `futurice/docker-volume-backup`. We decided to publish this image as a simpler and more lightweight alternative because of the following requirements:
+This image is heavily inspired by `futurice/docker-volume-backup`. We decided to publish this image as a simpler and more lightweight alternative because of the following requirements:
 
 - The original image is based on `ubuntu` and requires additional tools, making it heavy.
 This version is roughly 1/25 in compressed size (it's ~12MB).
