@@ -120,6 +120,11 @@ You can populate below template according to your requirements and use it as you
 
 # BACKUP_FILENAME="backup-%Y-%m-%dT%H-%M-%S.tar.gz"
 
+# When storing local backups, a symlink to the latest backup can be created
+# in case a value is given for this key. This has no effect on remote backups.
+
+# BACKUP_LATEST_SYMLINK="backup.latest.tar.gz"
+
 ########### BACKUP STORAGE
 
 # The name of the remote bucket that should be used for storing backups. If
@@ -437,6 +442,9 @@ services:
   # ... define other services using the `data` volume here
   backup:
     image: offen/docker-volume-backup:latest
+    environment:
+      BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
+      BACKUP_LATEST_SYMLINK: backup-latest.tar.gz
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro

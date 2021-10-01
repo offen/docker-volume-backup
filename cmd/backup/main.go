@@ -89,6 +89,7 @@ type script struct {
 type config struct {
 	BackupSources              string        `split_words:"true" default:"/backup"`
 	BackupFilename             string        `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.tar.gz"`
+	BackupLatestSymlink        string        `split_words:"true"`
 	BackupArchive              string        `split_words:"true" default:"/archive"`
 	BackupRetentionDays        int32         `split_words:"true" default:"-1"`
 	BackupPruningLeeway        time.Duration `split_words:"true" default:"1m"`
@@ -380,6 +381,16 @@ func (s *script) copyBackup() error {
 			return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 		}
 		s.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", s.file, s.c.BackupArchive)
+		if s.c.BackupLatestSymlink != "" {
+			symlink := path.Join(s.c.BackupArchive, s.c.BackupLatestSymlink)
+			if _, err := os.Lstat(symlink); err == nil {
+				os.Remove(symlink)
+			}
+			if err := os.Symlink(name, symlink); err != nil {
+				return fmt.Errorf("copyBackup: error creating latest symlink: %w", err)
+			}
+			s.logger.Infof("Created/Updated symlink `%s` for latest backup.", s.c.BackupLatestSymlink)
+		}
 	}
 	return nil
 }
@@ -497,7 +508,7 @@ func (s *script) pruneOldBackups() error {
 				)
 			}
 
-			if fi.ModTime().Before(deadline) {
+			if fi.Mode() != os.ModeSymlink && fi.ModTime().Before(deadline) {
 				matches = append(matches, candidate)
 			}
 		}

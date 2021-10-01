@@ -18,6 +18,7 @@ docker run --rm -it \
 
 echo "[TEST:PASS] Found relevant files in untared remote backup."
 
+test -L ./local/test.latest.tar.gz.gpg
 echo 1234secret | gpg -d --yes --passphrase-fd 0 ./local/test.tar.gz.gpg > ./local/decrypted.tar.gz
 tar -xf ./local/decrypted.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db
 rm ./local/decrypted.tar.gz
