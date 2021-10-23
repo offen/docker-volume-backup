@@ -17,7 +17,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Send email notifications on failed backup runs](#send-email-notifications-on-failed-backup-runs)
   - [Encrypting your backup using GPG](#encrypting-your-backup-using-gpg)
   - [Restoring a volume from a backup](#restoring-a-volume-from-a-backup)
-  - [Setting the timezone the container runs in](#setting-the-timezone-the-container-runs-in)
+  - [Set the timezone the container runs in](#set-the-timezone-the-container-runs-in)
   - [Using with Docker Swarm](#using-with-docker-swarm)
   - [Manually triggering a backup](#manually-triggering-a-backup)
 - [Recipes](#recipes)
@@ -359,13 +359,13 @@ In case you need to restore a volume from a backup, the most straight forward pr
 
 Depending on your setup and the application(s) you are running, this might involve other steps to be taken still.
 
-### Setting the timezone the container runs in
+### Set the timezone the container runs in
 
 By default a container based on this image will run in the UTC timezone.
 As the image is designed to be as small as possible, additional timezone data is not included.
 In case you want to run your cron rules in your local timezone (respecting DST and similar), you can mount your Docker host's `/etc/timezone` and `/etc/localtime` in read-only mode:
 
-```
+```yml
 version: '3'
 
 services:
