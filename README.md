@@ -166,11 +166,6 @@ You can populate below template according to your requirements and use it as you
 
 # AWS_ENDPOINT_INSECURE="true"
 
-# Setting this variable to `true` to skip verification failure (on self-signed 
-# vertifivates).
-
-# INSECURE_SKIP_VERIFY="false"
-
 # In addition to storing backups remotely, you can also keep local copies.
 # Pass a container-local path to store your backups if needed. You also need to
 # mount a local folder or Docker volume into that location (`/archive`
