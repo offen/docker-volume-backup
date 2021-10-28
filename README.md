@@ -162,7 +162,8 @@ You can populate below template according to your requirements and use it as you
 
 # Setting this variable to `true` will disable verification of
 # SSL certificates. You shouldn't use this unless you use self-signed
-# certificates for your remote storage backend.
+# certificates for your remote storage backend. This can only be used
+# when AWS_ENDPOINT_PROTO is set to `https`.
 
 # AWS_ENDPOINT_INSECURE="true"
 
