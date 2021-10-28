@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"net/http"
+	"crypto/tls"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -102,6 +104,7 @@ type config struct {
 	AwsAccessKeyID             string        `envconfig:"AWS_ACCESS_KEY_ID"`
 	AwsSecretAccessKey         string        `split_words:"true"`
 	AwsIamRoleEndpoint         string        `split_words:"true"`
+	InsecureSkipVerify         bool          `split_words:"true" default:"false"`
 	GpgPassphrase              string        `split_words:"true"`
 	EmailNotificationRecipient string        `split_words:"true"`
 	EmailNotificationSender    string        `split_words:"true" default:"noreply@nohost"`
@@ -159,11 +162,20 @@ func newScript() (*script, error) {
 		} else {
 			return nil, errors.New("newScript: AWS_S3_BUCKET_NAME is defined, but no credentials were provided")
 		}
-
-		mc, err := minio.New(s.c.AwsEndpoint, &minio.Options{
+		options := minio.Options{
 			Creds:  creds,
 			Secure: !s.c.AwsEndpointInsecure && s.c.AwsEndpointProto == "https",
-		})
+		}
+		if s.c.InsecureSkipVerify {
+			options.Transport = &http.Transport{
+				MaxIdleConns:       10,
+				IdleConnTimeout:    30 * time.Second,
+				DisableCompression: true,
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			}
+		}
+
+		mc, err := minio.New(s.c.AwsEndpoint, &options)
 		if err != nil {
 			return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
 		}
