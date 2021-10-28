@@ -159,11 +159,24 @@ func newScript() (*script, error) {
 		} else {
 			return nil, errors.New("newScript: AWS_S3_BUCKET_NAME is defined, but no credentials were provided")
 		}
-
-		mc, err := minio.New(s.c.AwsEndpoint, &minio.Options{
+		options := minio.Options{
 			Creds:  creds,
-			Secure: !s.c.AwsEndpointInsecure && s.c.AwsEndpointProto == "https",
-		})
+			Secure: s.c.AwsEndpointProto == "https",
+		}
+		if s.c.AwsEndpointInsecure {
+			if options.Secure {
+				transport, err := minio.DefaultTransport(options.Secure)
+				if err != nil {
+					return nil, fmt.Errorf("newScript: failed to create default minio transport")
+				}
+				transport.TLSClientConfig.InsecureSkipVerify = true
+				options.Transport = transport
+			} else {
+				return nil, errors.New("newScript: AWS_ENDPOINT_INSECURE = true is only meaningful for https")
+			}
+		}
+
+		mc, err := minio.New(s.c.AwsEndpoint, &options)
 		if err != nil {
 			return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
 		}
