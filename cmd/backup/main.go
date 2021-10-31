@@ -503,17 +503,21 @@ func (s *script) pruneOldBackups() error {
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
-		candidates, err := filepath.Glob(
-			path.Join(s.c.BackupArchive, fmt.Sprintf("%s*", s.c.BackupPruningPrefix)),
+		globPattern := path.Join(
+			s.c.BackupArchive,
+			fmt.Sprintf("%s*", s.c.BackupPruningPrefix),
 		)
+		globMatches, err := filepath.Glob(globPattern)
 		if err != nil {
 			return fmt.Errorf(
-				"pruneOldBackups: error looking up matching files, starting with: %w", err,
+				"pruneOldBackups: error looking up matching files using pattern %s: %w",
+				globPattern,
+				err,
 			)
 		}
 
-		var matches []string
-		for _, candidate := range candidates {
+		var candidates []os.FileInfo
+		for _, candidate := range globMatches {
 			fi, err := os.Stat(candidate)
 			if err != nil {
 				return fmt.Errorf(
@@ -522,8 +526,14 @@ func (s *script) pruneOldBackups() error {
 					err,
 				)
 			}
+			if fi.Mode() != os.ModeSymlink {
+				candidates = append(candidates, fi)
+			}
+		}
 
-			if fi.Mode() != os.ModeSymlink && fi.ModTime().Before(deadline) {
+		var matches []os.FileInfo
+		for _, candidate := range candidates {
+			if candidate.ModTime().Before(deadline) {
 				matches = append(matches, candidate)
 			}
 		}
@@ -531,7 +541,7 @@ func (s *script) pruneOldBackups() error {
 		if len(matches) != 0 && len(matches) != len(candidates) {
 			var removeErrors []error
 			for _, candidate := range matches {
-				if err := os.Remove(candidate); err != nil {
+				if err := os.Remove(candidate.Name()); err != nil {
 					removeErrors = append(removeErrors, err)
 				}
 			}
