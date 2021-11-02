@@ -516,7 +516,7 @@ func (s *script) pruneOldBackups() error {
 			)
 		}
 
-		var candidates []os.FileInfo
+		var candidates []string
 		for _, candidate := range globMatches {
 			fi, err := os.Stat(candidate)
 			if err != nil {
@@ -527,21 +527,29 @@ func (s *script) pruneOldBackups() error {
 				)
 			}
 			if fi.Mode() != os.ModeSymlink {
-				candidates = append(candidates, fi)
+				candidates = append(candidates, candidate)
 			}
 		}
 
-		var matches []os.FileInfo
+		var matches []string
 		for _, candidate := range candidates {
-			if candidate.ModTime().Before(deadline) {
+			fi, err := os.Stat(candidate)
+			if err != nil {
+				return fmt.Errorf(
+					"pruneOldBackups: error calling stat on file %s: %w",
+					candidate,
+					err,
+				)
+			}
+			if fi.ModTime().Before(deadline) {
 				matches = append(matches, candidate)
 			}
 		}
 
 		if len(matches) != 0 && len(matches) != len(candidates) {
 			var removeErrors []error
-			for _, candidate := range matches {
-				if err := os.Remove(candidate.Name()); err != nil {
+			for _, match := range matches {
+				if err := os.Remove(match); err != nil {
 					removeErrors = append(removeErrors, err)
 				}
 			}
