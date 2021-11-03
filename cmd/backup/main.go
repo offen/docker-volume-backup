@@ -526,7 +526,8 @@ func (s *script) pruneOldBackups() error {
 					err,
 				)
 			}
-			if fi.Mode() != os.ModeSymlink {
+
+			if fi.Mode()&os.ModeSymlink != os.ModeSymlink {
 				candidates = append(candidates, candidate)
 			}
 		}
