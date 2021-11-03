@@ -518,10 +518,10 @@ func (s *script) pruneOldBackups() error {
 
 		var candidates []string
 		for _, candidate := range globMatches {
-			fi, err := os.Stat(candidate)
+			fi, err := os.Lstat(candidate)
 			if err != nil {
 				return fmt.Errorf(
-					"pruneOldBackups: error calling stat on file %s: %w",
+					"pruneOldBackups: error calling Lstat on file %s: %w",
 					candidate,
 					err,
 				)
