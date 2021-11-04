@@ -96,6 +96,7 @@ type config struct {
 	BackupPruningLeeway        time.Duration `split_words:"true" default:"1m"`
 	BackupPruningPrefix        string        `split_words:"true"`
 	BackupStopContainerLabel   string        `split_words:"true" default:"true"`
+	BackupFromSnapshot         bool          `split_words:"true"`
 	AwsS3BucketName            string        `split_words:"true"`
 	AwsEndpoint                string        `split_words:"true" default:"s3.amazonaws.com"`
 	AwsEndpointProto           string        `split_words:"true" default:"https"`
@@ -331,21 +332,28 @@ func (s *script) stopContainers() (func() error, error) {
 // saves it to disk.
 func (s *script) takeBackup() error {
 	s.file = timeutil.Strftime(&s.start, s.file)
-  backupCopiedSource := filepath.Join("/tmp", s.c.BackupSources)
-	// copy before compressing guard against a situation where backup folder's content are still growing.
-	if err := copy.Copy(s.c.BackupSources, backupCopiedSource); err != nil {
-		return fmt.Errorf("takeBackup: error creating snapshot on backup folder: %w", err)
+	backupSources := s.c.BackupSources
+	if s.c.BackupFromSnapshot {
+		backupCopiedSource := filepath.Join("/tmp", s.c.BackupSources)
+		backupSources = backupCopiedSource
+		s.logger.Infof("Created snapshot of `%s` at `%s`.", s.c.BackupSources, backupCopiedSource)
+		// copy before compressing guard against a situation where backup folder's content are still growing.
+		if err := copy.Copy(s.c.BackupSources, backupCopiedSource, copy.Options{ PreserveTimes: true }); err != nil {
+			return fmt.Errorf("takeBackup: error creating snapshot on backup folder: %w", err)
+		}
+		defer func() {
+			if err := os.RemoveAll(backupCopiedSource); err != nil {
+				s.logger.Errorf("takeBackup: error removing snapshot folder %s.", backupCopiedSource)
+				os.Exit(1)
+			}
+			s.logger.Infof("Removed snapshot folder %s.", backupCopiedSource)
+		}()
 	}
-	if err := targz.Compress(backupCopiedSource, s.file); err != nil {
+	if err := targz.Compress(backupSources, s.file); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
-	s.logger.Infof("Created backup of `%s` at `%s`.", s.c.BackupSources, s.file)
+	s.logger.Infof("Created backup of `%s` at `%s`.", backupSources, s.file)
 	s.logger.Infof("Removed local artifacts %s.", s.file)
-
-	if err := os.RemoveAll(backupCopiedSource); err != nil {
-		return fmt.Errorf("takeBackup: error removing backup snapshot %s: %w", backupCopiedSource, err)
-	}
-	s.logger.Infof("Removed backup snapshot %s.", backupCopiedSource)
 	return nil
 }
 
