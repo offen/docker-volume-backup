@@ -26,6 +26,7 @@ import (
 	"github.com/m90/targz"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/otiai10/copy"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/openpgp"
 )
@@ -330,10 +331,21 @@ func (s *script) stopContainers() (func() error, error) {
 // saves it to disk.
 func (s *script) takeBackup() error {
 	s.file = timeutil.Strftime(&s.start, s.file)
-	if err := targz.Compress(s.c.BackupSources, s.file); err != nil {
+  backupCopiedSource := filepath.Join("/tmp", s.c.BackupSources)
+	// copy before compressing guard against a situation where backup folder's content are still growing.
+	if err := copy.Copy(s.c.BackupSources, backupCopiedSource); err != nil {
+		return fmt.Errorf("takeBackup: error creating snapshot on backup folder: %w", err)
+	}
+	if err := targz.Compress(backupCopiedSource, s.file); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
 	s.logger.Infof("Created backup of `%s` at `%s`.", s.c.BackupSources, s.file)
+	s.logger.Infof("Removed local artifacts %s.", s.file)
+
+	if err := os.RemoveAll(backupCopiedSource); err != nil {
+		return fmt.Errorf("takeBackup: error removing backup snapshot %s: %w", backupCopiedSource, err)
+	}
+	s.logger.Infof("Removed backup snapshot %s.", backupCopiedSource)
 	return nil
 }
 
@@ -392,7 +404,7 @@ func (s *script) copyBackup() error {
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
-		if err := copy(s.file, path.Join(s.c.BackupArchive, name)); err != nil {
+		if err := copyFile(s.file, path.Join(s.c.BackupArchive, name)); err != nil {
 			return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 		}
 		s.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", s.file, s.c.BackupArchive)
@@ -627,7 +639,7 @@ func lock(lockfile string) func() error {
 }
 
 // copy creates a copy of the file located at `dst` at `src`.
-func copy(src, dst string) error {
+func copyFile(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
