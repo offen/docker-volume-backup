@@ -328,32 +328,27 @@ func (s *script) stopContainers() (func() error, error) {
 	}, stopError
 }
 
+func (s *script) snapshotFolder() string {
+	return filepath.Join("/tmp", s.c.BackupSources)
+}
+
 // takeBackup creates a tar archive of the configured backup location and
 // saves it to disk.
 func (s *script) takeBackup() error {
 	s.file = timeutil.Strftime(&s.start, s.file)
 	backupSources := s.c.BackupSources
 	if s.c.BackupFromSnapshot {
-		backupCopiedSource := filepath.Join("/tmp", s.c.BackupSources)
-		backupSources = backupCopiedSource
-		s.logger.Infof("Created snapshot of `%s` at `%s`.", s.c.BackupSources, backupCopiedSource)
+		backupSources = s.snapshotFolder()
+		s.logger.Infof("Created snapshot of `%s` at `%s`.", s.c.BackupSources, backupSources)
 		// copy before compressing guard against a situation where backup folder's content are still growing.
-		if err := copy.Copy(s.c.BackupSources, backupCopiedSource, copy.Options{ PreserveTimes: true }); err != nil {
+		if err := copy.Copy(s.c.BackupSources, backupSources, copy.Options{ PreserveTimes: true }); err != nil {
 			return fmt.Errorf("takeBackup: error creating snapshot on backup folder: %w", err)
 		}
-		defer func() {
-			if err := os.RemoveAll(backupCopiedSource); err != nil {
-				s.logger.Errorf("takeBackup: error removing snapshot folder %s.", backupCopiedSource)
-				os.Exit(1)
-			}
-			s.logger.Infof("Removed snapshot folder %s.", backupCopiedSource)
-		}()
 	}
 	if err := targz.Compress(backupSources, s.file); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
 	s.logger.Infof("Created backup of `%s` at `%s`.", backupSources, s.file)
-	s.logger.Infof("Removed local artifacts %s.", s.file)
 	return nil
 }
 
@@ -430,8 +425,15 @@ func (s *script) copyBackup() error {
 	return nil
 }
 
-// removeArtifacts removes the backup file from disk.
+// removeArtifacts removes the backup file from disk. Also remove snapshot if snapshot was created
 func (s *script) removeArtifacts() error {
+	if s.c.BackupFromSnapshot {
+		snapshotFolder := s.snapshotFolder()
+		if err := os.RemoveAll(snapshotFolder); err != nil {
+			return fmt.Errorf("removeArtifacts: error removing snapshot folder %s: %w", snapshotFolder, err)
+		}
+		s.logger.Infof("Removed snapshot folder %s.", snapshotFolder)
+	}
 	_, err := os.Stat(s.file)
 	if err != nil {
 		if os.IsNotExist(err) {
