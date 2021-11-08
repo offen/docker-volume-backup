@@ -23,7 +23,6 @@ docker exec minio mkdir -p /data/backup
 docker run -d \
   --name offen \
   --network test_network \
-  --label "docker-volume-backup.stop-during-backup=true" \
   -v app_data:/var/opt/offen/ \
   offen/offen:latest
 
@@ -39,6 +38,7 @@ docker run --rm \
   --env AWS_ENDPOINT_PROTO=http \
   --env AWS_S3_BUCKET_NAME=backup \
   --env BACKUP_FILENAME=test.tar.gz \
+  --env "BACKUP_FROM_SNAPSHOT=true" \
   --entrypoint backup \
   offen/docker-volume-backup:$TEST_VERSION
 
@@ -56,6 +56,6 @@ fi
 
 echo "[TEST:PASS] All containers running post backup."
 
-docker rm $(docker stop minio offen backup)
+docker rm $(docker stop minio offen)
 docker volume rm backup_data app_data
 docker network rm test_network

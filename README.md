@@ -126,10 +126,10 @@ You can populate below template according to your requirements and use it as you
 
 # BACKUP_LATEST_SYMLINK="backup.latest.tar.gz"
 
-# Wehter to copy the content of backup folder before creating archive.
-# In rare scenario where the content of the source backup volume is still
-# updating, but we do not wish to stop the container while performing backup,
-# this snapshot before archive ensures the integrity of the tar.gz file.
+# Whether to copy the content of backup folder before creating the tar archive.
+# In the rare scenario where the content of the source backup volume is continously
+# updating, but we do not wish to stop the container while performing the backup,
+# this setting can be used to ensure the integrity of the tar.gz file.
 
 # BACKUP_FROM_SNAPSHOT="false"
 
