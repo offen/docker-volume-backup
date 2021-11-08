@@ -26,6 +26,7 @@ import (
 	"github.com/m90/targz"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/otiai10/copy"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/openpgp"
 )
@@ -95,6 +96,7 @@ type config struct {
 	BackupPruningLeeway        time.Duration `split_words:"true" default:"1m"`
 	BackupPruningPrefix        string        `split_words:"true"`
 	BackupStopContainerLabel   string        `split_words:"true" default:"true"`
+	BackupFromSnapshot         bool          `split_words:"true"`
 	AwsS3BucketName            string        `split_words:"true"`
 	AwsEndpoint                string        `split_words:"true" default:"s3.amazonaws.com"`
 	AwsEndpointProto           string        `split_words:"true" default:"https"`
@@ -326,14 +328,27 @@ func (s *script) stopContainers() (func() error, error) {
 	}, stopError
 }
 
+func (s *script) snapshotFolder() string {
+	return filepath.Join("/tmp", s.c.BackupSources)
+}
+
 // takeBackup creates a tar archive of the configured backup location and
 // saves it to disk.
 func (s *script) takeBackup() error {
 	s.file = timeutil.Strftime(&s.start, s.file)
-	if err := targz.Compress(s.c.BackupSources, s.file); err != nil {
+	backupSources := s.c.BackupSources
+	if s.c.BackupFromSnapshot {
+		backupSources = s.snapshotFolder()
+		s.logger.Infof("Created snapshot of `%s` at `%s`.", s.c.BackupSources, backupSources)
+		// copy before compressing guard against a situation where backup folder's content are still growing.
+		if err := copy.Copy(s.c.BackupSources, backupSources, copy.Options{ PreserveTimes: true }); err != nil {
+			return fmt.Errorf("takeBackup: error creating snapshot on backup folder: %w", err)
+		}
+	}
+	if err := targz.Compress(backupSources, s.file); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
-	s.logger.Infof("Created backup of `%s` at `%s`.", s.c.BackupSources, s.file)
+	s.logger.Infof("Created backup of `%s` at `%s`.", backupSources, s.file)
 	return nil
 }
 
@@ -392,7 +407,7 @@ func (s *script) copyBackup() error {
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
-		if err := copy(s.file, path.Join(s.c.BackupArchive, name)); err != nil {
+		if err := copyFile(s.file, path.Join(s.c.BackupArchive, name)); err != nil {
 			return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 		}
 		s.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", s.file, s.c.BackupArchive)
@@ -410,8 +425,15 @@ func (s *script) copyBackup() error {
 	return nil
 }
 
-// removeArtifacts removes the backup file from disk.
+// removeArtifacts removes the backup file from disk. Also remove snapshot if snapshot was created
 func (s *script) removeArtifacts() error {
+	if s.c.BackupFromSnapshot {
+		snapshotFolder := s.snapshotFolder()
+		if err := os.RemoveAll(snapshotFolder); err != nil {
+			return fmt.Errorf("removeArtifacts: error removing snapshot folder %s: %w", snapshotFolder, err)
+		}
+		s.logger.Infof("Removed snapshot folder %s.", snapshotFolder)
+	}
 	_, err := os.Stat(s.file)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -628,7 +650,7 @@ func lock(lockfile string) func() error {
 }
 
 // copy creates a copy of the file located at `dst` at `src`.
-func copy(src, dst string) error {
+func copyFile(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
