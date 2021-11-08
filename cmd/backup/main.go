@@ -43,7 +43,7 @@ func main() {
 	defer func() {
 		if pArg := recover(); pArg != nil {
 			if err, ok := pArg.(error); ok {
-				if hookErr := s.runHooks(err, hookLevelAlways, hookLevelFailure); hookErr != nil {
+				if hookErr := s.runHooks(err, hookLevelCleanup, hookLevelFailure); hookErr != nil {
 					s.logger.Errorf("An error occurred calling the registered hooks: %s", hookErr)
 				}
 				os.Exit(1)
@@ -51,7 +51,7 @@ func main() {
 			panic(pArg)
 		}
 
-		if err := s.runHooks(nil, hookLevelAlways); err != nil {
+		if err := s.runHooks(nil, hookLevelCleanup); err != nil {
 			s.logger.Errorf(
 				"Backup procedure ran successfully, but an error ocurred calling the registered hooks: %v",
 				err,
@@ -223,7 +223,7 @@ func newScript() (*script, error) {
 var noop = func() error { return nil }
 
 // registerHook adds the given action at the given level.
-func (s *script) registerHook(level string, action func(err error, start time.Time, logOutput string) error) {
+func (s *script) registerHook(level hookLevel, action func(err error, start time.Time, logOutput string) error) {
 	s.hooks = append(s.hooks, hook{level, action})
 }
 
@@ -350,11 +350,11 @@ func (s *script) takeBackup() error {
 	if s.c.BackupFromSnapshot {
 		backupSources = filepath.Join("/tmp", s.c.BackupSources)
 		// copy before compressing guard against a situation where backup folder's content are still growing.
-		s.registerHook(hookLevelAlways, func(error, time.Time, string) error {
+		s.registerHook(hookLevelCleanup, func(error, time.Time, string) error {
 			if err := remove(backupSources); err != nil {
 				return fmt.Errorf("takeBackup: error removing snapshot: %w", err)
 			}
-			s.logger.Infof("Removed snapshot %s.", backupSources)
+			s.logger.Infof("Removed snapshot `%s`.", backupSources)
 			return nil
 		})
 		if err := copy.Copy(s.c.BackupSources, backupSources, copy.Options{PreserveTimes: true}); err != nil {
@@ -364,11 +364,11 @@ func (s *script) takeBackup() error {
 	}
 
 	tarFile := s.file
-	s.registerHook(hookLevelAlways, func(error, time.Time, string) error {
+	s.registerHook(hookLevelCleanup, func(error, time.Time, string) error {
 		if err := remove(tarFile); err != nil {
 			return fmt.Errorf("takeBackup: error removing tar file: %w", err)
 		}
-		s.logger.Infof("Removed tar file %s.", tarFile)
+		s.logger.Infof("Removed tar file `%s`.", tarFile)
 		return nil
 	})
 	if err := targz.Compress(backupSources, tarFile); err != nil {
@@ -388,11 +388,11 @@ func (s *script) encryptBackup() error {
 	}
 
 	gpgFile := fmt.Sprintf("%s.gpg", s.file)
-	s.registerHook(hookLevelAlways, func(error, time.Time, string) error {
+	s.registerHook(hookLevelCleanup, func(error, time.Time, string) error {
 		if err := remove(gpgFile); err != nil {
 			return fmt.Errorf("encryptBackup: error removing gpg file: %w", err)
 		}
-		s.logger.Infof("Removed GPG file %s.", gpgFile)
+		s.logger.Infof("Removed GPG file `%s`.", gpgFile)
 		return nil
 	})
 
@@ -414,7 +414,7 @@ func (s *script) encryptBackup() error {
 
 	src, err := os.Open(s.file)
 	if err != nil {
-		return fmt.Errorf("encryptBackup: error opening backup file %s: %w", s.file, err)
+		return fmt.Errorf("encryptBackup: error opening backup file `%s`: %w", s.file, err)
 	}
 
 	if _, err := io.Copy(dst, src); err != nil {
@@ -616,7 +616,7 @@ func (s *script) pruneOldBackups() error {
 // runHooks runs all hooks that have been registered using the
 // given levels in the defined ordering. In case executing a hook returns an
 // error, the following hooks will still be run before the function returns.
-func (s *script) runHooks(err error, levels ...string) error {
+func (s *script) runHooks(err error, levels ...hookLevel) error {
 	var actionErrors []error
 	for _, level := range levels {
 		for _, hook := range s.hooks {
@@ -650,7 +650,7 @@ func remove(location string) error {
 		if os.IsNotExist(err) {
 			return nil
 		}
-		return fmt.Errorf("remove: error checking for existence of %s: %w", location, err)
+		return fmt.Errorf("remove: error checking for existence of `%s`: %w", location, err)
 	}
 	if fi.IsDir() {
 		err = os.RemoveAll(location)
@@ -658,7 +658,7 @@ func remove(location string) error {
 		err = os.Remove(location)
 	}
 	if err != nil {
-		return fmt.Errorf("remove: error removing %s: %w", location, err)
+		return fmt.Errorf("remove: error removing `%s`: %w", location, err)
 	}
 	return nil
 }
@@ -736,11 +736,13 @@ func (b *bufferingWriter) Write(p []byte) (n int, err error) {
 // hook contains a queued action that can be trigger them when the script
 // reaches a certain point (e.g. unsuccessful backup)
 type hook struct {
-	level  string
+	level  hookLevel
 	action func(err error, start time.Time, logOutput string) error
 }
 
+type hookLevel int
+
 const (
-	hookLevelFailure = "failure"
-	hookLevelAlways  = "always"
+	hookLevelFailure hookLevel = iota
+	hookLevelCleanup
 )
