@@ -351,32 +351,31 @@ func (s *script) takeBackup() error {
 		backupSources = filepath.Join("/tmp", s.c.BackupSources)
 		s.logger.Infof("Created snapshot of `%s` at `%s`.", s.c.BackupSources, backupSources)
 		// copy before compressing guard against a situation where backup folder's content are still growing.
+		s.registerHook(hookLevelAlways, func(error, time.Time, string) error {
+			if err := remove(backupSources); err != nil {
+				return fmt.Errorf("takeBackup: error removing snapshot: %w", err)
+			}
+			s.logger.Infof("Removed snapshot %s.", backupSources)
+			return nil
+		})
 		if err := copy.Copy(s.c.BackupSources, backupSources, copy.Options{PreserveTimes: true}); err != nil {
 			return fmt.Errorf("takeBackup: error creating snapshot: %w", err)
 		}
-		s.registerHook(hookLevelAlways, func(error, time.Time, string) error {
-			if err := os.RemoveAll(backupSources); err != nil {
-				return fmt.Errorf("takeBackup: error removing snapshot directory %s: %w", backupSources, err)
-			}
-			s.logger.Infof("Cleaned up local artifact %s.", backupSources)
-			return nil
-		})
-	}
-
-	if err := targz.Compress(backupSources, s.file); err != nil {
-		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
 
 	tarFile := s.file
 	s.registerHook(hookLevelAlways, func(error, time.Time, string) error {
-		if err := os.Remove(tarFile); err != nil {
-			return fmt.Errorf("takeBackup: error removing tar file %s: %w", tarFile, err)
+		if err := remove(tarFile); err != nil {
+			return fmt.Errorf("takeBackup: error removing tar file: %w", err)
 		}
-		s.logger.Infof("Cleaned up local artifact %s.", tarFile)
+		s.logger.Infof("Removed tar file %s.", tarFile)
 		return nil
 	})
+	if err := targz.Compress(backupSources, tarFile); err != nil {
+		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
+	}
 
-	s.logger.Infof("Created backup of `%s` at `%s`.", s.c.BackupSources, s.file)
+	s.logger.Infof("Created backup of `%s` at `%s`.", backupSources, tarFile)
 	return nil
 }
 
@@ -389,6 +388,14 @@ func (s *script) encryptBackup() error {
 	}
 
 	gpgFile := fmt.Sprintf("%s.gpg", s.file)
+	s.registerHook(hookLevelAlways, func(error, time.Time, string) error {
+		if err := remove(gpgFile); err != nil {
+			return fmt.Errorf("encryptBackup: error removing gpg file: %w", err)
+		}
+		s.logger.Infof("Removed GPG file %s.", gpgFile)
+		return nil
+	})
+
 	outFile, err := os.Create(gpgFile)
 	defer outFile.Close()
 	if err != nil {
@@ -413,14 +420,6 @@ func (s *script) encryptBackup() error {
 	if _, err := io.Copy(dst, src); err != nil {
 		return fmt.Errorf("encryptBackup: error writing ciphertext to file: %w", err)
 	}
-
-	s.registerHook(hookLevelAlways, func(error, time.Time, string) error {
-		if err := os.Remove(gpgFile); err != nil {
-			return fmt.Errorf("encryptBackup: error removing gpg file %s: %w", gpgFile, err)
-		}
-		s.logger.Infof("Removed local artifact %s.", gpgFile)
-		return nil
-	})
 
 	s.file = gpgFile
 	s.logger.Infof("Encrypted backup using given passphrase, saving as `%s`.", s.file)
@@ -642,6 +641,26 @@ func (s *script) must(err error) {
 		s.logger.Errorf("Fatal error running backup: %s", err)
 		panic(err)
 	}
+}
+
+// remove removes the given file or directory from disk.
+func remove(location string) error {
+	fi, err := os.Lstat(location)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("remove: error checking for existence of %s: %w", location, err)
+	}
+	if fi.IsDir() {
+		err = os.RemoveAll(location)
+	} else {
+		err = os.Remove(location)
+	}
+	if err != nil {
+		return fmt.Errorf("remove: error removing %s: %w", location, err)
+	}
+	return nil
 }
 
 // lock opens a lockfile at the given location, keeping it locked until the
