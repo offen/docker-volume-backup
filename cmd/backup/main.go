@@ -349,7 +349,6 @@ func (s *script) takeBackup() error {
 
 	if s.c.BackupFromSnapshot {
 		backupSources = filepath.Join("/tmp", s.c.BackupSources)
-		s.logger.Infof("Created snapshot of `%s` at `%s`.", s.c.BackupSources, backupSources)
 		// copy before compressing guard against a situation where backup folder's content are still growing.
 		s.registerHook(hookLevelAlways, func(error, time.Time, string) error {
 			if err := remove(backupSources); err != nil {
@@ -361,6 +360,7 @@ func (s *script) takeBackup() error {
 		if err := copy.Copy(s.c.BackupSources, backupSources, copy.Options{PreserveTimes: true}); err != nil {
 			return fmt.Errorf("takeBackup: error creating snapshot: %w", err)
 		}
+		s.logger.Infof("Created snapshot of `%s` at `%s`.", s.c.BackupSources, backupSources)
 	}
 
 	tarFile := s.file
