@@ -5,6 +5,7 @@ FROM golang:1.17-alpine as builder
 
 WORKDIR /app
 COPY go.mod go.sum ./
+RUN go mod download
 COPY cmd/backup/main.go ./cmd/backup/main.go
 RUN go build -o backup cmd/backup/main.go
 
