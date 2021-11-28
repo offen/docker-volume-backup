@@ -316,11 +316,10 @@ func (s *script) stopContainers() (func() error, error) {
 					return fmt.Errorf("stopContainersAndRun: couldn't find service with name %s", serviceName)
 				}
 				serviceMatch.Spec.TaskTemplate.ForceUpdate = 1
-				_, err := s.cli.ServiceUpdate(
+				if _, err := s.cli.ServiceUpdate(
 					context.Background(), serviceMatch.ID,
 					serviceMatch.Version, serviceMatch.Spec, types.ServiceUpdateOptions{},
-				)
-				if err != nil {
+				); err != nil {
 					restartErrors = append(restartErrors, err)
 				}
 			}
@@ -431,10 +430,9 @@ func (s *script) encryptBackup() error {
 func (s *script) copyBackup() error {
 	_, name := path.Split(s.file)
 	if s.mc != nil {
-		_, err := s.mc.FPutObject(context.Background(), s.c.AwsS3BucketName, name, s.file, minio.PutObjectOptions{
+		if _, err := s.mc.FPutObject(context.Background(), s.c.AwsS3BucketName, name, s.file, minio.PutObjectOptions{
 			ContentType: "application/tar+gzip",
-		})
-		if err != nil {
+		}); err != nil {
 			return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
 		}
 		s.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", s.file, s.c.AwsS3BucketName)
