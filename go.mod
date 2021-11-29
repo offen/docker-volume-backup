@@ -10,7 +10,7 @@ require (
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/m90/targz v0.0.0-20210904082215-2e9a4529a615
 	github.com/minio/minio-go/v7 v7.0.16
-	github.com/otiai10/copy v1.6.0
+	github.com/otiai10/copy v1.7.0
 	github.com/sirupsen/logrus v1.8.1
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 )

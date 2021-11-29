@@ -356,7 +356,10 @@ func (s *script) takeBackup() error {
 			s.logger.Infof("Removed snapshot `%s`.", backupSources)
 			return nil
 		})
-		if err := copy.Copy(s.c.BackupSources, backupSources, copy.Options{PreserveTimes: true}); err != nil {
+		if err := copy.Copy(s.c.BackupSources, backupSources, copy.Options{
+			PreserveTimes: true,
+			PreserveOwner: true,
+		}); err != nil {
 			return fmt.Errorf("takeBackup: error creating snapshot: %w", err)
 		}
 		s.logger.Infof("Created snapshot of `%s` at `%s`.", s.c.BackupSources, backupSources)
