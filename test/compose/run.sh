@@ -6,11 +6,11 @@ cd $(dirname $0)
 
 mkdir -p local
 
-docker-compose up -d
+BACKUP_UID=$(id -u) BACKUP_GID=$(id -g) docker-compose up -d
 sleep 5
 
-docker-compose exec offen ln -s /var/opt/offen/offen.db /var/opt/offen/db.link
-docker-compose exec backup backup
+BACKUP_UID=$(id -u) BACKUP_GID=$(id -g) docker-compose exec offen ln -s /var/opt/offen/offen.db /var/opt/offen/db.link
+BACKUP_UID=$(id -u) BACKUP_GID=$(id -g) docker-compose exec backup backup
 
 docker run --rm -it \
   -v compose_backup_data:/data alpine \
@@ -21,8 +21,8 @@ echo "[TEST:PASS] Found relevant files in untared remote backup."
 test -L ./local/test.latest.tar.gz.gpg
 
 owner=$(stat -c '%U:%G' ./local/test.tar.gz.gpg)
-if [ "$owner" != "1000:1000" ]; then
-  echo "[TEST:FAIL] Expected backup file to have correct owners, got $owner"
+if [ "$owner" != "$(id -un):$(id -gn)" ]; then
+  echo "[TEST:FAIL] Expected backup file to have correct owners, expected "$(id -un):$(id -gn)", got $owner"
   exit 1
 fi
 
