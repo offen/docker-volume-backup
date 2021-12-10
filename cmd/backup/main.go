@@ -105,6 +105,8 @@ type config struct {
 	BackupPruningPrefix        string        `split_words:"true"`
 	BackupStopContainerLabel   string        `split_words:"true" default:"true"`
 	BackupFromSnapshot         bool          `split_words:"true"`
+	BackupUID                  int           `split_words:"true" default:"-1"`
+	BackupGID                  int           `split_words:"true" default:"-1"`
 	AwsS3BucketName            string        `split_words:"true"`
 	AwsEndpoint                string        `split_words:"true" default:"s3.amazonaws.com"`
 	AwsEndpointProto           string        `split_words:"true" default:"https"`
@@ -442,10 +444,14 @@ func (s *script) copyBackup() error {
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
+		if err := os.Chown(s.file, s.c.BackupUID, s.c.BackupGID); err != nil {
+			return fmt.Errorf("copyBackup: error changing owner on temp file: %w", err)
+		}
 		if err := copyFile(s.file, path.Join(s.c.BackupArchive, name)); err != nil {
 			return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 		}
 		s.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", s.file, s.c.BackupArchive)
+
 		if s.c.BackupLatestSymlink != "" {
 			symlink := path.Join(s.c.BackupArchive, s.c.BackupLatestSymlink)
 			if _, err := os.Lstat(symlink); err == nil {
@@ -683,19 +689,19 @@ func lock(lockfile string) func() error {
 func copyFile(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {
-		return err
+		return fmt.Errorf("copyFile: error opening source file: %w", err)
 	}
 	defer in.Close()
 
 	out, err := os.Create(dst)
 	if err != nil {
-		return err
+		return fmt.Errorf("copyFile: error creating destination: %w", err)
 	}
 
 	_, err = io.Copy(out, in)
 	if err != nil {
 		out.Close()
-		return err
+		return fmt.Errorf("copyFile: error copying: %w", err)
 	}
 	return out.Close()
 }
