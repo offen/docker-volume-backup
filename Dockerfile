@@ -13,7 +13,7 @@ FROM alpine:3.14
 
 WORKDIR /root
 
-RUN apk add --update ca-certificates
+RUN apk add --update ca-certificates sudo
 
 COPY --from=builder /app/backup /usr/bin/backup
 

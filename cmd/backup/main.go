@@ -10,9 +10,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -447,7 +449,7 @@ func (s *script) copyBackup() error {
 		if err := os.Chown(s.file, s.c.BackupUID, s.c.BackupGID); err != nil {
 			return fmt.Errorf("copyBackup: error changing owner on temp file: %w", err)
 		}
-		if err := copyFile(s.file, path.Join(s.c.BackupArchive, name)); err != nil {
+		if err := copyFile(s.file, path.Join(s.c.BackupArchive, name), s.c.BackupGID, s.c.BackupUID); err != nil {
 			return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 		}
 		s.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", s.file, s.c.BackupArchive)
@@ -686,14 +688,14 @@ func lock(lockfile string) func() error {
 }
 
 // copy creates a copy of the file located at `dst` at `src`.
-func copyFile(src, dst string) error {
+func copyFile(src, dst string, uid, gid int) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("copyFile: error opening source file: %w", err)
 	}
 	defer in.Close()
 
-	out, err := os.Create(dst)
+	out, err := touch(dst, uid, gid)
 	if err != nil {
 		return fmt.Errorf("copyFile: error creating destination: %w", err)
 	}
@@ -704,6 +706,27 @@ func copyFile(src, dst string) error {
 		return fmt.Errorf("copyFile: error copying: %w", err)
 	}
 	return out.Close()
+}
+
+func touch(file string, uid, gid int) (*os.File, error) {
+	if uid < 1 || gid < 1 {
+		out, err := os.Create(file)
+		if err != nil {
+			return nil, fmt.Errorf("touch: error creating destination: %w", err)
+		}
+		return out, nil
+	}
+	cmd := exec.Command("sudo", "-u", fmt.Sprintf("%d", uid), "touch", file)
+
+	syscall.Umask(0077)
+
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
+
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("touch: error creating destination for owner %d:%d: %w", uid, gid, err)
+	}
+	return os.Open(file)
 }
 
 // join takes a list of errors and joins them into a single error
