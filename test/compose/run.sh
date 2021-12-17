@@ -14,12 +14,12 @@ docker-compose exec backup backup
 
 docker run --rm -it \
   -v compose_backup_data:/data alpine \
-  ash -c 'apk add gnupg && echo 1234secret | gpg -d --pinentry-mode loopback --passphrase-fd 0 --yes /data/backup/test.tar.gz.gpg > /tmp/test.tar.gz && tar -xf /tmp/test.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db'
+  ash -c 'apk add gnupg && echo 1234secret | gpg -d --pinentry-mode loopback --passphrase-fd 0 --yes /data/backup/test-hostnametoken.tar.gz.gpg > /tmp/test-hostnametoken.tar.gz && tar -xf /tmp/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db'
 
 echo "[TEST:PASS] Found relevant files in untared remote backup."
 
-test -L ./local/test.latest.tar.gz.gpg
-echo 1234secret | gpg -d --yes --passphrase-fd 0 ./local/test.tar.gz.gpg > ./local/decrypted.tar.gz
+test -L ./local/test-hostnametoken.latest.tar.gz.gpg
+echo 1234secret | gpg -d --yes --passphrase-fd 0 ./local/test-hostnametoken.tar.gz.gpg > ./local/decrypted.tar.gz
 tar -xf ./local/decrypted.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db
 rm ./local/decrypted.tar.gz
 test -L /tmp/backup/app_data/db.link

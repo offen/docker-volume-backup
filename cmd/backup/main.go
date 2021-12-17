@@ -103,6 +103,7 @@ type script struct {
 type config struct {
 	BackupSources              string        `split_words:"true" default:"/backup"`
 	BackupFilename             string        `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.tar.gz"`
+	BackupFilenameExpand       bool          `split_words:"true"`
 	BackupLatestSymlink        string        `split_words:"true"`
 	BackupArchive              string        `split_words:"true" default:"/archive"`
 	BackupRetentionDays        int32         `split_words:"true" default:"-1"`
@@ -153,6 +154,11 @@ func newScript() (*script, error) {
 	}
 
 	s.file = path.Join("/tmp", s.c.BackupFilename)
+	if s.c.BackupFilenameExpand {
+		s.file = os.ExpandEnv(s.file)
+		s.c.BackupLatestSymlink = os.ExpandEnv(s.c.BackupLatestSymlink)
+	}
+	s.file = timeutil.Strftime(&s.start, s.file)
 
 	_, err := os.Stat("/var/run/docker.sock")
 	if !os.IsNotExist(err) {
@@ -413,7 +419,6 @@ func (s *script) stopContainers() (func() error, error) {
 // takeBackup creates a tar archive of the configured backup location and
 // saves it to disk.
 func (s *script) takeBackup() error {
-	s.file = timeutil.Strftime(&s.start, s.file)
 	backupSources := s.c.BackupSources
 
 	if s.c.BackupFromSnapshot {
