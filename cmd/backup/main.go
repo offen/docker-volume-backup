@@ -44,7 +44,7 @@ func main() {
 	defer func() {
 		if pArg := recover(); pArg != nil {
 			if err, ok := pArg.(error); ok {
-				if hookErr := s.runHooks(err, hookLevelCleanup, hookLevelFailure, hookLevelAlways); hookErr != nil {
+				if hookErr := s.runHooks(err, hookLevelError); hookErr != nil {
 					s.logger.Errorf("An error occurred calling the registered hooks: %s", hookErr)
 				}
 				os.Exit(1)
@@ -52,7 +52,7 @@ func main() {
 			panic(pArg)
 		}
 
-		if err := s.runHooks(nil, hookLevelCleanup, hookLevelAlways); err != nil {
+		if err := s.runHooks(nil, hookLevelInfo); err != nil {
 			s.logger.Errorf(
 				"Backup procedure ran successfully, but an error ocurred calling the registered hooks: %v",
 				err,
@@ -115,7 +115,7 @@ type config struct {
 	AwsIamRoleEndpoint         string        `split_words:"true"`
 	GpgPassphrase              string        `split_words:"true"`
 	NotificationURLs           []string      `envconfig:"NOTIFICATION_URLS"`
-	NotificationLevel          string        `split_words:"true" default:"failure"`
+	NotificationLevel          string        `split_words:"true" default:"error"`
 	EmailNotificationRecipient string        `split_words:"true"`
 	EmailNotificationSender    string        `split_words:"true" default:"noreply@nohost"`
 	EmailSMTPHost              string        `envconfig:"EMAIL_SMTP_HOST"`
@@ -217,9 +217,9 @@ func newScript() (*script, error) {
 		)
 	}
 
-	notificationLevel := hookLevelFailure
-	if s.c.NotificationLevel == "always" {
-		notificationLevel = hookLevelAlways
+	notificationLevel, ok := notificationLevels[s.c.NotificationLevel]
+	if !ok {
+		return nil, fmt.Errorf("newScript: unknown NOTIFICATION_LEVEL %s", s.c.NotificationLevel)
 	}
 	s.registerHook(notificationLevel, s.sendNotification)
 
@@ -392,7 +392,7 @@ func (s *script) takeBackup() error {
 	if s.c.BackupFromSnapshot {
 		backupSources = filepath.Join("/tmp", s.c.BackupSources)
 		// copy before compressing guard against a situation where backup folder's content are still growing.
-		s.registerHook(hookLevelCleanup, func(error) error {
+		s.registerHook(hookLevelPlumbing, func(error) error {
 			if err := remove(backupSources); err != nil {
 				return fmt.Errorf("takeBackup: error removing snapshot: %w", err)
 			}
@@ -409,7 +409,7 @@ func (s *script) takeBackup() error {
 	}
 
 	tarFile := s.file
-	s.registerHook(hookLevelCleanup, func(error) error {
+	s.registerHook(hookLevelPlumbing, func(error) error {
 		if err := remove(tarFile); err != nil {
 			return fmt.Errorf("takeBackup: error removing tar file: %w", err)
 		}
@@ -433,7 +433,7 @@ func (s *script) encryptBackup() error {
 	}
 
 	gpgFile := fmt.Sprintf("%s.gpg", s.file)
-	s.registerHook(hookLevelCleanup, func(error) error {
+	s.registerHook(hookLevelPlumbing, func(error) error {
 		if err := remove(gpgFile); err != nil {
 			return fmt.Errorf("encryptBackup: error removing gpg file: %w", err)
 		}
@@ -660,16 +660,14 @@ func (s *script) pruneOldBackups() error {
 // runHooks runs all hooks that have been registered using the
 // given levels in the defined ordering. In case executing a hook returns an
 // error, the following hooks will still be run before the function returns.
-func (s *script) runHooks(err error, levels ...hookLevel) error {
+func (s *script) runHooks(err error, level hookLevel) error {
 	var actionErrors []error
-	for _, level := range levels {
-		for _, hook := range s.hooks {
-			if hook.level != level {
-				continue
-			}
-			if actionErr := hook.action(err); actionErr != nil {
-				actionErrors = append(actionErrors, fmt.Errorf("runHooks: error running hook: %w", actionErr))
-			}
+	for _, hook := range s.hooks {
+		if hook.level > level {
+			continue
+		}
+		if actionErr := hook.action(err); actionErr != nil {
+			actionErrors = append(actionErrors, fmt.Errorf("runHooks: error running hook: %w", actionErr))
 		}
 	}
 	if len(actionErrors) != 0 {
@@ -787,7 +785,12 @@ type hook struct {
 type hookLevel int
 
 const (
-	hookLevelFailure hookLevel = iota
-	hookLevelAlways
-	hookLevelCleanup
+	hookLevelPlumbing hookLevel = iota
+	hookLevelInfo
+	hookLevelError
 )
+
+var notificationLevels = map[string]hookLevel{
+	"info":  hookLevelInfo,
+	"error": hookLevelError,
+}

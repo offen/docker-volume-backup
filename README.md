@@ -249,10 +249,11 @@ You can populate below template according to your requirements and use it as you
 
 # NOTIFICATION_URLS=smtp://username:password@host:587/?fromAddress=sender@example.com&toAddresses=recipient@example.com
 
-# By default, notifications will only be sent out when a backup run fails.
-# To receive notifications for every run, set `NOTIFICATION_LEVEL` to `always`
+# By default, notifications will only be sent out when a backup run fails
+# (i.e. `error`). To receive notifications for every run, set
+# `NOTIFICATION_LEVEL` to `info`
 
-# NOTIFICATION_LEVEL="always"
+# NOTIFICATION_LEVEL="info"
 
 ########### EMAIL NOTIFICATIONS
 
