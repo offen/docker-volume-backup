@@ -20,6 +20,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Set the timezone the container runs in](#set-the-timezone-the-container-runs-in)
   - [Using with Docker Swarm](#using-with-docker-swarm)
   - [Manually triggering a backup](#manually-triggering-a-backup)
+  - [Update deprecated email configuration](#update-deprecated-email-configuration)
 - [Recipes](#recipes)
   - [Backing up to AWS S3](#backing-up-to-aws-s3)
   - [Backing up to MinIO](#backing-up-to-minio)
@@ -235,7 +236,26 @@ You can populate below template according to your requirements and use it as you
 
 # BACKUP_STOP_CONTAINER_LABEL="service1"
 
+########### NOTIFICATIONS ON FAILED BACKUP RUNS
+
+# In case a backup fails, notifications (email, Slack, etc.) can be sent out.
+# Configuration is provided as a comma-separated list of URLs as consumed
+# by `shoutrrr`: https://containrrr.dev/shoutrrr/v0.5/services/overview/
+# When providing multiple URLs or an URL that contains a comma, the values
+# can be URL encoded to avoid ambiguities.
+
+# The below URL demonstrates how to send an email using the provided SMTP
+# configuration and credentials.
+
+# NOTIFICATION_URLS=smtp://username:password@host:587/?fromAddress=sender@example.com&toAddresses=recipient@example.com
+
 ########### EMAIL NOTIFICATIONS ON FAILED BACKUP RUNS
+
+# ************************************************************************
+# Providing notification configuration like this has been deprecated
+# and will be removed in the next major version. Please use NOTIFICATION_ULRS
+# as documented above instead.
+# ************************************************************************
 
 # In case SMTP credentials are provided, notification emails can be sent out on
 # failed backup runs. These emails will contain the start time, the error
@@ -329,11 +349,7 @@ services:
     image: offen/docker-volume-backup:latest
     environment:
       # ... other configuration values go here
-      EMAIL_SMTP_HOST: "smtp.example.com"
-      EMAIL_SMTP_PASSWORD: "password"
-      EMAIL_SMTP_USERNAME: "username"
-      EMAIL_NOTIFICATION_SENDER: "noreply@example.com"
-      EMAIL_NOTIFICATION_RECIPIENT: "notifications@example.com"
+      NOTIFICATION_URLS=smtp://me:secret@smtp.example.com:587/?fromAddress=no-reply@example.com&toAddresses=you@example.com
 ```
 
 ### Encrypting your backup using GPG
@@ -414,6 +430,26 @@ You can manually trigger a backup run outside of the defined cron schedule by ex
 
 ```
 docker exec <container_ref> backup
+```
+
+### Update deprecated email configuration
+
+Starting with version 2.6.0, configuring email notifications using `EMAIL_*` keys has been deprecated.
+Instead of providing multiple values using multiple keys, you can now provide a single URL for `NOTIFICATION_URLS`.
+
+Before:
+```ini
+EMAIL_NOTIFICATION_RECIPIENT="you@example.com"
+EMAIL_NOTIFICATION_SENDER="no-reply@example.com"
+EMAIL_SMTP_HOST="posteo.de"
+EMAIL_SMTP_PASSWORD="secret"
+EMAIL_SMTP_USERNAME="me"
+EMAIL_SMTP_PORT="587"
+```
+
+After:
+```ini
+NOTIFICATION_URLS=smtp://me:secret@posteo.de:587/?fromAddress=no-reply@example.com&toAddresses=you@example.com
 ```
 
 ## Recipes
