@@ -236,9 +236,9 @@ You can populate below template according to your requirements and use it as you
 
 # BACKUP_STOP_CONTAINER_LABEL="service1"
 
-########### NOTIFICATIONS ON FAILED BACKUP RUNS
+########### NOTIFICATIONS
 
-# In case a backup fails, notifications (email, Slack, etc.) can be sent out.
+# Notifications (email, Slack, etc.) can be sent out when a backup run finishes.
 # Configuration is provided as a comma-separated list of URLs as consumed
 # by `shoutrrr`: https://containrrr.dev/shoutrrr/v0.5/services/overview/
 # When providing multiple URLs or an URL that contains a comma, the values
@@ -249,17 +249,22 @@ You can populate below template according to your requirements and use it as you
 
 # NOTIFICATION_URLS=smtp://username:password@host:587/?fromAddress=sender@example.com&toAddresses=recipient@example.com
 
-########### EMAIL NOTIFICATIONS ON FAILED BACKUP RUNS
+# By default, notifications will only be sent out when a backup run fails.
+# To receive notifications for every run, set `NOTIFICATION_LEVEL` to `always`
+
+# NOTIFICATION_LEVEL="always"
+
+########### EMAIL NOTIFICATIONS
 
 # ************************************************************************
 # Providing notification configuration like this has been deprecated
-# and will be removed in the next major version. Please use NOTIFICATION_ULRS
+# and will be removed in the next major version. Please use NOTIFICATION_URLS
 # as documented above instead.
 # ************************************************************************
 
-# In case SMTP credentials are provided, notification emails can be sent out on
-# failed backup runs. These emails will contain the start time, the error
-# message and all log output prior to the failure.
+# In case SMTP credentials are provided, notification emails can be sent out when
+# a backup run finished. These emails will contain the start time, the error
+# message on failure and all prior log output.
 
 # The recipient(s) of the notification. Supply a comma separated list
 # of adresses if you want to notify multiple recipients. If this is

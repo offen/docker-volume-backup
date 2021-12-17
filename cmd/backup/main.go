@@ -44,7 +44,7 @@ func main() {
 	defer func() {
 		if pArg := recover(); pArg != nil {
 			if err, ok := pArg.(error); ok {
-				if hookErr := s.runHooks(err, hookLevelCleanup, hookLevelFailure); hookErr != nil {
+				if hookErr := s.runHooks(err, hookLevelCleanup, hookLevelFailure, hookLevelAlways); hookErr != nil {
 					s.logger.Errorf("An error occurred calling the registered hooks: %s", hookErr)
 				}
 				os.Exit(1)
@@ -52,7 +52,7 @@ func main() {
 			panic(pArg)
 		}
 
-		if err := s.runHooks(nil, hookLevelCleanup); err != nil {
+		if err := s.runHooks(nil, hookLevelCleanup, hookLevelAlways); err != nil {
 			s.logger.Errorf(
 				"Backup procedure ran successfully, but an error ocurred calling the registered hooks: %v",
 				err,
@@ -115,6 +115,7 @@ type config struct {
 	AwsIamRoleEndpoint         string        `split_words:"true"`
 	GpgPassphrase              string        `split_words:"true"`
 	NotificationURLs           []string      `envconfig:"NOTIFICATION_URLS"`
+	NotificationLevel          string        `split_words:"true" default:"failure"`
 	EmailNotificationRecipient string        `split_words:"true"`
 	EmailNotificationSender    string        `split_words:"true" default:"noreply@nohost"`
 	EmailSMTPHost              string        `envconfig:"EMAIL_SMTP_HOST"`
@@ -208,38 +209,19 @@ func newScript() (*script, error) {
 			s.c.EmailNotificationRecipient,
 		)
 		s.c.NotificationURLs = append(s.c.NotificationURLs, emailURL)
-		s.logger.Warn("Using EMAIL_* keys for providing notification configuration has been deprecated and will be removed in the next major version.")
-		s.logger.Warn("Please use NOTIFICATION_URLS instead. Refer to the README for an upgrade guide.")
+		s.logger.Warn(
+			"Using EMAIL_* keys for providing notification configuration has been deprecated and will be removed in the next major version.",
+		)
+		s.logger.Warn(
+			"Please use NOTIFICATION_URLS instead. Refer to the README for an upgrade guide.",
+		)
 	}
 
-	if len(s.c.NotificationURLs) > 0 {
-		s.hooks = append(s.hooks, hook{hookLevelFailure, func(err error, start time.Time, logOutput string) error {
-			sender, senderErr := shoutrrr.CreateSender(s.c.NotificationURLs...)
-			if senderErr != nil {
-				return fmt.Errorf("notifications: error creating sender: %w", senderErr)
-			}
-			body := fmt.Sprintf(
-				"Running docker-volume-backup failed with error: %s\n\nLog output of the failed run was:\n\n%s\n", err, logOutput,
-			)
-
-			results := sender.Send(body, &sTypes.Params{
-				"title": fmt.Sprintf(
-					"Failure running docker-volume-backup at %s", start.Format(time.RFC3339),
-				),
-			})
-
-			var errs []error
-			for _, result := range results {
-				if result != nil {
-					errs = append(errs, result)
-				}
-			}
-			if len(errs) != 0 {
-				return fmt.Errorf("notifications: error sending message: %w", join(errs...))
-			}
-			return nil
-		}})
+	notificationLevel := hookLevelFailure
+	if s.c.NotificationLevel == "always" {
+		notificationLevel = hookLevelAlways
 	}
+	s.registerHook(notificationLevel, s.sendNotification)
 
 	return s, nil
 }
@@ -247,8 +229,45 @@ func newScript() (*script, error) {
 var noop = func() error { return nil }
 
 // registerHook adds the given action at the given level.
-func (s *script) registerHook(level hookLevel, action func(err error, start time.Time, logOutput string) error) {
+func (s *script) registerHook(level hookLevel, action func(err error) error) {
 	s.hooks = append(s.hooks, hook{level, action})
+}
+
+// sendNotification sends a notification to third party services, containing
+// information about the result of a backup run
+func (s *script) sendNotification(err error) error {
+	if len(s.c.NotificationURLs) == 0 {
+		return nil
+	}
+
+	sender, senderErr := shoutrrr.CreateSender(s.c.NotificationURLs...)
+	if senderErr != nil {
+		return fmt.Errorf("notifications: error creating sender: %w", senderErr)
+	}
+
+	var body, title string
+	if err != nil {
+		body = fmt.Sprintf(
+			"Running docker-volume-backup failed with error: %s\n\nLog output of the failed run was:\n\n%s\n", err, s.output.String(),
+		)
+		title = fmt.Sprintf("Failure running docker-volume-backup at %s", s.start.Format(time.RFC3339))
+	} else {
+		body = fmt.Sprintf(
+			"Running docker-volume-backup succeeded.\n\nLog output was:\n\n%s\n", s.output.String(),
+		)
+		title = fmt.Sprintf("Success running docker-volume-backup at %s", s.start.Format(time.RFC3339))
+	}
+
+	var errs []error
+	for _, result := range sender.Send(body, &sTypes.Params{"title": title}) {
+		if result != nil {
+			errs = append(errs, result)
+		}
+	}
+	if len(errs) != 0 {
+		return fmt.Errorf("notifications: error sending message: %w", join(errs...))
+	}
+	return nil
 }
 
 // stopContainers stops all Docker containers that are marked as to being
@@ -373,7 +392,7 @@ func (s *script) takeBackup() error {
 	if s.c.BackupFromSnapshot {
 		backupSources = filepath.Join("/tmp", s.c.BackupSources)
 		// copy before compressing guard against a situation where backup folder's content are still growing.
-		s.registerHook(hookLevelCleanup, func(error, time.Time, string) error {
+		s.registerHook(hookLevelCleanup, func(error) error {
 			if err := remove(backupSources); err != nil {
 				return fmt.Errorf("takeBackup: error removing snapshot: %w", err)
 			}
@@ -390,7 +409,7 @@ func (s *script) takeBackup() error {
 	}
 
 	tarFile := s.file
-	s.registerHook(hookLevelCleanup, func(error, time.Time, string) error {
+	s.registerHook(hookLevelCleanup, func(error) error {
 		if err := remove(tarFile); err != nil {
 			return fmt.Errorf("takeBackup: error removing tar file: %w", err)
 		}
@@ -414,7 +433,7 @@ func (s *script) encryptBackup() error {
 	}
 
 	gpgFile := fmt.Sprintf("%s.gpg", s.file)
-	s.registerHook(hookLevelCleanup, func(error, time.Time, string) error {
+	s.registerHook(hookLevelCleanup, func(error) error {
 		if err := remove(gpgFile); err != nil {
 			return fmt.Errorf("encryptBackup: error removing gpg file: %w", err)
 		}
@@ -648,7 +667,7 @@ func (s *script) runHooks(err error, levels ...hookLevel) error {
 			if hook.level != level {
 				continue
 			}
-			if actionErr := hook.action(err, s.start, s.output.String()); actionErr != nil {
+			if actionErr := hook.action(err); actionErr != nil {
 				actionErrors = append(actionErrors, fmt.Errorf("runHooks: error running hook: %w", actionErr))
 			}
 		}
@@ -762,12 +781,13 @@ func (b *bufferingWriter) Write(p []byte) (n int, err error) {
 // reaches a certain point (e.g. unsuccessful backup)
 type hook struct {
 	level  hookLevel
-	action func(err error, start time.Time, logOutput string) error
+	action func(err error) error
 }
 
 type hookLevel int
 
 const (
 	hookLevelFailure hookLevel = iota
+	hookLevelAlways
 	hookLevelCleanup
 )
