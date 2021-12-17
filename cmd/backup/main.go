@@ -15,11 +15,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/containrrr/shoutrrr"
+	sTypes "github.com/containrrr/shoutrrr/pkg/types"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
-	"github.com/go-gomail/gomail"
 	"github.com/gofrs/flock"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
@@ -113,6 +114,7 @@ type config struct {
 	AwsSecretAccessKey         string        `split_words:"true"`
 	AwsIamRoleEndpoint         string        `split_words:"true"`
 	GpgPassphrase              string        `split_words:"true"`
+	NotificationURLs           []string      `envconfig:"NOTIFICATION_URLS"`
 	EmailNotificationRecipient string        `split_words:"true"`
 	EmailNotificationSender    string        `split_words:"true" default:"noreply@nohost"`
 	EmailSMTPHost              string        `envconfig:"EMAIL_SMTP_HOST"`
@@ -196,24 +198,46 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.EmailNotificationRecipient != "" {
-		s.hooks = append(s.hooks, hook{hookLevelFailure, func(err error, start time.Time, logOutput string) error {
-			mailer := gomail.NewDialer(
-				s.c.EmailSMTPHost, s.c.EmailSMTPPort, s.c.EmailSMTPUsername, s.c.EmailSMTPPassword,
-			)
+		emailURL := fmt.Sprintf(
+			"smtp://%s:%s@%s:%d/?from=%s&to=%s",
+			s.c.EmailSMTPUsername,
+			s.c.EmailSMTPPassword,
+			s.c.EmailSMTPHost,
+			s.c.EmailSMTPPort,
+			s.c.EmailNotificationSender,
+			s.c.EmailNotificationRecipient,
+		)
+		s.c.NotificationURLs = append(s.c.NotificationURLs, emailURL)
+		s.logger.Warn("Using EMAIL_* keys for providing notification configuration has been deprecated and will be removed in the next major version.")
+		s.logger.Warn("Please use NOTIFICATION_URLS instead. Refer to the README for an upgrade guide.")
+	}
 
-			subject := fmt.Sprintf(
-				"Failure running docker-volume-backup at %s", start.Format(time.RFC3339),
-			)
+	if len(s.c.NotificationURLs) > 0 {
+		s.hooks = append(s.hooks, hook{hookLevelFailure, func(err error, start time.Time, logOutput string) error {
+			sender, senderErr := shoutrrr.CreateSender(s.c.NotificationURLs...)
+			if senderErr != nil {
+				return fmt.Errorf("notifications: error creating sender: %w", senderErr)
+			}
 			body := fmt.Sprintf(
 				"Running docker-volume-backup failed with error: %s\n\nLog output of the failed run was:\n\n%s\n", err, logOutput,
 			)
 
-			message := gomail.NewMessage()
-			message.SetHeader("From", s.c.EmailNotificationSender)
-			message.SetHeader("To", s.c.EmailNotificationRecipient)
-			message.SetHeader("Subject", subject)
-			message.SetBody("text/plain", body)
-			return mailer.DialAndSend(message)
+			results := sender.Send(body, &sTypes.Params{
+				"title": fmt.Sprintf(
+					"Failure running docker-volume-backup at %s", start.Format(time.RFC3339),
+				),
+			})
+
+			var errs []error
+			for _, result := range results {
+				if result != nil {
+					errs = append(errs, result)
+				}
+			}
+			if len(errs) != 0 {
+				return fmt.Errorf("notifications: error sending message: %w", join(errs...))
+			}
+			return nil
 		}})
 	}
 
