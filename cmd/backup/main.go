@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -661,6 +662,9 @@ func (s *script) pruneOldBackups() error {
 // given levels in the defined ordering. In case executing a hook returns an
 // error, the following hooks will still be run before the function returns.
 func (s *script) runHooks(err error, level hookLevel) error {
+	sort.SliceStable(s.hooks, func(i, j int) bool {
+		return s.hooks[i].level < s.hooks[j].level
+	})
 	var actionErrors []error
 	for _, hook := range s.hooks {
 		if hook.level > level {
