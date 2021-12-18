@@ -249,11 +249,11 @@ You can populate below template according to your requirements and use it as you
 
 # NOTIFICATION_URLS=smtp://username:password@host:587/?fromAddress=sender@example.com&toAddresses=recipient@example.com
 
-# By default, notifications will only be sent out when a backup run fails
-# (i.e. `error`). To receive notifications for every run, set
-# `NOTIFICATION_LEVEL` to `info`
+# By default, notifications would only be sent out when a backup run fails
+# To receive notifications for every run, set `NOTIFICATION_LEVEL` to `info`
+# instead of the default `error`.
 
-# NOTIFICATION_LEVEL="info"
+# NOTIFICATION_LEVEL="error"
 
 ########### EMAIL NOTIFICATIONS
 
@@ -357,6 +357,12 @@ services:
       # ... other configuration values go here
       NOTIFICATION_URLS=smtp://me:secret@smtp.example.com:587/?fromAddress=no-reply@example.com&toAddresses=you@example.com
 ```
+
+Notification backends other than email are also supported.
+Refer to the documentation of [shoutrrr][shoutrrr-docs] to find out about options and configuration.
+
+[shoutrrr-docs]: https://containrrr.dev/shoutrrr/v0.5/services/overview/
+
 
 ### Encrypting your backup using GPG
 
