@@ -286,6 +286,11 @@ You can populate below template according to your requirements and use it as you
 # EMAIL_SMTP_PORT="<port>"
 ```
 
+In case you encouter double quoted values in your configuration you might be running an [older version of `docker-compose`].
+You can work around this by either updating `docker-compose` or unquoting your configuration values.
+
+[compose-issue]: https://github.com/docker/compose/issues/2854
+
 ## How to
 
 ### Stopping containers during backup
