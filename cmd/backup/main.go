@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/containrrr/shoutrrr"
+	"github.com/containrrr/shoutrrr/pkg/router"
 	sTypes "github.com/containrrr/shoutrrr/pkg/types"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -45,7 +46,7 @@ func main() {
 	defer func() {
 		if pArg := recover(); pArg != nil {
 			if err, ok := pArg.(error); ok {
-				if hookErr := s.runHooks(err, hookLevelError); hookErr != nil {
+				if hookErr := s.runHooks(err); hookErr != nil {
 					s.logger.Errorf("An error occurred calling the registered hooks: %s", hookErr)
 				}
 				os.Exit(1)
@@ -53,7 +54,7 @@ func main() {
 			panic(pArg)
 		}
 
-		if err := s.runHooks(nil, hookLevelInfo); err != nil {
+		if err := s.runHooks(nil); err != nil {
 			s.logger.Errorf(
 				"Backup procedure ran successfully, but an error ocurred calling the registered hooks: %v",
 				err,
@@ -85,10 +86,12 @@ func main() {
 // script holds all the stateful information required to orchestrate a
 // single backup run.
 type script struct {
-	cli    *client.Client
-	mc     *minio.Client
-	logger *logrus.Logger
-	hooks  []hook
+	cli       *client.Client
+	mc        *minio.Client
+	logger    *logrus.Logger
+	sender    *router.ServiceRouter
+	hooks     []hook
+	hookLevel hookLevel
 
 	start  time.Time
 	file   string
@@ -218,11 +221,33 @@ func newScript() (*script, error) {
 		)
 	}
 
-	notificationLevel, ok := notificationLevels[s.c.NotificationLevel]
+	hookLevel, ok := hookLevels[s.c.NotificationLevel]
 	if !ok {
 		return nil, fmt.Errorf("newScript: unknown NOTIFICATION_LEVEL %s", s.c.NotificationLevel)
 	}
-	s.registerHook(notificationLevel, s.sendNotification)
+	s.hookLevel = hookLevel
+
+	if len(s.c.NotificationURLs) > 0 {
+		sender, senderErr := shoutrrr.CreateSender(s.c.NotificationURLs...)
+		if senderErr != nil {
+			return nil, fmt.Errorf("newScript: error creating sender: %w", senderErr)
+		}
+		s.sender = sender
+		// To prevent duplicate notifications, ensure the regsistered callbacks
+		// run mutually exclusive.
+		s.registerHook(hookLevelError, func(err error) error {
+			if err == nil {
+				return nil
+			}
+			return s.notifyFailure(err)
+		})
+		s.registerHook(hookLevelInfo, func(err error) error {
+			if err != nil {
+				return nil
+			}
+			return s.notifySuccess()
+		})
+	}
 
 	return s, nil
 }
@@ -234,39 +259,40 @@ func (s *script) registerHook(level hookLevel, action func(err error) error) {
 	s.hooks = append(s.hooks, hook{level, action})
 }
 
-// sendNotification sends a notification to third party services, containing
-// information about the result of a backup run
-func (s *script) sendNotification(err error) error {
-	if len(s.c.NotificationURLs) == 0 {
-		return nil
+// notifyFailure sends a notification about a failed backup run
+func (s *script) notifyFailure(err error) error {
+	body := fmt.Sprintf(
+		"Running docker-volume-backup failed with error: %s\n\nLog output of the failed run was:\n\n%s\n", err, s.output.String(),
+	)
+	title := fmt.Sprintf("Failure running docker-volume-backup at %s", s.start.Format(time.RFC3339))
+	if err := s.sendNotification(title, body); err != nil {
+		return fmt.Errorf("notifyFailure: error notifying: %w", err)
 	}
+	return nil
+}
 
-	sender, senderErr := shoutrrr.CreateSender(s.c.NotificationURLs...)
-	if senderErr != nil {
-		return fmt.Errorf("notifications: error creating sender: %w", senderErr)
+// notifyFailure sends a notification about a successful backup run
+func (s *script) notifySuccess() error {
+	title := fmt.Sprintf("Success running docker-volume-backup at %s", s.start.Format(time.RFC3339))
+	body := fmt.Sprintf(
+		"Running docker-volume-backup succeeded.\n\nLog output was:\n\n%s\n", s.output.String(),
+	)
+	if err := s.sendNotification(title, body); err != nil {
+		return fmt.Errorf("notifySuccess: error notifying: %w", err)
 	}
+	return nil
+}
 
-	var body, title string
-	if err != nil {
-		body = fmt.Sprintf(
-			"Running docker-volume-backup failed with error: %s\n\nLog output of the failed run was:\n\n%s\n", err, s.output.String(),
-		)
-		title = fmt.Sprintf("Failure running docker-volume-backup at %s", s.start.Format(time.RFC3339))
-	} else {
-		body = fmt.Sprintf(
-			"Running docker-volume-backup succeeded.\n\nLog output was:\n\n%s\n", s.output.String(),
-		)
-		title = fmt.Sprintf("Success running docker-volume-backup at %s", s.start.Format(time.RFC3339))
-	}
-
+// sendNotification sends a notification to all configured third party services
+func (s *script) sendNotification(title, body string) error {
 	var errs []error
-	for _, result := range sender.Send(body, &sTypes.Params{"title": title}) {
+	for _, result := range s.sender.Send(body, &sTypes.Params{"title": title}) {
 		if result != nil {
 			errs = append(errs, result)
 		}
 	}
 	if len(errs) != 0 {
-		return fmt.Errorf("notifications: error sending message: %w", join(errs...))
+		return fmt.Errorf("sendNotification: error sending message: %w", join(errs...))
 	}
 	return nil
 }
@@ -661,13 +687,13 @@ func (s *script) pruneOldBackups() error {
 // runHooks runs all hooks that have been registered using the
 // given levels in the defined ordering. In case executing a hook returns an
 // error, the following hooks will still be run before the function returns.
-func (s *script) runHooks(err error, level hookLevel) error {
+func (s *script) runHooks(err error) error {
 	sort.SliceStable(s.hooks, func(i, j int) bool {
 		return s.hooks[i].level < s.hooks[j].level
 	})
 	var actionErrors []error
 	for _, hook := range s.hooks {
-		if hook.level > level {
+		if hook.level > s.hookLevel {
 			continue
 		}
 		if actionErr := hook.action(err); actionErr != nil {
@@ -790,11 +816,11 @@ type hookLevel int
 
 const (
 	hookLevelPlumbing hookLevel = iota
-	hookLevelInfo
 	hookLevelError
+	hookLevelInfo
 )
 
-var notificationLevels = map[string]hookLevel{
+var hookLevels = map[string]hookLevel{
 	"info":  hookLevelInfo,
 	"error": hookLevelError,
 }
