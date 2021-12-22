@@ -14,6 +14,7 @@ services:
 
   backup: &default_backup_service
     image: offen/docker-volume-backup:${TEST_VERSION}
+    hostname: hostnametoken
     depends_on:
       - minio
     restart: always
@@ -23,8 +24,9 @@ services:
       AWS_ENDPOINT: minio:9000
       AWS_ENDPOINT_PROTO: http
       AWS_S3_BUCKET_NAME: backup
-      BACKUP_FILENAME: test.tar.gz
-      BACKUP_LATEST_SYMLINK: test.latest.tar.gz.gpg
+      BACKUP_FILENAME_EXPAND: 'true'
+      BACKUP_FILENAME: test-$$HOSTNAME.tar.gz
+      BACKUP_LATEST_SYMLINK: test-$$HOSTNAME.latest.tar.gz.gpg
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
       BACKUP_PRUNING_LEEWAY: 5s

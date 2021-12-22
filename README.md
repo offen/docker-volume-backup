@@ -122,6 +122,16 @@ You can populate below template according to your requirements and use it as you
 
 # BACKUP_FILENAME="backup-%Y-%m-%dT%H-%M-%S.tar.gz"
 
+# Setting BACKUP_FILENAME_EXPAND to true allows for environment variable
+# placeholders in BACKUP_FILENAME and in BACKUP_LATEST_SYMLINK that will get
+# expanded at runtime, e.g. `backup-$HOSTNAME-%Y-%m-%dT%H-%M-%S.tar.gz`.
+# Expansion happens before interpolating strftime tokens.
+# It is disabled by default.
+# Please note that you will need to escape the `$` when providing the value
+# in a docker-compose.yml file, i.e. using $$VAR instead of $VAR.
+
+# BACKUP_FILENAME_TEMPLATE="true"
+
 # When storing local backups, a symlink to the latest backup can be created
 # in case a value is given for this key. This has no effect on remote backups.
 
