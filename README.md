@@ -123,10 +123,10 @@ You can populate below template according to your requirements and use it as you
 # BACKUP_FILENAME="backup-%Y-%m-%dT%H-%M-%S.tar.gz"
 
 # Setting BACKUP_FILENAME_EXPAND to true allows for environment variable
-# placeholders in BACKUP_FILENAME and in BACKUP_LATEST_SYMLINK that will get
-# expanded at runtime, e.g. `backup-$HOSTNAME-%Y-%m-%dT%H-%M-%S.tar.gz`.
-# Expansion happens before interpolating strftime tokens.
-# It is disabled by default.
+# placeholders in BACKUP_FILENAME, BACKUP_LATEST_SYMLINK and in
+# BACKUP_PRUNING_PREFIX that will get expanded at runtime,
+# e.g. `backup-$HOSTNAME-%Y-%m-%dT%H-%M-%S.tar.gz`. Expansion happens before
+# interpolating strftime tokens. It is disabled by default.
 # Please note that you will need to escape the `$` when providing the value
 # in a docker-compose.yml file, i.e. using $$VAR instead of $VAR.
 

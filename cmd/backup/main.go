@@ -157,6 +157,7 @@ func newScript() (*script, error) {
 	if s.c.BackupFilenameExpand {
 		s.file = os.ExpandEnv(s.file)
 		s.c.BackupLatestSymlink = os.ExpandEnv(s.c.BackupLatestSymlink)
+		s.c.BackupPruningPrefix = os.ExpandEnv(s.c.BackupPruningPrefix)
 	}
 	s.file = timeutil.Strftime(&s.start, s.file)
 
