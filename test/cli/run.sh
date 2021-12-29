@@ -7,6 +7,7 @@ cd $(dirname $0)
 docker network create test_network
 docker volume create backup_data
 docker volume create app_data
+docker volume create empty_data
 
 docker run -d \
   --name minio \
@@ -31,6 +32,7 @@ sleep 10
 docker run --rm \
   --network test_network \
   -v app_data:/backup/app_data \
+  -v empty_data:/backup/empty_data \
   -v /var/run/docker.sock:/var/run/docker.sock \
   --env AWS_ACCESS_KEY_ID=test \
   --env AWS_SECRET_ACCESS_KEY=GMusLtUmILge2by+z890kQ \
@@ -44,7 +46,7 @@ docker run --rm \
 
 docker run --rm -it \
   -v backup_data:/data alpine \
-  ash -c 'tar -xvf /data/backup/test.tar.gz && test -f /backup/app_data/offen.db'
+  ash -c 'tar -xvf /data/backup/test.tar.gz && test -f /backup/app_data/offen.db && test -d /backup/empty_data'
 
 echo "[TEST:PASS] Found relevant files in untared backup."
 
