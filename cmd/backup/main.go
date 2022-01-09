@@ -32,6 +32,7 @@ import (
 	"github.com/otiai10/copy"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/openpgp"
+	"github.com/studio-b12/gowebdav"
 )
 
 func main() {
