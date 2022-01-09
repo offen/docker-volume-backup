@@ -87,12 +87,13 @@ func main() {
 // script holds all the stateful information required to orchestrate a
 // single backup run.
 type script struct {
-	cli       *client.Client
-	mc        *minio.Client
-	logger    *logrus.Logger
-	sender    *router.ServiceRouter
-	hooks     []hook
-	hookLevel hookLevel
+	cli           *client.Client
+	mc            *minio.Client
+	webdavClient  *gowebdav.Client
+	logger        *logrus.Logger
+	sender        *router.ServiceRouter
+	hooks         []hook
+	hookLevel     hookLevel
 
 	start  time.Time
 	file   string
@@ -128,6 +129,10 @@ type config struct {
 	EmailSMTPPort              int           `envconfig:"EMAIL_SMTP_PORT" default:"587"`
 	EmailSMTPUsername          string        `envconfig:"EMAIL_SMTP_USERNAME"`
 	EmailSMTPPassword          string        `envconfig:"EMAIL_SMTP_PASSWORD"`
+	WebdavUrl                  string        `envconfig:"WEBDAV_URL"`
+	WebdavDirectory            string        `envconfig:"WEBDAV_DIRECTORY" default:"/"`
+	WebdavUsername             string        `envconfig:"WEBDAV_USERNAME"`
+	WebdavPassword             string        `envconfig:"WEBDAV_PASSWORD"`
 }
 
 var msgBackupFailed = "backup run failed"
@@ -208,6 +213,21 @@ func newScript() (*script, error) {
 			return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
 		}
 		s.mc = mc
+	}
+
+	// WebDav check for env variables
+	// WebDav instanciate client
+	if s.c.WebdavUrl != "" {
+		if s.c.WebdavDirectory == "" {
+			return nil, errors.New("newScript: no Directory inside WebDav is provided")
+		} else if s.c.WebdavUsername != "" && s.c.WebdavPassword != "" {
+			webdavClient := gowebdav.NewClient(s.c.WebdavUrl, s.c.WebdavUsername, s.c.WebdavPassword)
+			s.webdavClient = webdavClient
+		} else {
+			return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
+		}
+	} else {
+		return nil, errors.New("newScript: WEBDAV_URL is not provided")
 	}
 
 	if s.c.EmailNotificationRecipient != "" {
