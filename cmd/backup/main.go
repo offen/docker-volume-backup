@@ -224,8 +224,6 @@ func newScript() (*script, error) {
 		} else {
 			return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
 		}
-	} else {
-		return nil, errors.New("newScript: WEBDAV_URL is not provided")
 	}
 
 	if s.c.EmailNotificationRecipient != "" {
