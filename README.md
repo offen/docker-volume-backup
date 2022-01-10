@@ -7,7 +7,7 @@
 Backup Docker volumes locally or to any S3 compatible storage.
 
 The [offen/docker-volume-backup](https://hub.docker.com/r/offen/docker-volume-backup) Docker image can be used as a lightweight (below 15MB) sidecar container to an existing Docker setup.
-It handles __recurring or one-off backups of Docker volumes__ to a __local directory__ or __any S3 compatible storage__ (or both), and __rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__ and __sending notifications for failed backup runs__.
+It handles __recurring or one-off backups of Docker volumes__ to a __local directory__, __any S3 compatible storage__ or __any WebDav compatibel storage__ (or all), and __rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__ and __sending notifications for failed backup runs__.
 
 <!-- MarkdownTOC -->
 
@@ -28,6 +28,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
 - [Recipes](#recipes)
   - [Backing up to AWS S3](#backing-up-to-aws-s3)
   - [Backing up to MinIO](#backing-up-to-minio)
+  - [Backing up to WebDav](#backing-up-to-webdav)
   - [Backing up locally](#backing-up-locally)
   - [Backing up to AWS S3 as well as locally](#backing-up-to-aws-s3-as-well-as-locally)
   - [Running on a custom cron schedule](#running-on-a-custom-cron-schedule)
@@ -188,6 +189,23 @@ You can populate below template according to your requirements and use it as you
 # when AWS_ENDPOINT_PROTO is set to `https`.
 
 # AWS_ENDPOINT_INSECURE="true"
+
+# In addition, you can also backup files to any WebDav server.
+# The URL of the remote WebDav server
+
+# WEBDAV_URL="https://webdav.example.com"
+
+# The Directory to place the backups to on the WebDav server
+
+ # WEBDAV_DIRECTORY="/my/directory/"
+
+# The username for the WebDav server
+
+# WEBDAV_USERNAME="user"
+
+# The password for the WebDav server
+
+# WEBDAV_PASSWORD="password"
 
 # In addition to storing backups remotely, you can also keep local copies.
 # Pass a container-local path to store your backups if needed. You also need to
@@ -522,6 +540,28 @@ services:
       AWS_BUCKET_NAME: backup-bucket
       AWS_ACCESS_KEY_ID: MINIOACCESSKEY
       AWS_SECRET_ACCESS_KEY: MINIOSECRETKEY
+    volumes:
+      - data:/backup/my-app-backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  data:
+```
+
+### Backing up to WebDav
+
+```yml
+version: '3'
+
+services:
+  # ... define other services using the `data` volume here
+  backup:
+    image: offen/docker-volume-backup:latest
+    environment:
+      WEBDAV_URL: https://webdav.mydomain.me
+      WEBDAV_DIRECTORY: /my/directory/
+      WEBDAV_USERNAME: user
+      WEBDAV_PASSWORD: password
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
