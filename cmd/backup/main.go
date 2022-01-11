@@ -215,8 +215,8 @@ func newScript() (*script, error) {
 		s.mc = mc
 	}
 
-	// WebDav check for env variables
-	// WebDav instanciate client
+	// WebDAV check for env variables
+	// WebDAV instanciate client
 	if s.c.WebdavUrl != "" {
 		if s.c.WebdavUsername != "" && s.c.WebdavPassword != "" {
 			webdavClient := gowebdav.NewClient(s.c.WebdavUrl, s.c.WebdavUsername, s.c.WebdavPassword)
@@ -534,14 +534,14 @@ func (s *script) copyBackup() error {
 		s.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", s.file, s.c.AwsS3BucketName)
 	}
 
-	// WebDav file upload
+	// WebDAV file upload
 	if s.webdavClient != nil {
 		if bytes, err := os.ReadFile(s.file); err != nil {
 			return fmt.Errorf("copyBackup: error reading the file to be uploaded: %w", err)
 		} else if err := s.webdavClient.Write(filepath.Join(s.c.WebdavDirectory, name), bytes, 0644); err != nil {
-			return fmt.Errorf("copyBackup: error uploading the file to WebDav server: %w", err)
+			return fmt.Errorf("copyBackup: error uploading the file to WebDAV server: %w", err)
 		}
-		s.logger.Infof("Uploaded a copy of backup `%s` to WebDav '%s'.", s.file, filepath.Join(s.c.WebdavUrl, s.c.WebdavDirectory, name))
+		s.logger.Infof("Uploaded a copy of backup `%s` to WebDAV '%s'.", s.file, filepath.Join(s.c.WebdavUrl, s.c.WebdavDirectory, name))
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {

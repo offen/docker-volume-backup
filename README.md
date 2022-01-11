@@ -28,7 +28,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
 - [Recipes](#recipes)
   - [Backing up to AWS S3](#backing-up-to-aws-s3)
   - [Backing up to MinIO](#backing-up-to-minio)
-  - [Backing up to WebDav](#backing-up-to-webdav)
+  - [Backing up to WebDAV](#backing-up-to-webdav)
   - [Backing up locally](#backing-up-locally)
   - [Backing up to AWS S3 as well as locally](#backing-up-to-aws-s3-as-well-as-locally)
   - [Running on a custom cron schedule](#running-on-a-custom-cron-schedule)
@@ -190,20 +190,20 @@ You can populate below template according to your requirements and use it as you
 
 # AWS_ENDPOINT_INSECURE="true"
 
-# In addition, you can also backup files to any WebDav server.
-# The URL of the remote WebDav server
+# In addition, you can also backup files to any WebDAV server.
+# The URL of the remote WebDAV server
 
 # WEBDAV_URL="https://webdav.example.com"
 
-# The Directory to place the backups to on the WebDav server
+# The Directory to place the backups to on the WebDAV server
 
  # WEBDAV_DIRECTORY="/my/directory/"
 
-# The username for the WebDav server
+# The username for the WebDAV server
 
 # WEBDAV_USERNAME="user"
 
-# The password for the WebDav server
+# The password for the WebDAV server
 
 # WEBDAV_PASSWORD="password"
 
@@ -548,7 +548,7 @@ volumes:
   data:
 ```
 
-### Backing up to WebDav
+### Backing up to WebDAV
 
 ```yml
 version: '3'
