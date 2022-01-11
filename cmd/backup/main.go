@@ -129,10 +129,10 @@ type config struct {
 	EmailSMTPPort              int           `envconfig:"EMAIL_SMTP_PORT" default:"587"`
 	EmailSMTPUsername          string        `envconfig:"EMAIL_SMTP_USERNAME"`
 	EmailSMTPPassword          string        `envconfig:"EMAIL_SMTP_PASSWORD"`
-	WebdavUrl                  string        `envconfig:"WEBDAV_URL"`
-	WebdavPath                 string        `envconfig:"WEBDAV_PATH" default:"/"`
-	WebdavUsername             string        `envconfig:"WEBDAV_USERNAME"`
-	WebdavPassword             string        `envconfig:"WEBDAV_PASSWORD"`
+	WebdavUrl                  string        `split_words:"true"`
+	WebdavPath                 string        `split_words:"true" default:"/"`
+	WebdavUsername             string        `split_words:"true"`
+	WebdavPassword             string        `split_words:"true"`
 }
 
 var msgBackupFailed = "backup run failed"
