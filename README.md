@@ -197,7 +197,7 @@ You can populate below template according to your requirements and use it as you
 
 # The Directory to place the backups to on the WebDAV server
 
- # WEBDAV_DIRECTORY="/my/directory/"
+ # WEBDAV_PATH="/my/directory/"
 
 # The username for the WebDAV server
 
@@ -559,7 +559,7 @@ services:
     image: offen/docker-volume-backup:latest
     environment:
       WEBDAV_URL: https://webdav.mydomain.me
-      WEBDAV_DIRECTORY: /my/directory/
+      WEBDAV_PATH: /my/directory/
       WEBDAV_USERNAME: user
       WEBDAV_PASSWORD: password
     volumes:

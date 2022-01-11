@@ -130,7 +130,7 @@ type config struct {
 	EmailSMTPUsername          string        `envconfig:"EMAIL_SMTP_USERNAME"`
 	EmailSMTPPassword          string        `envconfig:"EMAIL_SMTP_PASSWORD"`
 	WebdavUrl                  string        `envconfig:"WEBDAV_URL"`
-	WebdavDirectory            string        `envconfig:"WEBDAV_DIRECTORY" default:"/"`
+	WebdavPath                 string        `envconfig:"WEBDAV_PATH" default:"/"`
 	WebdavUsername             string        `envconfig:"WEBDAV_USERNAME"`
 	WebdavPassword             string        `envconfig:"WEBDAV_PASSWORD"`
 }
@@ -538,10 +538,10 @@ func (s *script) copyBackup() error {
 	if s.webdavClient != nil {
 		if bytes, err := os.ReadFile(s.file); err != nil {
 			return fmt.Errorf("copyBackup: error reading the file to be uploaded: %w", err)
-		} else if err := s.webdavClient.Write(filepath.Join(s.c.WebdavDirectory, name), bytes, 0644); err != nil {
+		} else if err := s.webdavClient.Write(filepath.Join(s.c.WebdavPath, name), bytes, 0644); err != nil {
 			return fmt.Errorf("copyBackup: error uploading the file to WebDAV server: %w", err)
 		}
-		s.logger.Infof("Uploaded a copy of backup `%s` to WebDAV '%s'.", s.file, filepath.Join(s.c.WebdavUrl, s.c.WebdavDirectory, name))
+		s.logger.Infof("Uploaded a copy of backup `%s` to WebDAV '%s'.", s.file, filepath.Join(s.c.WebdavUrl, s.c.WebdavPath, name))
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
