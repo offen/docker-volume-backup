@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -570,6 +571,7 @@ func (s *script) copyBackup() error {
 // backups, it does nothing instead.
 func (s *script) pruneOldBackups() error {
 	if s.c.BackupRetentionDays < 0 {
+		s.logger.Infof("Won't prune any backups if 'BACKUP_RETENTION_DAYS' isn't set / is lower than 0. (BACKUP_RETENTION_DAYS=%d)", s.c.BackupRetentionDays)
 		return nil
 	}
 
@@ -580,6 +582,7 @@ func (s *script) pruneOldBackups() error {
 
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays))
 
+	// Prune minio/S3 backups
 	if s.mc != nil {
 		candidates := s.mc.ListObjects(context.Background(), s.c.AwsS3BucketName, minio.ListObjectsOptions{
 			WithMetadata: true,
@@ -641,6 +644,39 @@ func (s *script) pruneOldBackups() error {
 		}
 	}
 
+	// Prune WebDAV backups
+	if s.webdavClient != nil {
+		candidates, err := s.webdavClient.ReadDir(s.c.WebdavPath)
+		if err != nil {
+			return fmt.Errorf("pruneOldBackups: error looking up candidates from remote storage: %w", err)
+		}
+		var matches []fs.FileInfo
+		var lenCandidates int
+		for _, candidate := range candidates {
+			s.logger.Infof("Candidate: %s", candidate.Name())
+			lenCandidates++
+			if candidate.ModTime().Before(deadline) {
+				matches = append(matches, candidate)
+			}
+		}
+
+		if len(matches) != 0 && len(matches) != lenCandidates {
+			for _, match := range matches {
+				if err := s.webdavClient.Remove(filepath.Join(s.c.WebdavPath, match.Name())); err != nil {
+					return fmt.Errorf("pruneOldBackups: error removing a file from remote storage: %w", err)
+				}
+				s.logger.Infof("Pruned %s from WebDAV: %s", match.Name(), filepath.Join(s.c.WebdavUrl, s.c.WebdavPath))
+			}
+			s.logger.Infof("Pruned %d out of %d remote backup(s) as their age exceeded the configured retention period of %d days.", len(matches), lenCandidates, s.c.BackupRetentionDays)
+		} else if len(matches) != 0 && len(matches) == lenCandidates {
+			s.logger.Warnf("The current configuration would delete all %d remote backup copies.", len(matches))
+			s.logger.Warn("Refusing to do so, please check your configuration.")
+		} else {
+			s.logger.Infof("None of %d remote backup(s) were pruned.", lenCandidates)
+		}
+	}
+
+	// Prune local backups
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
 		globPattern := path.Join(
 			s.c.BackupArchive,
