@@ -571,7 +571,6 @@ func (s *script) copyBackup() error {
 // backups, it does nothing instead.
 func (s *script) pruneOldBackups() error {
 	if s.c.BackupRetentionDays < 0 {
-		s.logger.Infof("Won't prune any backups if 'BACKUP_RETENTION_DAYS' isn't set / is lower than 0. (BACKUP_RETENTION_DAYS=%d)", s.c.BackupRetentionDays)
 		return nil
 	}
 
@@ -653,7 +652,6 @@ func (s *script) pruneOldBackups() error {
 		var matches []fs.FileInfo
 		var lenCandidates int
 		for _, candidate := range candidates {
-			s.logger.Infof("Candidate: %s", candidate.Name())
 			lenCandidates++
 			if candidate.ModTime().Before(deadline) {
 				matches = append(matches, candidate)
