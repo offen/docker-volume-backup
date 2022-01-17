@@ -13,7 +13,7 @@ docker-compose exec offen ln -s /var/opt/offen/offen.db /var/opt/offen/db.link
 docker-compose exec backup backup
 
 docker run --rm -it \
-  -v compose_minio_backup_data:/minio_data alpine \
+  -v compose_minio_backup_data:/minio_data \
   -v compose_webdav_backup_data:/webdav_data alpine \
   ash -c 'apk add gnupg && \
           echo 1234secret | gpg -d --pinentry-mode loopback --passphrase-fd 0 --yes /minio_data/backup/test-hostnametoken.tar.gz.gpg > /tmp/test-hostnametoken.tar.gz && tar -xf /tmp/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db; \
@@ -46,7 +46,7 @@ sleep 5
 docker-compose exec backup backup
 
 docker run --rm -it \
-  -v compose_minio_backup_data:/minio_data alpine \
+  -v compose_minio_backup_data:/minio_data \
   -v compose_webdav_backup_data:/webdav_data alpine \
   ash -c '[ $(find /minio_data/backup/ -type f | wc -l) = "1" ]; \
           [ $(find /webdav_data/backup/ -type f | wc -l) = "1" ]'
