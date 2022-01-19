@@ -19,7 +19,7 @@ services:
       USERNAME: test
       PASSWORD: test
     volumes:
-      - webdav_backup_data:/data
+      - webdav_backup_data:/var/lib/dav
 
   backup: &default_backup_service
     image: offen/docker-volume-backup:${TEST_VERSION}
