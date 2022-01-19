@@ -29,7 +29,7 @@ test -L /tmp/backup/app_data/db.link
 
 echo "[TEST:PASS] Found relevant files in untared local backup."
 
-if [ "$(docker-compose ps -q | wc -l)" != "3" ]; then
+if [ "$(docker-compose ps -q | wc -l)" != "4" ]; then
   echo "[TEST:FAIL] Expected all containers to be running post backup, instead seen:"
   docker-compose ps
   exit 1
