@@ -10,13 +10,23 @@ services:
       MINIO_SECRET_KEY: GMusLtUmILge2by+z890kQ
     entrypoint: /bin/ash -c 'mkdir -p /data/backup && minio server /data'
     volumes:
-      - backup_data:/data
+      - minio_backup_data:/data
+
+  webdav:
+    image: bytemark/webdav:2.4
+    environment:
+      AUTH_TYPE: Digest
+      USERNAME: test
+      PASSWORD: test
+    volumes:
+      - webdav_backup_data:/var/lib/dav
 
   backup: &default_backup_service
     image: offen/docker-volume-backup:${TEST_VERSION}
     hostname: hostnametoken
     depends_on:
       - minio
+      - webdav
     restart: always
     environment:
       AWS_ACCESS_KEY_ID: test
@@ -32,6 +42,10 @@ services:
       BACKUP_PRUNING_LEEWAY: 5s
       BACKUP_PRUNING_PREFIX: test
       GPG_PASSPHRASE: 1234secret
+      WEBDAV_URL: http://webdav/
+      WEBDAV_PATH: /my/new/path/
+      WEBDAV_USERNAME: test
+      WEBDAV_PASSWORD: test
     volumes:
       - ./local:/archive
       - app_data:/backup/app_data:ro
@@ -45,5 +59,6 @@ services:
       - app_data:/var/opt/offen
 
 volumes:
-  backup_data:
+  minio_backup_data:
+  webdav_backup_data:
   app_data:

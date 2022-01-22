@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -32,6 +33,7 @@ import (
 	"github.com/otiai10/copy"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/openpgp"
+	"github.com/studio-b12/gowebdav"
 )
 
 func main() {
@@ -86,12 +88,13 @@ func main() {
 // script holds all the stateful information required to orchestrate a
 // single backup run.
 type script struct {
-	cli       *client.Client
-	mc        *minio.Client
-	logger    *logrus.Logger
-	sender    *router.ServiceRouter
-	hooks     []hook
-	hookLevel hookLevel
+	cli           *client.Client
+	mc            *minio.Client
+	webdavClient  *gowebdav.Client
+	logger        *logrus.Logger
+	sender        *router.ServiceRouter
+	hooks         []hook
+	hookLevel     hookLevel
 
 	start  time.Time
 	file   string
@@ -127,6 +130,10 @@ type config struct {
 	EmailSMTPPort              int           `envconfig:"EMAIL_SMTP_PORT" default:"587"`
 	EmailSMTPUsername          string        `envconfig:"EMAIL_SMTP_USERNAME"`
 	EmailSMTPPassword          string        `envconfig:"EMAIL_SMTP_PASSWORD"`
+	WebdavUrl                  string        `split_words:"true"`
+	WebdavPath                 string        `split_words:"true" default:"/"`
+	WebdavUsername             string        `split_words:"true"`
+	WebdavPassword             string        `split_words:"true"`
 }
 
 var msgBackupFailed = "backup run failed"
@@ -207,6 +214,17 @@ func newScript() (*script, error) {
 			return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
 		}
 		s.mc = mc
+	}
+
+	// WebDAV check for env variables
+	// WebDAV instanciate client
+	if s.c.WebdavUrl != "" {
+		if s.c.WebdavUsername == "" || s.c.WebdavPassword == "" {
+			return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
+		} else {
+			webdavClient := gowebdav.NewClient(s.c.WebdavUrl, s.c.WebdavUsername, s.c.WebdavPassword)
+			s.webdavClient = webdavClient
+		}
 	}
 
 	if s.c.EmailNotificationRecipient != "" {
@@ -517,6 +535,21 @@ func (s *script) copyBackup() error {
 		s.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", s.file, s.c.AwsS3BucketName)
 	}
 
+	// WebDAV file upload
+	if s.webdavClient != nil {
+		bytes, err := os.ReadFile(s.file)
+		if err != nil {
+			return fmt.Errorf("copyBackup: error reading the file to be uploaded: %w", err)
+		}
+		if err := s.webdavClient.MkdirAll(s.c.WebdavPath, 0644); err != nil {
+			return fmt.Errorf("copyBackup: error creating directory '%s' on WebDAV server: %w", s.c.WebdavPath, err)
+		}
+		if err := s.webdavClient.Write(filepath.Join(s.c.WebdavPath, name), bytes, 0644); err != nil {
+			return fmt.Errorf("copyBackup: error uploading the file to WebDAV server: %w", err)
+		}
+		s.logger.Infof("Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", s.file, s.c.WebdavUrl, s.c.WebdavPath)
+	}
+
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
 		if err := copyFile(s.file, path.Join(s.c.BackupArchive, name)); err != nil {
 			return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
@@ -551,6 +584,7 @@ func (s *script) pruneOldBackups() error {
 
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays))
 
+	// Prune minio/S3 backups
 	if s.mc != nil {
 		candidates := s.mc.ListObjects(context.Background(), s.c.AwsS3BucketName, minio.ListObjectsOptions{
 			WithMetadata: true,
@@ -612,6 +646,38 @@ func (s *script) pruneOldBackups() error {
 		}
 	}
 
+	// Prune WebDAV backups
+	if s.webdavClient != nil {
+		candidates, err := s.webdavClient.ReadDir(s.c.WebdavPath)
+		if err != nil {
+			return fmt.Errorf("pruneOldBackups: error looking up candidates from remote storage: %w", err)
+		}
+		var matches []fs.FileInfo
+		var lenCandidates int
+		for _, candidate := range candidates {
+			lenCandidates++
+			if candidate.ModTime().Before(deadline) {
+				matches = append(matches, candidate)
+			}
+		}
+
+		if len(matches) != 0 && len(matches) != lenCandidates {
+			for _, match := range matches {
+				if err := s.webdavClient.Remove(filepath.Join(s.c.WebdavPath, match.Name())); err != nil {
+					return fmt.Errorf("pruneOldBackups: error removing a file from remote storage: %w", err)
+				}
+				s.logger.Infof("Pruned %s from WebDAV: %s", match.Name(), filepath.Join(s.c.WebdavUrl, s.c.WebdavPath))
+			}
+			s.logger.Infof("Pruned %d out of %d remote backup(s) as their age exceeded the configured retention period of %d days.", len(matches), lenCandidates, s.c.BackupRetentionDays)
+		} else if len(matches) != 0 && len(matches) == lenCandidates {
+			s.logger.Warnf("The current configuration would delete all %d remote backup copies.", len(matches))
+			s.logger.Warn("Refusing to do so, please check your configuration.")
+		} else {
+			s.logger.Infof("None of %d remote backup(s) were pruned.", lenCandidates)
+		}
+	}
+
+	// Prune local backups
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
 		globPattern := path.Join(
 			s.c.BackupArchive,

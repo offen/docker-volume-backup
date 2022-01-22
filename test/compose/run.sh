@@ -13,10 +13,13 @@ docker-compose exec offen ln -s /var/opt/offen/offen.db /var/opt/offen/db.link
 docker-compose exec backup backup
 
 docker run --rm -it \
-  -v compose_backup_data:/data alpine \
-  ash -c 'apk add gnupg && echo 1234secret | gpg -d --pinentry-mode loopback --passphrase-fd 0 --yes /data/backup/test-hostnametoken.tar.gz.gpg > /tmp/test-hostnametoken.tar.gz && tar -xf /tmp/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db'
+  -v compose_minio_backup_data:/minio_data \
+  -v compose_webdav_backup_data:/webdav_data alpine \
+  ash -c 'apk add gnupg && \
+          echo 1234secret | gpg -d --pinentry-mode loopback --passphrase-fd 0 --yes /minio_data/backup/test-hostnametoken.tar.gz.gpg > /tmp/test-hostnametoken.tar.gz && tar -xf /tmp/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db && \
+          echo 1234secret | gpg -d --pinentry-mode loopback --passphrase-fd 0 --yes /webdav_data/data/my/new/path/test-hostnametoken.tar.gz.gpg > /tmp/test-hostnametoken.tar.gz && tar -xf /tmp/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db'
 
-echo "[TEST:PASS] Found relevant files in untared remote backup."
+echo "[TEST:PASS] Found relevant files in untared remote backups."
 
 test -L ./local/test-hostnametoken.latest.tar.gz.gpg
 echo 1234secret | gpg -d --yes --passphrase-fd 0 ./local/test-hostnametoken.tar.gz.gpg > ./local/decrypted.tar.gz
@@ -26,7 +29,7 @@ test -L /tmp/backup/app_data/db.link
 
 echo "[TEST:PASS] Found relevant files in untared local backup."
 
-if [ "$(docker-compose ps -q | wc -l)" != "3" ]; then
+if [ "$(docker-compose ps -q | wc -l)" != "4" ]; then
   echo "[TEST:FAIL] Expected all containers to be running post backup, instead seen:"
   docker-compose ps
   exit 1
@@ -43,8 +46,10 @@ sleep 5
 docker-compose exec backup backup
 
 docker run --rm -it \
-  -v compose_backup_data:/data alpine \
-  ash -c '[ $(find /data/backup/ -type f | wc -l) = "1" ]'
+  -v compose_minio_backup_data:/minio_data \
+  -v compose_webdav_backup_data:/webdav_data alpine \
+  ash -c '[ $(find /minio_data/backup/ -type f | wc -l) = "1" ] && \
+          [ $(find /webdav_data/data/my/new/path/ -type f | wc -l) = "1" ]'
 
 echo "[TEST:PASS] Remote backups have not been deleted."
 
