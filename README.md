@@ -198,7 +198,7 @@ You can populate below template according to your requirements and use it as you
 # The Directory to place the backups to on the WebDAV server.
 # If the path is not present on the server it will be created!
 
- # WEBDAV_PATH="/my/directory/"
+# WEBDAV_PATH="/my/directory/"
 
 # The username for the WebDAV server
 
