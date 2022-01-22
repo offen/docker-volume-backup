@@ -32,8 +32,8 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/otiai10/copy"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/openpgp"
 	"github.com/studio-b12/gowebdav"
+	"golang.org/x/crypto/openpgp"
 )
 
 func main() {
@@ -88,13 +88,13 @@ func main() {
 // script holds all the stateful information required to orchestrate a
 // single backup run.
 type script struct {
-	cli           *client.Client
-	mc            *minio.Client
-	webdavClient  *gowebdav.Client
-	logger        *logrus.Logger
-	sender        *router.ServiceRouter
-	hooks         []hook
-	hookLevel     hookLevel
+	cli          *client.Client
+	minioClient  *minio.Client
+	webdavClient *gowebdav.Client
+	logger       *logrus.Logger
+	sender       *router.ServiceRouter
+	hooks        []hook
+	hookLevel    hookLevel
 
 	start  time.Time
 	file   string
@@ -213,11 +213,9 @@ func newScript() (*script, error) {
 		if err != nil {
 			return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
 		}
-		s.mc = mc
+		s.minioClient = mc
 	}
 
-	// WebDAV check for env variables
-	// WebDAV instanciate client
 	if s.c.WebdavUrl != "" {
 		if s.c.WebdavUsername == "" || s.c.WebdavPassword == "" {
 			return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
@@ -526,8 +524,8 @@ func (s *script) encryptBackup() error {
 // as per the given configuration.
 func (s *script) copyBackup() error {
 	_, name := path.Split(s.file)
-	if s.mc != nil {
-		if _, err := s.mc.FPutObject(context.Background(), s.c.AwsS3BucketName, name, s.file, minio.PutObjectOptions{
+	if s.minioClient != nil {
+		if _, err := s.minioClient.FPutObject(context.Background(), s.c.AwsS3BucketName, name, s.file, minio.PutObjectOptions{
 			ContentType: "application/tar+gzip",
 		}); err != nil {
 			return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
@@ -535,7 +533,6 @@ func (s *script) copyBackup() error {
 		s.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", s.file, s.c.AwsS3BucketName)
 	}
 
-	// WebDAV file upload
 	if s.webdavClient != nil {
 		bytes, err := os.ReadFile(s.file)
 		if err != nil {
@@ -585,8 +582,8 @@ func (s *script) pruneOldBackups() error {
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays))
 
 	// Prune minio/S3 backups
-	if s.mc != nil {
-		candidates := s.mc.ListObjects(context.Background(), s.c.AwsS3BucketName, minio.ListObjectsOptions{
+	if s.minioClient != nil {
+		candidates := s.minioClient.ListObjects(context.Background(), s.c.AwsS3BucketName, minio.ListObjectsOptions{
 			WithMetadata: true,
 			Prefix:       s.c.BackupPruningPrefix,
 		})
@@ -614,7 +611,7 @@ func (s *script) pruneOldBackups() error {
 				}
 				close(objectsCh)
 			}()
-			errChan := s.mc.RemoveObjects(context.Background(), s.c.AwsS3BucketName, objectsCh, minio.RemoveObjectsOptions{})
+			errChan := s.minioClient.RemoveObjects(context.Background(), s.c.AwsS3BucketName, objectsCh, minio.RemoveObjectsOptions{})
 			var removeErrors []error
 			for result := range errChan {
 				if result.Err != nil {
