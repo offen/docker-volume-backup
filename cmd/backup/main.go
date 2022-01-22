@@ -544,7 +544,7 @@ func (s *script) copyBackup() error {
 		if err := s.webdavClient.Write(filepath.Join(s.c.WebdavPath, name), bytes, 0644); err != nil {
 			return fmt.Errorf("copyBackup: error uploading the file to WebDAV server: %w", err)
 		}
-		s.logger.Infof("Uploaded a copy of backup `%s` to WebDAV '%s'.", s.file, filepath.Join(s.c.WebdavUrl, s.c.WebdavPath, name))
+		s.logger.Infof("Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", s.file, s.c.WebdavUrl, s.c.WebdavPath)
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
