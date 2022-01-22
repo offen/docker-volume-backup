@@ -219,7 +219,7 @@ func newScript() (*script, error) {
 	// WebDAV check for env variables
 	// WebDAV instanciate client
 	if s.c.WebdavUrl != "" {
-		if s.c.WebdavUsername == "" && s.c.WebdavPassword == "" {
+		if s.c.WebdavUsername == "" || s.c.WebdavPassword == "" {
 			return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
 		} else {
 			webdavClient := gowebdav.NewClient(s.c.WebdavUrl, s.c.WebdavUsername, s.c.WebdavPassword)
