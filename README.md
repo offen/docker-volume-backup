@@ -135,7 +135,7 @@ You can populate below template according to your requirements and use it as you
 # Please note that you will need to escape the `$` when providing the value
 # in a docker-compose.yml file, i.e. using $$VAR instead of $VAR.
 
-# BACKUP_FILENAME_TEMPLATE="true"
+# BACKUP_FILENAME_EXPAND="true"
 
 # When storing local backups, a symlink to the latest backup can be created
 # in case a value is given for this key. This has no effect on remote backups.
@@ -155,6 +155,11 @@ You can populate below template according to your requirements and use it as you
 # this is not set, no remote backups will be stored.
 
 # AWS_S3_BUCKET_NAME="backup-bucket"
+
+# If you want to store the backup in a non-root location on your bucket
+# you can provide a path. The path must not contain a leading slash.
+
+# AWS_S3_PATH="my/backup/location"
 
 # Define credentials for authenticating against the backup storage and a bucket
 # name. Although all of these keys are `AWS`-prefixed, the setup can be used

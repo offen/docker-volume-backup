@@ -115,6 +115,7 @@ type config struct {
 	BackupStopContainerLabel   string        `split_words:"true" default:"true"`
 	BackupFromSnapshot         bool          `split_words:"true"`
 	AwsS3BucketName            string        `split_words:"true"`
+	AwsS3Path                  string        `split_words:"true"`
 	AwsEndpoint                string        `split_words:"true" default:"s3.amazonaws.com"`
 	AwsEndpointProto           string        `split_words:"true" default:"https"`
 	AwsEndpointInsecure        bool          `split_words:"true"`
@@ -525,7 +526,7 @@ func (s *script) encryptBackup() error {
 func (s *script) copyBackup() error {
 	_, name := path.Split(s.file)
 	if s.minioClient != nil {
-		if _, err := s.minioClient.FPutObject(context.Background(), s.c.AwsS3BucketName, name, s.file, minio.PutObjectOptions{
+		if _, err := s.minioClient.FPutObject(context.Background(), s.c.AwsS3BucketName, filepath.Join(s.c.AwsS3Path, name), s.file, minio.PutObjectOptions{
 			ContentType: "application/tar+gzip",
 		}); err != nil {
 			return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
