@@ -9,7 +9,7 @@ RUN go mod download
 COPY cmd/backup/main.go ./cmd/backup/main.go
 RUN go build -o backup cmd/backup/main.go
 
-FROM alpine:3.14
+FROM alpine:3.15
 
 WORKDIR /root
 
