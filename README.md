@@ -27,6 +27,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Update deprecated email configuration](#update-deprecated-email-configuration)
 - [Recipes](#recipes)
   - [Backing up to AWS S3](#backing-up-to-aws-s3)
+  - [Backing up to Filebase](#backing-up-to-filebase)
   - [Backing up to MinIO](#backing-up-to-minio)
   - [Backing up to WebDAV](#backing-up-to-webdav)
   - [Backing up locally](#backing-up-locally)
@@ -176,7 +177,7 @@ You can populate below template according to your requirements and use it as you
 # AWS_IAM_ROLE_ENDPOINT="http://169.254.169.254"
 
 # This is the FQDN of your storage server, e.g. `storage.example.com`.
-# Do not set this when working against AWS S3 (the default value is 
+# Do not set this when working against AWS S3 (the default value is
 # `s3.amazonaws.com`). If you need to set a specific (non-https) protocol, you
 # will need to use the option below.
 
@@ -435,7 +436,7 @@ In case you need to restore a volume from a backup, the most straight forward pr
   docker stop backup_restore
   docker rm backup_restore
   ```
-- Restart the container(s) that are using the volume 
+- Restart the container(s) that are using the volume
 
 Depending on your setup and the application(s) you are running, this might involve other steps to be taken still.
 
@@ -525,6 +526,28 @@ services:
       AWS_BUCKET_NAME: backup-bucket
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+    volumes:
+      - data:/backup/my-app-backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  data:
+```
+
+### Backing up to Filebase
+
+```yml
+version: '3'
+
+services:
+  # ... define other services using the `data` volume here
+  backup:
+    image: offen/docker-volume-backup:latest
+    environment:
+      AWS_ENDPOINT: s3.filebase.com
+      AWS_BUCKET_NAME: filebase-bucket
+      AWS_ACCESS_KEY_ID: FILEBASE-ACCESS-KEY
+      AWS_SECRET_ACCESS_KEY: FILEBASE-SECRET-KEY
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
