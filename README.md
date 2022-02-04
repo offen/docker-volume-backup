@@ -429,12 +429,12 @@ In case you need to restore a volume from a backup, the most straight forward pr
   ```console
   tar -C /tmp -xvf  backup.tar.gz
   ```
-- Using a temporary one-off container, mount the volume (the example assumes it's named `data`) and copy over the backup. Make sure you copy the correct path level (this depends on how you mount your volume into the backup container), you might need to strip some leading elements
+- Using a temporary once-off container, mount the volume (the example assumes it's named `data`) and copy over the backup. Make sure you copy the correct path level (this depends on how you mount your volume into the backup container), you might need to strip some leading elements
   ```console
-  docker run -d --name backup_restore -v data:/backup_restore alpine
-  docker cp /tmp/backup/data-backup backup_restore:/backup_restore
-  docker stop backup_restore
-  docker rm backup_restore
+  docker run -d --name temp_restore_container -v data:/backup_restore alpine
+  docker cp /tmp/backup/data-backup temp_restore_container:/backup_restore
+  docker stop temp_restore_container
+  docker rm temp_restore_container
   ```
 - Restart the container(s) that are using the volume
 
