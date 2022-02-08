@@ -8,7 +8,7 @@ require (
 	github.com/gofrs/flock v0.8.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
-	github.com/m90/targz v0.0.0-20211229090208-2f22c2d9278e
+	github.com/m90/targz v0.0.0-20220208141135-d3baeef59a97
 	github.com/minio/minio-go/v7 v7.0.16
 	github.com/otiai10/copy v1.7.0
 	github.com/sirupsen/logrus v1.8.1

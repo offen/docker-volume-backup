@@ -452,6 +452,8 @@ github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d/go.mod h1:hO90vC
 github.com/leodido/go-urn v1.2.0/go.mod h1:+8+nEpDfqqsY+g338gtMEUOtuK+4dEMhiQEgxpxOKII=
 github.com/m90/targz v0.0.0-20211229090208-2f22c2d9278e h1:Kzm2zfxS40RUGD5UVtVtOo9RT5TtGoNJnmWORtCEaxM=
 github.com/m90/targz v0.0.0-20211229090208-2f22c2d9278e/go.mod h1:YZK3bSO/oVlk9G+v00BxgzxW2Us4p/R4ysHOBjk0fJI=
+github.com/m90/targz v0.0.0-20220208141135-d3baeef59a97 h1:Uc/WzUKI/zvhkqIzk5TyaPE6AY1SD1DWGc7RV7cky4s=
+github.com/m90/targz v0.0.0-20220208141135-d3baeef59a97/go.mod h1:YZK3bSO/oVlk9G+v00BxgzxW2Us4p/R4ysHOBjk0fJI=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/magiconair/properties v1.8.1/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/mailru/easyjson v0.0.0-20190403194419-1ea4449da983/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
