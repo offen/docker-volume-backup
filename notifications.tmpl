@@ -1,26 +1,26 @@
-{{ define "title_failure" }}
+{{ define "title_failure" -}}
 Failure running docker-volume-backup at {{ .StartTime }}
-{{ end }}
+{{- end }}
 
 
-{{ define "body_failure" }}
+{{ define "body_failure" -}}
 Running docker-volume-backup failed with error: {{ .Error }}
 
 Log output of the failed run was:
 
 {{ .LogOutput }}
-{{ end }}
+{{- end }}
 
 
-{{ define "title_success" }}
+{{ define "title_success" -}}
 Success running docker-volume-backup at {{ .StartTime }}
-{{ end }}
+{{- end }}
 
 
-{{ define "body_success" }}
+{{ define "body_success" -}}
 Running docker-volume-backup succeeded.
 
 Log output was:
 
 {{ .LogOutput }}
-{{ end }}
+{{- end }}

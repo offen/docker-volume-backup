@@ -275,7 +275,7 @@ func newScript() (*script, error) {
 		})
 	}
 
-	tmpl, err := template.ParseGlob("/etc/volume-backup.d/*notifications.tmpl")
+	tmpl, err := template.ParseGlob("/etc/dockervolumebackup/notifications.d/*.*")
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse notifications templates: %w", err)
 	}
@@ -303,16 +303,14 @@ func (s *script) notify(titleTemplate string, bodyTemplate string, params map[st
 	if err != nil {
 		return fmt.Errorf("notifyFailure: error executing %s template: %w", titleTemplate, err)
 	}
-	title := strings.Trim(titleBuf.String(), "\n")
 
 	bodyBuf := &bytes.Buffer{}
 	err = s.template.ExecuteTemplate(bodyBuf, bodyTemplate, params)
 	if err != nil {
 		return fmt.Errorf("notifyFailure: error executing %s template: %w", bodyTemplate, err)
 	}
-	body := strings.Trim(bodyBuf.String(), "\n")
 
-	if err := s.sendNotification(title, body); err != nil {
+	if err := s.sendNotification(titleBuf.String(), bodyBuf.String()); err != nil {
 		return fmt.Errorf("notifyFailure: error notifying: %w", err)
 	}
 	return nil
