@@ -610,7 +610,7 @@ func (s *script) encryptBackup() error {
 // as per the given configuration.
 func (s *script) copyBackup() error {
 	_, name := path.Split(s.file)
-	if stat, err := os.Stat(s.c.BackupArchive); err != nil {
+	if stat, err := os.Stat(s.file); err != nil {
 		return fmt.Errorf("copyBackup: unable to stat backup file: %w", err)
 	} else {
 		size := stat.Size()
