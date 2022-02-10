@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/containrrr/shoutrrr"
@@ -93,6 +94,7 @@ type script struct {
 	webdavClient *gowebdav.Client
 	logger       *logrus.Logger
 	sender       *router.ServiceRouter
+	template     *template.Template
 	hooks        []hook
 	hookLevel    hookLevel
 
@@ -273,6 +275,12 @@ func newScript() (*script, error) {
 		})
 	}
 
+	tmpl, err := template.ParseGlob("/etc/volume-backup.d/*notifications.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse notifications templates: %w", err)
+	}
+	s.template = tmpl
+
 	return s, nil
 }
 
@@ -283,28 +291,43 @@ func (s *script) registerHook(level hookLevel, action func(err error) error) {
 	s.hooks = append(s.hooks, hook{level, action})
 }
 
-// notifyFailure sends a notification about a failed backup run
-func (s *script) notifyFailure(err error) error {
-	body := fmt.Sprintf(
-		"Running docker-volume-backup failed with error: %s\n\nLog output of the failed run was:\n\n%s\n", err, s.output.String(),
-	)
-	title := fmt.Sprintf("Failure running docker-volume-backup at %s", s.start.Format(time.RFC3339))
+// notify sends a notification using the given title and body templates.
+// Automatically adds common params
+func (s *script) notify(titleTemplate string, bodyTemplate string, params map[string]string) error {
+	params["StartTime"] = s.start.Format(time.RFC3339)
+	params["LogOutput"] = s.output.String()
+	params["BackupStopContainerLabel"] = s.c.BackupStopContainerLabel
+
+	titleBuf := &bytes.Buffer{}
+	err := s.template.ExecuteTemplate(titleBuf, titleTemplate, params)
+	if err != nil {
+		return fmt.Errorf("notifyFailure: error executing %s template: %w", titleTemplate, err)
+	}
+	title := strings.Trim(titleBuf.String(), "\n")
+
+	bodyBuf := &bytes.Buffer{}
+	err = s.template.ExecuteTemplate(bodyBuf, bodyTemplate, params)
+	if err != nil {
+		return fmt.Errorf("notifyFailure: error executing %s template: %w", bodyTemplate, err)
+	}
+	body := strings.Trim(bodyBuf.String(), "\n")
+
 	if err := s.sendNotification(title, body); err != nil {
 		return fmt.Errorf("notifyFailure: error notifying: %w", err)
 	}
 	return nil
 }
 
+// notifyFailure sends a notification about a failed backup run
+func (s *script) notifyFailure(err error) error {
+	return s.notify("title_failure", "body_failure", map[string]string{
+		"Error": err.Error(),
+	})
+}
+
 // notifyFailure sends a notification about a successful backup run
 func (s *script) notifySuccess() error {
-	title := fmt.Sprintf("Success running docker-volume-backup at %s", s.start.Format(time.RFC3339))
-	body := fmt.Sprintf(
-		"Running docker-volume-backup succeeded.\n\nLog output was:\n\n%s\n", s.output.String(),
-	)
-	if err := s.sendNotification(title, body); err != nil {
-		return fmt.Errorf("notifySuccess: error notifying: %w", err)
-	}
-	return nil
+	return s.notify("title_success", "body_success", map[string]string{})
 }
 
 // sendNotification sends a notification to all configured third party services

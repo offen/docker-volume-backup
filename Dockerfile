@@ -18,6 +18,7 @@ RUN apk add --update ca-certificates
 COPY --from=builder /app/backup /usr/bin/backup
 
 COPY ./entrypoint.sh /root/
+COPY ./00notifications.tmpl /etc/volume-backup.d/
 RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["/root/entrypoint.sh"]
