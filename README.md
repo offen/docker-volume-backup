@@ -19,6 +19,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Stopping containers during backup](#stopping-containers-during-backup)
   - [Automatically pruning old backups](#automatically-pruning-old-backups)
   - [Send email notifications on failed backup runs](#send-email-notifications-on-failed-backup-runs)
+  - [Customize notifications](#customize-notifications)
   - [Encrypting your backup using GPG](#encrypting-your-backup-using-gpg)
   - [Restoring a volume from a backup](#restoring-a-volume-from-a-backup)
   - [Set the timezone the container runs in](#set-the-timezone-the-container-runs-in)
