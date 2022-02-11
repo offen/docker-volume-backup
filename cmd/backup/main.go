@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/containrrr/shoutrrr"
@@ -35,6 +37,9 @@ import (
 	"github.com/studio-b12/gowebdav"
 	"golang.org/x/crypto/openpgp"
 )
+
+//go:embed notifications.tmpl
+var defaultNotifications string
 
 func main() {
 	unlock := lock("/var/lock/dockervolumebackup.lock")
@@ -83,6 +88,8 @@ func main() {
 	s.must(s.encryptBackup())
 	s.must(s.copyBackup())
 	s.must(s.pruneOldBackups())
+	s.stats.EndTime = time.Now()
+	s.stats.TookTime = s.stats.EndTime.Sub(s.stats.EndTime)
 }
 
 // script holds all the stateful information required to orchestrate a
@@ -93,17 +100,64 @@ type script struct {
 	webdavClient *gowebdav.Client
 	logger       *logrus.Logger
 	sender       *router.ServiceRouter
+	template     *template.Template
 	hooks        []hook
 	hookLevel    hookLevel
 
-	start  time.Time
-	file   string
-	output *bytes.Buffer
+	file  string
+	stats *Stats
 
-	c *config
+	c *Config
 }
 
-type config struct {
+// ContainersStats stats about the docker containers
+type ContainersStats struct {
+	All        uint
+	ToStop     uint
+	Stopped    uint
+	StopErrors uint
+}
+
+// BackupFileStats stats about the created backup file
+type BackupFileStats struct {
+	Name     string
+	FullPath string
+	Size     uint64
+}
+
+// StorageStats stats about the status of an archival directory
+type StorageStats struct {
+	Total       uint
+	Pruned      uint
+	PruneErrors uint
+}
+
+// StoragesStats stats about each possible archival location (Local, WebDAV, S3)
+type StoragesStats struct {
+	Local  StorageStats
+	WebDAV StorageStats
+	S3     StorageStats
+}
+
+// Stats global stats regarding script execution
+type Stats struct {
+	StartTime  time.Time
+	EndTime    time.Time
+	TookTime   time.Duration
+	LogOutput  *bytes.Buffer
+	Containers ContainersStats
+	BackupFile BackupFileStats
+	Storages   StoragesStats
+}
+
+// NotificationData data to be passed to the notification templates
+type NotificationData struct {
+	Error  error
+	Config *Config
+	Stats  *Stats
+}
+
+type Config struct {
 	BackupSources              string        `split_words:"true" default:"/backup"`
 	BackupFilename             string        `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.tar.gz"`
 	BackupFilenameExpand       bool          `split_words:"true"`
@@ -146,15 +200,18 @@ var msgBackupFailed = "backup run failed"
 func newScript() (*script, error) {
 	stdOut, logBuffer := buffer(os.Stdout)
 	s := &script{
-		c: &config{},
+		c: &Config{},
 		logger: &logrus.Logger{
 			Out:       stdOut,
 			Formatter: new(logrus.TextFormatter),
 			Hooks:     make(logrus.LevelHooks),
 			Level:     logrus.InfoLevel,
 		},
-		start:  time.Now(),
-		output: logBuffer,
+		stats: &Stats{
+			StartTime: time.Now(),
+			LogOutput: logBuffer,
+			Storages:  StoragesStats{},
+		},
 	}
 
 	if err := envconfig.Process("", s.c); err != nil {
@@ -167,7 +224,7 @@ func newScript() (*script, error) {
 		s.c.BackupLatestSymlink = os.ExpandEnv(s.c.BackupLatestSymlink)
 		s.c.BackupPruningPrefix = os.ExpandEnv(s.c.BackupPruningPrefix)
 	}
-	s.file = timeutil.Strftime(&s.start, s.file)
+	s.file = timeutil.Strftime(&s.stats.StartTime, s.file)
 
 	_, err := os.Stat("/var/run/docker.sock")
 	if !os.IsNotExist(err) {
@@ -273,6 +330,31 @@ func newScript() (*script, error) {
 		})
 	}
 
+	tmpl := template.New("")
+	tmpl.Funcs(template.FuncMap{
+		"formatTime": func(t time.Time) string {
+			return t.Format(time.RFC3339)
+		},
+		"formatBytesDec": func(bytes uint64) string {
+			return formatBytes(bytes, true)
+		},
+		"formatBytesBin": func(bytes uint64) string {
+			return formatBytes(bytes, false)
+		},
+	})
+	tmpl, err = tmpl.Parse(defaultNotifications)
+	if err != nil {
+		return nil, fmt.Errorf("newScript: unable to parse default notifications templates: %w", err)
+	}
+
+	if _, err := os.Stat("/etc/dockervolumebackup/notifications.d"); err == nil {
+		tmpl, err = tmpl.ParseGlob("/etc/dockervolumebackup/notifications.d/*.*")
+		if err != nil {
+			return nil, fmt.Errorf("newScript: unable to parse user defined notifications templates: %w", err)
+		}
+	}
+	s.template = tmpl
+
 	return s, nil
 }
 
@@ -283,28 +365,39 @@ func (s *script) registerHook(level hookLevel, action func(err error) error) {
 	s.hooks = append(s.hooks, hook{level, action})
 }
 
-// notifyFailure sends a notification about a failed backup run
-func (s *script) notifyFailure(err error) error {
-	body := fmt.Sprintf(
-		"Running docker-volume-backup failed with error: %s\n\nLog output of the failed run was:\n\n%s\n", err, s.output.String(),
-	)
-	title := fmt.Sprintf("Failure running docker-volume-backup at %s", s.start.Format(time.RFC3339))
-	if err := s.sendNotification(title, body); err != nil {
+// notify sends a notification using the given title and body templates.
+// Automatically creates notification data, adding the given error
+func (s *script) notify(titleTemplate string, bodyTemplate string, err error) error {
+	params := NotificationData{
+		Error:  err,
+		Stats:  s.stats,
+		Config: s.c,
+	}
+
+	titleBuf := &bytes.Buffer{}
+	if err := s.template.ExecuteTemplate(titleBuf, titleTemplate, params); err != nil {
+		return fmt.Errorf("notifyFailure: error executing %s template: %w", titleTemplate, err)
+	}
+
+	bodyBuf := &bytes.Buffer{}
+	if err := s.template.ExecuteTemplate(bodyBuf, bodyTemplate, params); err != nil {
+		return fmt.Errorf("notifyFailure: error executing %s template: %w", bodyTemplate, err)
+	}
+
+	if err := s.sendNotification(titleBuf.String(), bodyBuf.String()); err != nil {
 		return fmt.Errorf("notifyFailure: error notifying: %w", err)
 	}
 	return nil
 }
 
+// notifyFailure sends a notification about a failed backup run
+func (s *script) notifyFailure(err error) error {
+	return s.notify("title_failure", "body_failure", err)
+}
+
 // notifyFailure sends a notification about a successful backup run
 func (s *script) notifySuccess() error {
-	title := fmt.Sprintf("Success running docker-volume-backup at %s", s.start.Format(time.RFC3339))
-	body := fmt.Sprintf(
-		"Running docker-volume-backup succeeded.\n\nLog output was:\n\n%s\n", s.output.String(),
-	)
-	if err := s.sendNotification(title, body); err != nil {
-		return fmt.Errorf("notifySuccess: error notifying: %w", err)
-	}
-	return nil
+	return s.notify("title_success", "body_success", nil)
 }
 
 // sendNotification sends a notification to all configured third party services
@@ -380,6 +473,12 @@ func (s *script) stopContainers() (func() error, error) {
 			len(stopErrors),
 			join(stopErrors...),
 		)
+	}
+
+	s.stats.Containers = ContainersStats{
+		All:     uint(len(allContainers)),
+		ToStop:  uint(len(containersToStop)),
+		Stopped: uint(len(stoppedContainers)),
 	}
 
 	return func() error {
@@ -525,6 +624,17 @@ func (s *script) encryptBackup() error {
 // as per the given configuration.
 func (s *script) copyBackup() error {
 	_, name := path.Split(s.file)
+	if stat, err := os.Stat(s.file); err != nil {
+		return fmt.Errorf("copyBackup: unable to stat backup file: %w", err)
+	} else {
+		size := stat.Size()
+		s.stats.BackupFile = BackupFileStats{
+			Size:     uint64(size),
+			Name:     name,
+			FullPath: s.file,
+		}
+	}
+
 	if s.minioClient != nil {
 		if _, err := s.minioClient.FPutObject(context.Background(), s.c.AwsS3BucketName, filepath.Join(s.c.AwsS3Path, name), s.file, minio.PutObjectOptions{
 			ContentType: "application/tar+gzip",
@@ -575,12 +685,7 @@ func (s *script) pruneOldBackups() error {
 		return nil
 	}
 
-	if s.c.BackupPruningLeeway != 0 {
-		s.logger.Infof("Sleeping for %s before pruning backups.", s.c.BackupPruningLeeway)
-		time.Sleep(s.c.BackupPruningLeeway)
-	}
-
-	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays))
+	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
 
 	// Prune minio/S3 backups
 	if s.minioClient != nil {
@@ -604,6 +709,10 @@ func (s *script) pruneOldBackups() error {
 			}
 		}
 
+		s.stats.Storages.S3 = StorageStats{
+			Total:  uint(lenCandidates),
+			Pruned: uint(len(matches)),
+		}
 		if len(matches) != 0 && len(matches) != lenCandidates {
 			objectsCh := make(chan minio.ObjectInfo)
 			go func() {
@@ -619,6 +728,7 @@ func (s *script) pruneOldBackups() error {
 					removeErrors = append(removeErrors, result.Err)
 				}
 			}
+			s.stats.Storages.S3.PruneErrors = uint(len(removeErrors))
 
 			if len(removeErrors) != 0 {
 				return fmt.Errorf(
@@ -627,10 +737,11 @@ func (s *script) pruneOldBackups() error {
 					join(removeErrors...),
 				)
 			}
+
 			s.logger.Infof(
 				"Pruned %d out of %d remote backup(s) as their age exceeded the configured retention period of %d days.",
-				len(matches),
-				lenCandidates,
+				s.stats.Storages.S3.Pruned,
+				s.stats.Storages.S3.Total,
 				s.c.BackupRetentionDays,
 			)
 		} else if len(matches) != 0 && len(matches) == lenCandidates {
@@ -659,14 +770,33 @@ func (s *script) pruneOldBackups() error {
 			}
 		}
 
+		s.stats.Storages.WebDAV = StorageStats{
+			Total:  uint(lenCandidates),
+			Pruned: uint(len(matches)),
+		}
 		if len(matches) != 0 && len(matches) != lenCandidates {
+			var removeErrors []error
 			for _, match := range matches {
 				if err := s.webdavClient.Remove(filepath.Join(s.c.WebdavPath, match.Name())); err != nil {
-					return fmt.Errorf("pruneOldBackups: error removing a file from remote storage: %w", err)
+					removeErrors = append(removeErrors, err)
+				} else {
+					s.logger.Infof("Pruned %s from WebDAV: %s", match.Name(), filepath.Join(s.c.WebdavUrl, s.c.WebdavPath))
 				}
-				s.logger.Infof("Pruned %s from WebDAV: %s", match.Name(), filepath.Join(s.c.WebdavUrl, s.c.WebdavPath))
 			}
-			s.logger.Infof("Pruned %d out of %d remote backup(s) as their age exceeded the configured retention period of %d days.", len(matches), lenCandidates, s.c.BackupRetentionDays)
+			s.stats.Storages.WebDAV.PruneErrors = uint(len(removeErrors))
+			if len(removeErrors) != 0 {
+				return fmt.Errorf(
+					"pruneOldBackups: %d error(s) removing files from remote storage: %w",
+					len(removeErrors),
+					join(removeErrors...),
+				)
+			}
+			s.logger.Infof(
+				"Pruned %d out of %d remote backup(s) as their age exceeded the configured retention period of %d days.",
+				s.stats.Storages.WebDAV.Pruned,
+				s.stats.Storages.WebDAV.Total,
+				s.c.BackupRetentionDays,
+			)
 		} else if len(matches) != 0 && len(matches) == lenCandidates {
 			s.logger.Warnf("The current configuration would delete all %d remote backup copies.", len(matches))
 			s.logger.Warn("Refusing to do so, please check your configuration.")
@@ -721,6 +851,10 @@ func (s *script) pruneOldBackups() error {
 			}
 		}
 
+		s.stats.Storages.Local = StorageStats{
+			Total:  uint(len(candidates)),
+			Pruned: uint(len(matches)),
+		}
 		if len(matches) != 0 && len(matches) != len(candidates) {
 			var removeErrors []error
 			for _, match := range matches {
@@ -729,6 +863,7 @@ func (s *script) pruneOldBackups() error {
 				}
 			}
 			if len(removeErrors) != 0 {
+				s.stats.Storages.Local.PruneErrors = uint(len(removeErrors))
 				return fmt.Errorf(
 					"pruneOldBackups: %d error(s) deleting local files, starting with: %w",
 					len(removeErrors),
@@ -737,8 +872,8 @@ func (s *script) pruneOldBackups() error {
 			}
 			s.logger.Infof(
 				"Pruned %d out of %d local backup(s) as their age exceeded the configured retention period of %d days.",
-				len(matches),
-				len(candidates),
+				s.stats.Storages.Local.Pruned,
+				s.stats.Storages.Local.Total,
 				s.c.BackupRetentionDays,
 			)
 		} else if len(matches) != 0 && len(matches) == len(candidates) {
@@ -854,6 +989,26 @@ func join(errs ...error) error {
 		msgs = append(msgs, err.Error())
 	}
 	return errors.New("[" + strings.Join(msgs, ", ") + "]")
+}
+
+// formatBytes converts an amount of bytes in a human-readable representation
+// the decimal parameter specifies if using powers of 1000 (decimal) or powers of 1024 (binary)
+func formatBytes(b uint64, decimal bool) string {
+	unit := uint64(1024)
+	format := "%.1f %ciB"
+	if decimal {
+		unit = uint64(1000)
+		format = "%.1f %cB"
+	}
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := unit, 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf(format, float64(b)/float64(div), "kMGTPE"[exp])
 }
 
 // buffer takes an io.Writer and returns a wrapped version of the

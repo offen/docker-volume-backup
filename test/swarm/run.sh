@@ -23,6 +23,7 @@ docker run --rm -it \
 
 echo "[TEST:PASS] Found relevant files in untared backup."
 
+sleep 5
 if [ "$(docker ps -q | wc -l)" != "5" ]; then
   echo "[TEST:FAIL] Expected all containers to be running post backup, instead seen:"
   docker ps -a
