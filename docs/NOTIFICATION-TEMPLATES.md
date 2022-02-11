@@ -1,8 +1,8 @@
 # Notification templates reference
 
-In order to customize title and body of notifications you'll have to write a [go templates](https://pkg.go.dev/text/template) and mount it inside the `/etc/dockervolumebackup/notifications.d/` directory.
+In order to customize title and body of notifications you'll have to write a [go template](https://pkg.go.dev/text/template) and mount it inside the `/etc/dockervolumebackup/notifications.d/` directory.
 
-Data and functions will be passed to it, this page documents it fully.
+Configuration, data about the backup run and helper functions will be passed to this template, this page documents them fully.
 
 ## Data
 Here is a list of all data passed to the template:
