@@ -408,6 +408,30 @@ Refer to the documentation of [shoutrrr][shoutrrr-docs] to find out about option
 
 [shoutrrr-docs]: https://containrrr.dev/shoutrrr/v0.5/services/overview/
 
+### Customize notifications
+
+The title and body of the notifications can be easily tailored to your needs using [go templates](https://pkg.go.dev/text/template).
+Templates must be mounted inside the container in `/etc/dockervolumebackup/notifications.d/`: any file inside this directory will be parsed.
+
+The files have to define [nested templates](https://pkg.go.dev/text/template#hdr-Nested_template_definitions) in order to override the original values. An example:
+```
+{{ define "title_success" -}}
+✅ Successfully ran backup {{ .Config.BackupStopContainerLabel }}
+{{- end }}
+
+{{ define "body_success" -}}
+▶️ Start time: {{ .Stats.StartTime | formatTime }}
+⏹️ End time: {{ .Stats.EndTime | formatTime }}
+⌛ Took time: {{ .Stats.TookTime }}
+🛑 Stopped containers: {{ .Stats.Containers.Stopped }}/{{ .Stats.Containers.All }} ({{ .Stats.Containers.StopErrors }} errors)
+⚖️ Backup size: {{ .Stats.BackupFile.Size | formatBytesBin }} / {{ .Stats.BackupFile.Size | formatBytesDec }}
+🗑️ Pruned backups: {{ .Stats.Storages.Local.Pruned }}/{{ .Stats.Storages.Local.Total }} ({{ .Stats.Storages.Local.PruneErrors }} errors)
+{{- end }}
+```
+
+Overridable template names are: `title_success`, `body_success`, `title_failure`, `body_failure`.
+
+For a full list of available variables and functions, see [this page](https://github.com/offen/docker-volume-backup/blob/master/docs/NOTIFICATION-TEMPLATES.md).
 
 ### Encrypting your backup using GPG
 
