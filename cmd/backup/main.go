@@ -87,9 +87,9 @@ func main() {
 
 	s.must(s.encryptBackup())
 	s.must(s.copyBackup())
+	s.must(s.pruneOldBackups())
 	s.stats.EndTime = time.Now()
 	s.stats.TookTime = s.stats.EndTime.Sub(s.stats.EndTime)
-	s.must(s.pruneOldBackups())
 }
 
 // script holds all the stateful information required to orchestrate a
