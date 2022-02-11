@@ -125,18 +125,18 @@ type BackupFileStats struct {
 	Size     uint64
 }
 
-// ArchiveStats stats about the status of an archival directory
-type ArchiveStats struct {
+// StorageStats stats about the status of an archival directory
+type StorageStats struct {
 	Total       uint
 	Pruned      uint
 	PruneErrors uint
 }
 
-// ArchivesStats stats about each possible archival location (Local, WebDAV, S3)
-type ArchivesStats struct {
-	Local  ArchiveStats
-	WebDAV ArchiveStats
-	S3     ArchiveStats
+// StoragesStats stats about each possible archival location (Local, WebDAV, S3)
+type StoragesStats struct {
+	Local  StorageStats
+	WebDAV StorageStats
+	S3     StorageStats
 }
 
 // Stats global stats regarding script execution
@@ -147,7 +147,7 @@ type Stats struct {
 	LogOutput  *bytes.Buffer
 	Containers ContainersStats
 	BackupFile BackupFileStats
-	Archives   ArchivesStats
+	Storages   StoragesStats
 }
 
 // NotificationData data to be passed to the notification templates
@@ -210,7 +210,7 @@ func newScript() (*script, error) {
 		stats: &Stats{
 			StartTime: time.Now(),
 			LogOutput: logBuffer,
-			Archives:  ArchivesStats{},
+			Storages:  StoragesStats{},
 		},
 	}
 
@@ -714,7 +714,7 @@ func (s *script) pruneOldBackups() error {
 			}
 		}
 
-		s.stats.Archives.S3 = ArchiveStats{
+		s.stats.Storages.S3 = StorageStats{
 			Total:  uint(lenCandidates),
 			Pruned: uint(len(matches)),
 		}
@@ -733,7 +733,7 @@ func (s *script) pruneOldBackups() error {
 					removeErrors = append(removeErrors, result.Err)
 				}
 			}
-			s.stats.Archives.S3.PruneErrors = uint(len(removeErrors))
+			s.stats.Storages.S3.PruneErrors = uint(len(removeErrors))
 
 			if len(removeErrors) != 0 {
 				return fmt.Errorf(
@@ -745,8 +745,8 @@ func (s *script) pruneOldBackups() error {
 
 			s.logger.Infof(
 				"Pruned %d out of %d remote backup(s) as their age exceeded the configured retention period of %d days.",
-				s.stats.Archives.S3.Pruned,
-				s.stats.Archives.S3.Total,
+				s.stats.Storages.S3.Pruned,
+				s.stats.Storages.S3.Total,
 				s.c.BackupRetentionDays,
 			)
 		} else if len(matches) != 0 && len(matches) == lenCandidates {
@@ -775,7 +775,7 @@ func (s *script) pruneOldBackups() error {
 			}
 		}
 
-		s.stats.Archives.WebDAV = ArchiveStats{
+		s.stats.Storages.WebDAV = StorageStats{
 			Total:  uint(lenCandidates),
 			Pruned: uint(len(matches)),
 		}
@@ -788,7 +788,7 @@ func (s *script) pruneOldBackups() error {
 					s.logger.Infof("Pruned %s from WebDAV: %s", match.Name(), filepath.Join(s.c.WebdavUrl, s.c.WebdavPath))
 				}
 			}
-			s.stats.Archives.WebDAV.PruneErrors = uint(len(removeErrors))
+			s.stats.Storages.WebDAV.PruneErrors = uint(len(removeErrors))
 			if len(removeErrors) != 0 {
 				return fmt.Errorf(
 					"pruneOldBackups: %d error(s) removing files from remote storage: %w",
@@ -798,8 +798,8 @@ func (s *script) pruneOldBackups() error {
 			}
 			s.logger.Infof(
 				"Pruned %d out of %d remote backup(s) as their age exceeded the configured retention period of %d days.",
-				s.stats.Archives.WebDAV.Pruned,
-				s.stats.Archives.WebDAV.Total,
+				s.stats.Storages.WebDAV.Pruned,
+				s.stats.Storages.WebDAV.Total,
 				s.c.BackupRetentionDays,
 			)
 		} else if len(matches) != 0 && len(matches) == lenCandidates {
@@ -856,7 +856,7 @@ func (s *script) pruneOldBackups() error {
 			}
 		}
 
-		s.stats.Archives.Local = ArchiveStats{
+		s.stats.Storages.Local = StorageStats{
 			Total:  uint(len(candidates)),
 			Pruned: uint(len(matches)),
 		}
@@ -868,7 +868,7 @@ func (s *script) pruneOldBackups() error {
 				}
 			}
 			if len(removeErrors) != 0 {
-				s.stats.Archives.Local.PruneErrors = uint(len(removeErrors))
+				s.stats.Storages.Local.PruneErrors = uint(len(removeErrors))
 				return fmt.Errorf(
 					"pruneOldBackups: %d error(s) deleting local files, starting with: %w",
 					len(removeErrors),
@@ -877,8 +877,8 @@ func (s *script) pruneOldBackups() error {
 			}
 			s.logger.Infof(
 				"Pruned %d out of %d local backup(s) as their age exceeded the configured retention period of %d days.",
-				s.stats.Archives.Local.Pruned,
-				s.stats.Archives.Local.Total,
+				s.stats.Storages.Local.Pruned,
+				s.stats.Storages.Local.Total,
 				s.c.BackupRetentionDays,
 			)
 		} else if len(matches) != 0 && len(matches) == len(candidates) {
