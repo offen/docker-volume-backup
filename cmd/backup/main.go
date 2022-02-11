@@ -112,26 +112,26 @@ type script struct {
 
 // ContainersStats stats about the docker containers
 type ContainersStats struct {
-	All        int
-	ToStop     int
-	Stopped    int
-	StopErrors int
+	All        uint
+	ToStop     uint
+	Stopped    uint
+	StopErrors uint
 }
 
 // BackupFileStats stats about the created backup file
 type BackupFileStats struct {
 	Name      string
 	FullPath  string
-	SizeBytes int64
+	SizeBytes uint64
 	SizeBin   string
 	SizeDec   string
 }
 
 // ArchiveStats stats about the status of an archival directory
 type ArchiveStats struct {
-	Total       int
-	Pruned      int
-	PruneErrors int
+	Total       uint
+	Pruned      uint
+	PruneErrors uint
 }
 
 // ArchivesStats stats about each possible archival location (Local, WebDAV, S3)
@@ -472,9 +472,9 @@ func (s *script) stopContainers() (func() error, error) {
 	}
 
 	s.stats.Containers = ContainersStats{
-		All:     len(allContainers),
-		ToStop:  len(containersToStop),
-		Stopped: len(stoppedContainers),
+		All:     uint(len(allContainers)),
+		ToStop:  uint(len(containersToStop)),
+		Stopped: uint(len(stoppedContainers)),
 	}
 
 	return func() error {
@@ -625,7 +625,7 @@ func (s *script) copyBackup() error {
 	} else {
 		size := stat.Size()
 		s.stats.BackupFile = BackupFileStats{
-			SizeBytes: size,
+			SizeBytes: uint64(size),
 			SizeBin:   bytesToString(size, false),
 			SizeDec:   bytesToString(size, true),
 			Name:      name,
@@ -713,8 +713,8 @@ func (s *script) pruneOldBackups() error {
 		}
 
 		s.stats.Archives.S3 = ArchiveStats{
-			Total:  lenCandidates,
-			Pruned: len(matches),
+			Total:  uint(lenCandidates),
+			Pruned: uint(len(matches)),
 		}
 		if len(matches) != 0 && len(matches) != lenCandidates {
 			objectsCh := make(chan minio.ObjectInfo)
@@ -731,7 +731,7 @@ func (s *script) pruneOldBackups() error {
 					removeErrors = append(removeErrors, result.Err)
 				}
 			}
-			s.stats.Archives.S3.PruneErrors = len(removeErrors)
+			s.stats.Archives.S3.PruneErrors = uint(len(removeErrors))
 
 			if len(removeErrors) != 0 {
 				return fmt.Errorf(
@@ -774,8 +774,8 @@ func (s *script) pruneOldBackups() error {
 		}
 
 		s.stats.Archives.WebDAV = ArchiveStats{
-			Total:  lenCandidates,
-			Pruned: len(matches),
+			Total:  uint(lenCandidates),
+			Pruned: uint(len(matches)),
 		}
 		if len(matches) != 0 && len(matches) != lenCandidates {
 			var removeErrors []error
@@ -786,7 +786,7 @@ func (s *script) pruneOldBackups() error {
 					s.logger.Infof("Pruned %s from WebDAV: %s", match.Name(), filepath.Join(s.c.WebdavUrl, s.c.WebdavPath))
 				}
 			}
-			s.stats.Archives.WebDAV.PruneErrors = len(removeErrors)
+			s.stats.Archives.WebDAV.PruneErrors = uint(len(removeErrors))
 			if len(removeErrors) != 0 {
 				return fmt.Errorf(
 					"pruneOldBackups: %d error(s) removing files from remote storage: %w",
@@ -855,8 +855,8 @@ func (s *script) pruneOldBackups() error {
 		}
 
 		s.stats.Archives.Local = ArchiveStats{
-			Total:  len(candidates),
-			Pruned: len(matches),
+			Total:  uint(len(candidates)),
+			Pruned: uint(len(matches)),
 		}
 		if len(matches) != 0 && len(matches) != len(candidates) {
 			var removeErrors []error
@@ -866,7 +866,7 @@ func (s *script) pruneOldBackups() error {
 				}
 			}
 			if len(removeErrors) != 0 {
-				s.stats.Archives.Local.PruneErrors = len(removeErrors)
+				s.stats.Archives.Local.PruneErrors = uint(len(removeErrors))
 				return fmt.Errorf(
 					"pruneOldBackups: %d error(s) deleting local files, starting with: %w",
 					len(removeErrors),
