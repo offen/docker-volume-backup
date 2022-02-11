@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"io"
@@ -36,6 +37,9 @@ import (
 	"github.com/studio-b12/gowebdav"
 	"golang.org/x/crypto/openpgp"
 )
+
+//go:embed notifications.tmpl
+var defaultNotifications string
 
 func main() {
 	unlock := lock("/var/lock/dockervolumebackup.lock")
@@ -334,10 +338,16 @@ func newScript() (*script, error) {
 			return t.Format(time.RFC3339)
 		},
 	})
-
-	tmpl, err = tmpl.ParseGlob("/etc/dockervolumebackup/notifications.d/*.*")
+	tmpl, err = tmpl.Parse(defaultNotifications)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse notifications templates: %w", err)
+		return nil, fmt.Errorf("newScript: unable to parse default notifications templates: %w", err)
+	}
+
+	if _, err := os.Stat("/etc/dockervolumebackup/notifications.d"); err == nil {
+		tmpl, err = tmpl.ParseGlob("/etc/dockervolumebackup/notifications.d/*.*")
+		if err != nil {
+			return nil, fmt.Errorf("newScript: unable to parse user defined notifications templates: %w", err)
+		}
 	}
 	s.template = tmpl
 

@@ -6,6 +6,7 @@ FROM golang:1.17-alpine as builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
+COPY cmd/backup/notifications.tmpl ./cmd/backup/notifications.tmpl
 COPY cmd/backup/main.go ./cmd/backup/main.go
 RUN go build -o backup cmd/backup/main.go
 
@@ -18,7 +19,6 @@ RUN apk add --update ca-certificates
 COPY --from=builder /app/backup /usr/bin/backup
 
 COPY ./entrypoint.sh /root/
-COPY notifications.tmpl /etc/dockervolumebackup/notifications.d/00defaults.tmpl
 RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["/root/entrypoint.sh"]
