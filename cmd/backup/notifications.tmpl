@@ -8,7 +8,7 @@ Running docker-volume-backup failed with error: {{ .Error }}
 
 Log output of the failed run was:
 
-{{ .Stats.Output }}
+{{ .Stats.LogOutput }}
 {{- end }}
 
 
@@ -22,5 +22,5 @@ Running docker-volume-backup succeeded.
 
 Log output was:
 
-{{ .Stats.Output }}
+{{ .Stats.LogOutput }}
 {{- end }}

@@ -146,7 +146,7 @@ type Stats struct {
 	StartTime  time.Time
 	EndTime    time.Time
 	TookTime   time.Duration
-	Output     *bytes.Buffer
+	LogOutput  *bytes.Buffer
 	Containers ContainersStats
 	BackupFile BackupFileStats
 	Archives   ArchivesStats
@@ -211,7 +211,7 @@ func newScript() (*script, error) {
 		},
 		stats: &Stats{
 			StartTime: time.Now(),
-			Output:    logBuffer,
+			LogOutput: logBuffer,
 			Archives:  ArchivesStats{},
 		},
 	}
