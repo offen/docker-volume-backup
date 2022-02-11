@@ -685,12 +685,7 @@ func (s *script) pruneOldBackups() error {
 		return nil
 	}
 
-	if s.c.BackupPruningLeeway != 0 {
-		s.logger.Infof("Sleeping for %s before pruning backups.", s.c.BackupPruningLeeway)
-		time.Sleep(s.c.BackupPruningLeeway)
-	}
-
-	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays))
+	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
 
 	// Prune minio/S3 backups
 	if s.minioClient != nil {
