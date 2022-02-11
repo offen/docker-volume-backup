@@ -120,11 +120,9 @@ type ContainersStats struct {
 
 // BackupFileStats stats about the created backup file
 type BackupFileStats struct {
-	Name      string
-	FullPath  string
-	SizeBytes uint64
-	SizeBin   string
-	SizeDec   string
+	Name     string
+	FullPath string
+	Size     uint64
 }
 
 // ArchiveStats stats about the status of an archival directory
@@ -336,6 +334,12 @@ func newScript() (*script, error) {
 	tmpl.Funcs(template.FuncMap{
 		"formatTime": func(t time.Time) string {
 			return t.Format(time.RFC3339)
+		},
+		"formatBytesDec": func(bytes uint64) string {
+			return formatBytes(bytes, true)
+		},
+		"formatBytesBin": func(bytes uint64) string {
+			return formatBytes(bytes, false)
 		},
 	})
 	tmpl, err = tmpl.Parse(defaultNotifications)
@@ -625,11 +629,9 @@ func (s *script) copyBackup() error {
 	} else {
 		size := stat.Size()
 		s.stats.BackupFile = BackupFileStats{
-			SizeBytes: uint64(size),
-			SizeBin:   bytesToString(size, false),
-			SizeDec:   bytesToString(size, true),
-			Name:      name,
-			FullPath:  s.file,
+			Size:     uint64(size),
+			Name:     name,
+			FullPath: s.file,
 		}
 	}
 
@@ -994,13 +996,13 @@ func join(errs ...error) error {
 	return errors.New("[" + strings.Join(msgs, ", ") + "]")
 }
 
-// bytesToString converts an amount of bytes in a human-readable representation
-// the decimal parameter specifies if using powers of 10 (decimal) or powers of 2 (binary)
-func bytesToString(b int64, decimal bool) string {
-	unit := int64(1024)
+// formatBytes converts an amount of bytes in a human-readable representation
+// the decimal parameter specifies if using powers of 1000 (decimal) or powers of 1024 (binary)
+func formatBytes(b uint64, decimal bool) string {
+	unit := uint64(1024)
 	format := "%.1f %ciB"
 	if decimal {
-		unit = int64(1000)
+		unit = uint64(1000)
 		format = "%.1f %cB"
 	}
 	if b < unit {
