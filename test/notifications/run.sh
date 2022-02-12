@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
@@ -15,7 +15,7 @@ docker-compose down
 
 GOTIFY_TOKEN=$GOTIFY_TOKEN docker-compose up -d
 
-echo "[TEST:INFO] Set up Gotify appliaction using token $GOTIFY_TOKEN"
+echo "[TEST:INFO] Set up Gotify application using token $GOTIFY_TOKEN"
 
 docker-compose exec backup backup
 
