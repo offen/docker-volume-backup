@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
@@ -32,18 +32,27 @@ echo "[TEST:PASS] All containers running post backup."
 
 MESSAGE=$(curl -sSL http://admin:custom@localhost:8080/message | jq -r '.messages[0]')
 
-if [[ "$MESSAGE" != *"Successful test run, yay!"* ]]; then
+
+case "$MESSAGE" in
+  *"Successful test run, yay!"*)
+  echo "[TEST:PASS] Custom notification title was used"
+  ;;
+  *)
   echo "[TEST:FAIL] Expected custom title to be used in notification, instead seen:"
   echo $MESSAGE
   exit 1
-fi
+  ;;
+esac
 
-if [[ "$MESSAGE" != *"Backing up test.tar.gz succeeded."* ]]; then
-  echo "[TEST:FAIL] Expected custom title to be used in notification, instead seen:"
+case "$MESSAGE" in
+  *"Backing up test.tar.gz succeeded."*)
+  echo "[TEST:PASS] Custom notification body was used"
+  ;;
+  *)
+  echo "[TEST:FAIL] Expected custom body to be used in notification, instead seen:"
   echo $MESSAGE
   exit 1
-fi
-
-echo "[TEST:PASS] Custom notifications were used as expected."
+  ;;
+esac
 
 docker-compose down --volumes
