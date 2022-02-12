@@ -15,6 +15,8 @@ docker-compose down
 
 GOTIFY_TOKEN=$GOTIFY_TOKEN docker-compose up -d
 
+echo "[TEST:INFO] Set up Gotify appliaction using token $GOTIFY_TOKEN"
+
 docker-compose exec backup backup
 
 tar -xf ./local/test.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db
