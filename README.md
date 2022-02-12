@@ -282,8 +282,9 @@ You can populate below template according to your requirements and use it as you
 # Notifications (email, Slack, etc.) can be sent out when a backup run finishes.
 # Configuration is provided as a comma-separated list of URLs as consumed
 # by `shoutrrr`: https://containrrr.dev/shoutrrr/v0.5/services/overview/
-# When providing multiple URLs or an URL that contains a comma, the values
-# can be URL encoded to avoid ambiguities.
+# The content of such notifications can be customized. Dedicated documentation
+# on how to do this can be found in the README. When providing multiple URLs or
+# an URL that contains a comma, the values can be URL encoded to avoid ambiguities.
 
 # The below URL demonstrates how to send an email using the provided SMTP
 # configuration and credentials.
