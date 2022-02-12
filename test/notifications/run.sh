@@ -45,7 +45,7 @@ case "$MESSAGE" in
 esac
 
 case "$MESSAGE" in
-  *"Backing up test.tar.gz succeeded."*)
+  *"Backing up /tmp/test.tar.gz succeeded."*)
   echo "[TEST:PASS] Custom notification body was used"
   ;;
   *)
