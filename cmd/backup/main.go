@@ -88,8 +88,6 @@ func main() {
 	s.must(s.encryptBackup())
 	s.must(s.copyBackup())
 	s.must(s.pruneOldBackups())
-	s.stats.EndTime = time.Now()
-	s.stats.TookTime = s.stats.EndTime.Sub(s.stats.EndTime)
 }
 
 // script holds all the stateful information required to orchestrate a
@@ -191,8 +189,6 @@ type Config struct {
 	WebdavPassword             string        `split_words:"true"`
 }
 
-var msgBackupFailed = "backup run failed"
-
 // newScript creates all resources needed for the script to perform actions against
 // remote resources like the Docker engine or remote storage locations. All
 // reading from env vars or other configuration sources is expected to happen
@@ -213,6 +209,12 @@ func newScript() (*script, error) {
 			Storages:  StoragesStats{},
 		},
 	}
+
+	s.registerHook(hookLevelPlumbing, func(error) error {
+		s.stats.EndTime = time.Now()
+		s.stats.TookTime = s.stats.EndTime.Sub(s.stats.EndTime)
+		return nil
+	})
 
 	if err := envconfig.Process("", s.c); err != nil {
 		return nil, fmt.Errorf("newScript: failed to process configuration values: %w", err)
