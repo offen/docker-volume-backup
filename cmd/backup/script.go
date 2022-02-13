@@ -500,7 +500,7 @@ func (s *script) pruneBackups() error {
 				s.c.BackupRetentionDays,
 			)
 		} else if lenMatches != 0 && lenMatches == lenCandidates {
-			s.logger.Warnf("The current configuration would delete all %d existing backups.", lenMatches)
+			s.logger.Warnf("The current configuration would delete all %d existing %s.", lenMatches, description)
 			s.logger.Warn("Refusing to do so, please check your configuration.")
 		} else {
 			s.logger.Infof("None of %d existing %s were pruned.", lenCandidates, description)
