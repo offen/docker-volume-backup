@@ -7,7 +7,8 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd/backup ./cmd/backup/
-RUN go build -o backup cmd/backup/main.go
+WORKDIR /app/cmd/backup
+RUN go build -o backup .
 
 FROM alpine:3.15
 
@@ -15,7 +16,7 @@ WORKDIR /root
 
 RUN apk add --update ca-certificates
 
-COPY --from=builder /app/backup /usr/bin/backup
+COPY --from=builder /app/cmd/backup/backup /usr/bin/backup
 
 COPY ./entrypoint.sh /root/
 RUN chmod +x entrypoint.sh
