@@ -474,17 +474,39 @@ func (s *script) copyBackup() error {
 	return nil
 }
 
-// pruneOldBackups rotates away backups from local and remote storages using
+// pruneBackups rotates away backups from local and remote storages using
 // the given configuration. In case the given configuration would delete all
-// backups, it does nothing instead.
-func (s *script) pruneOldBackups() error {
+// backups, it does nothing instead and logs a warning.
+func (s *script) pruneBackups() error {
 	if s.c.BackupRetentionDays < 0 {
 		return nil
 	}
 
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
 
-	// Prune minio/S3 backups
+	// doPrune holds general control flow that applies to any kind of storage.
+	// Callers can pass in a thunk that performs the actual deletion of files.
+	var doPrune = func(lenMatches, lenCandidates int, description string, doRemoveFiles func() error) error {
+		if lenMatches != 0 && lenMatches != lenCandidates {
+			if err := doRemoveFiles(); err != nil {
+				return err
+			}
+			s.logger.Infof(
+				"Pruned %d out of %d %s as their age exceeded the configured retention period of %d days.",
+				lenMatches,
+				lenCandidates,
+				description,
+				s.c.BackupRetentionDays,
+			)
+		} else if lenMatches != 0 && lenMatches == lenCandidates {
+			s.logger.Warnf("The current configuration would delete all %d existing backups.", lenMatches)
+			s.logger.Warn("Refusing to do so, please check your configuration.")
+		} else {
+			s.logger.Infof("None of %d existing %s were pruned.", lenCandidates, description)
+		}
+		return nil
+	}
+
 	if s.minioClient != nil {
 		candidates := s.minioClient.ListObjects(context.Background(), s.c.AwsS3BucketName, minio.ListObjectsOptions{
 			WithMetadata: true,
@@ -497,7 +519,7 @@ func (s *script) pruneOldBackups() error {
 			lenCandidates++
 			if candidate.Err != nil {
 				return fmt.Errorf(
-					"pruneOldBackups: error looking up candidates from remote storage: %w",
+					"pruneBackups: error looking up candidates from remote storage: %w",
 					candidate.Err,
 				)
 			}
@@ -510,7 +532,8 @@ func (s *script) pruneOldBackups() error {
 			Total:  uint(lenCandidates),
 			Pruned: uint(len(matches)),
 		}
-		if len(matches) != 0 && len(matches) != lenCandidates {
+
+		doPrune(len(matches), lenCandidates, "remote backup(s)", func() error {
 			objectsCh := make(chan minio.ObjectInfo)
 			go func() {
 				for _, match := range matches {
@@ -525,38 +548,17 @@ func (s *script) pruneOldBackups() error {
 					removeErrors = append(removeErrors, result.Err)
 				}
 			}
-			s.stats.Storages.S3.PruneErrors = uint(len(removeErrors))
-
 			if len(removeErrors) != 0 {
-				return fmt.Errorf(
-					"pruneOldBackups: %d error(s) removing files from remote storage: %w",
-					len(removeErrors),
-					join(removeErrors...),
-				)
+				return join(removeErrors...)
 			}
-
-			s.logger.Infof(
-				"Pruned %d out of %d remote backup(s) as their age exceeded the configured retention period of %d days.",
-				s.stats.Storages.S3.Pruned,
-				s.stats.Storages.S3.Total,
-				s.c.BackupRetentionDays,
-			)
-		} else if len(matches) != 0 && len(matches) == lenCandidates {
-			s.logger.Warnf(
-				"The current configuration would delete all %d remote backup copies.",
-				len(matches),
-			)
-			s.logger.Warn("Refusing to do so, please check your configuration.")
-		} else {
-			s.logger.Infof("None of %d remote backup(s) were pruned.", lenCandidates)
-		}
+			return nil
+		})
 	}
 
-	// Prune WebDAV backups
 	if s.webdavClient != nil {
 		candidates, err := s.webdavClient.ReadDir(s.c.WebdavPath)
 		if err != nil {
-			return fmt.Errorf("pruneOldBackups: error looking up candidates from remote storage: %w", err)
+			return fmt.Errorf("pruneBackups: error looking up candidates from remote storage: %w", err)
 		}
 		var matches []fs.FileInfo
 		var lenCandidates int
@@ -571,38 +573,17 @@ func (s *script) pruneOldBackups() error {
 			Total:  uint(lenCandidates),
 			Pruned: uint(len(matches)),
 		}
-		if len(matches) != 0 && len(matches) != lenCandidates {
-			var removeErrors []error
+
+		doPrune(len(matches), lenCandidates, "WebDAV backup(s)", func() error {
 			for _, match := range matches {
 				if err := s.webdavClient.Remove(filepath.Join(s.c.WebdavPath, match.Name())); err != nil {
-					removeErrors = append(removeErrors, err)
-				} else {
-					s.logger.Infof("Pruned %s from WebDAV: %s", match.Name(), filepath.Join(s.c.WebdavUrl, s.c.WebdavPath))
+					return fmt.Errorf("pruneBackups: error removing file from WebDAV storage: %w", err)
 				}
 			}
-			s.stats.Storages.WebDAV.PruneErrors = uint(len(removeErrors))
-			if len(removeErrors) != 0 {
-				return fmt.Errorf(
-					"pruneOldBackups: %d error(s) removing files from remote storage: %w",
-					len(removeErrors),
-					join(removeErrors...),
-				)
-			}
-			s.logger.Infof(
-				"Pruned %d out of %d remote backup(s) as their age exceeded the configured retention period of %d days.",
-				s.stats.Storages.WebDAV.Pruned,
-				s.stats.Storages.WebDAV.Total,
-				s.c.BackupRetentionDays,
-			)
-		} else if len(matches) != 0 && len(matches) == lenCandidates {
-			s.logger.Warnf("The current configuration would delete all %d remote backup copies.", len(matches))
-			s.logger.Warn("Refusing to do so, please check your configuration.")
-		} else {
-			s.logger.Infof("None of %d remote backup(s) were pruned.", lenCandidates)
-		}
+			return nil
+		})
 	}
 
-	// Prune local backups
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
 		globPattern := path.Join(
 			s.c.BackupArchive,
@@ -611,7 +592,7 @@ func (s *script) pruneOldBackups() error {
 		globMatches, err := filepath.Glob(globPattern)
 		if err != nil {
 			return fmt.Errorf(
-				"pruneOldBackups: error looking up matching files using pattern %s: %w",
+				"pruneBackups: error looking up matching files using pattern %s: %w",
 				globPattern,
 				err,
 			)
@@ -622,7 +603,7 @@ func (s *script) pruneOldBackups() error {
 			fi, err := os.Lstat(candidate)
 			if err != nil {
 				return fmt.Errorf(
-					"pruneOldBackups: error calling Lstat on file %s: %w",
+					"pruneBackups: error calling Lstat on file %s: %w",
 					candidate,
 					err,
 				)
@@ -638,7 +619,7 @@ func (s *script) pruneOldBackups() error {
 			fi, err := os.Stat(candidate)
 			if err != nil {
 				return fmt.Errorf(
-					"pruneOldBackups: error calling stat on file %s: %w",
+					"pruneBackups: error calling stat on file %s: %w",
 					candidate,
 					err,
 				)
@@ -652,7 +633,8 @@ func (s *script) pruneOldBackups() error {
 			Total:  uint(len(candidates)),
 			Pruned: uint(len(matches)),
 		}
-		if len(matches) != 0 && len(matches) != len(candidates) {
+
+		doPrune(len(matches), len(candidates), "local backup(s)", func() error {
 			var removeErrors []error
 			for _, match := range matches {
 				if err := os.Remove(match); err != nil {
@@ -660,28 +642,14 @@ func (s *script) pruneOldBackups() error {
 				}
 			}
 			if len(removeErrors) != 0 {
-				s.stats.Storages.Local.PruneErrors = uint(len(removeErrors))
 				return fmt.Errorf(
-					"pruneOldBackups: %d error(s) deleting local files, starting with: %w",
+					"pruneBackups: %d error(s) deleting local files, starting with: %w",
 					len(removeErrors),
 					join(removeErrors...),
 				)
 			}
-			s.logger.Infof(
-				"Pruned %d out of %d local backup(s) as their age exceeded the configured retention period of %d days.",
-				s.stats.Storages.Local.Pruned,
-				s.stats.Storages.Local.Total,
-				s.c.BackupRetentionDays,
-			)
-		} else if len(matches) != 0 && len(matches) == len(candidates) {
-			s.logger.Warnf(
-				"The current configuration would delete all %d local backup copies.",
-				len(matches),
-			)
-			s.logger.Warn("Refusing to do so, please check your configuration.")
-		} else {
-			s.logger.Infof("None of %d local backup(s) were pruned.", len(candidates))
-		}
+			return nil
+		})
 	}
 	return nil
 }

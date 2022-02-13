@@ -53,5 +53,5 @@ func main() {
 
 	s.must(s.encryptBackup())
 	s.must(s.copyBackup())
-	s.must(s.pruneOldBackups())
+	s.must(s.pruneBackups())
 }
