@@ -7,6 +7,8 @@ cd $(dirname $0)
 docker network create test_network
 docker volume create backup_data
 docker volume create app_data
+# This volume is created to test whether empty directories are handled
+# correctly. It is not supposed to hold any data.
 docker volume create empty_data
 
 docker run -d \
@@ -48,8 +50,10 @@ docker run --rm -it \
   -v backup_data:/data alpine \
   ash -c 'tar -xvf /data/backup/test.tar.gz && test -f /backup/app_data/offen.db && test -d /backup/empty_data'
 
-echo "[TEST:PASS] Found relevant files in untared backup."
+echo "[TEST:PASS] Found relevant files in untared remote backup."
 
+# This test does not stop containers during backup. This is happening on
+# purpose in order to cover this setup as well.
 if [ "$(docker ps -q | wc -l)" != "2" ]; then
   echo "[TEST:FAIL] Expected all containers to be running post backup, instead seen:"
   docker ps
