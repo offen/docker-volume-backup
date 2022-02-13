@@ -9,7 +9,7 @@ services:
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
       BACKUP_PRUNING_PREFIX: test
       NOTIFICATION_LEVEL: info
-      NOTIFICATION_URLS: gotify://gotify/${GOTIFY_TOKEN}?disableTLS=true
+      NOTIFICATION_URLS: ${NOTIFICATION_URLS}
     volumes:
       - ./local:/archive
       - app_data:/backup/app_data:ro

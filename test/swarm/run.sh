@@ -29,9 +29,7 @@ if [ "$(docker ps -q | wc -l)" != "5" ]; then
   docker ps -a
   exit 1
 fi
-
 echo "[TEST:PASS] All containers running post backup."
 
 docker stack rm test_stack
-
 docker swarm leave --force
