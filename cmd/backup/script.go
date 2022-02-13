@@ -177,6 +177,22 @@ func newScript() (*script, error) {
 			return nil, fmt.Errorf("newScript: error creating sender: %w", senderErr)
 		}
 		s.sender = sender
+
+		tmpl := template.New("")
+		tmpl.Funcs(templateHelpers)
+		tmpl, err = tmpl.Parse(defaultNotifications)
+		if err != nil {
+			return nil, fmt.Errorf("newScript: unable to parse default notifications templates: %w", err)
+		}
+
+		if fi, err := os.Stat("/etc/dockervolumebackup/notifications.d"); err == nil && fi.IsDir() {
+			tmpl, err = tmpl.ParseGlob("/etc/dockervolumebackup/notifications.d/*.*")
+			if err != nil {
+				return nil, fmt.Errorf("newScript: unable to parse user defined notifications templates: %w", err)
+			}
+		}
+		s.template = tmpl
+
 		// To prevent duplicate notifications, ensure the regsistered callbacks
 		// run mutually exclusive.
 		s.registerHook(hookLevelError, func(err error) error {
@@ -192,21 +208,6 @@ func newScript() (*script, error) {
 			return s.notifySuccess()
 		})
 	}
-
-	tmpl := template.New("")
-	tmpl.Funcs(templateHelpers)
-	tmpl, err = tmpl.Parse(defaultNotifications)
-	if err != nil {
-		return nil, fmt.Errorf("newScript: unable to parse default notifications templates: %w", err)
-	}
-
-	if _, err := os.Stat("/etc/dockervolumebackup/notifications.d"); err == nil {
-		tmpl, err = tmpl.ParseGlob("/etc/dockervolumebackup/notifications.d/*.*")
-		if err != nil {
-			return nil, fmt.Errorf("newScript: unable to parse user defined notifications templates: %w", err)
-		}
-	}
-	s.template = tmpl
 
 	return s, nil
 }
