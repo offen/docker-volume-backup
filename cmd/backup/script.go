@@ -73,7 +73,7 @@ func newScript() (*script, error) {
 
 	s.registerHook(hookLevelPlumbing, func(error) error {
 		s.stats.EndTime = time.Now()
-		s.stats.TookTime = s.stats.EndTime.Sub(s.stats.EndTime)
+		s.stats.TookTime = s.stats.EndTime.Sub(s.stats.StartTime)
 		return nil
 	})
 
