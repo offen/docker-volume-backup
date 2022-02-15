@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   canary:
     machine:
-      image: ubuntu-1604:202007-01
+      image: ubuntu-2004:202201-02
     working_directory: ~/docker-volume-backup
     steps:
       - checkout
@@ -19,6 +19,7 @@ jobs:
           name: Run tests
           working_directory: ~/docker-volume-backup/test
           command: |
+            export GPG_TTY=$(tty)
             ./test.sh canary
 
   build:

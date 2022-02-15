@@ -32,7 +32,7 @@ docker run --rm -it \
 
 echo "[TEST:PASS] Found relevant files in decrypted and untared remote backups."
 
-echo 1234secret | gpg -d --yes --passphrase-fd 0 ./local/test-hostnametoken.tar.gz.gpg > ./local/decrypted.tar.gz
+echo 1234secret | gpg -d --pinentry-mode loopback --yes --passphrase-fd 0 ./local/test-hostnametoken.tar.gz.gpg > ./local/decrypted.tar.gz
 tar -xf ./local/decrypted.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db
 rm ./local/decrypted.tar.gz
 test -L /tmp/backup/app_data/db.link
