@@ -90,7 +90,8 @@ func newScript() (*script, error) {
 	s.file = timeutil.Strftime(&s.stats.StartTime, s.file)
 
 	_, err := os.Stat("/var/run/docker.sock")
-	if !os.IsNotExist(err) {
+	_, dockerHostSet := os.LookupEnv("DOCKER_HOST")
+	if !os.IsNotExist(err) || dockerHostSet {
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
 			return nil, fmt.Errorf("newScript: failed to create docker client")
