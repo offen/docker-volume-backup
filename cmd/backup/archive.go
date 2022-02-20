@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 )
 
@@ -55,6 +56,7 @@ func compress(inPath, outFilePath, subPath string) (err error) {
 		}
 	}()
 
+	prefix := path.Dir(outFilePath)
 	gzipWriter := gzip.NewWriter(file)
 	tarWriter := tar.NewWriter(gzipWriter)
 
@@ -66,7 +68,7 @@ func compress(inPath, outFilePath, subPath string) (err error) {
 		return err
 	}
 	for _, p := range paths {
-		if err := writeTarGz(p, tarWriter); err != nil {
+		if err := writeTarGz(p, tarWriter, prefix); err != nil {
 			return err
 		}
 	}
@@ -89,7 +91,7 @@ func compress(inPath, outFilePath, subPath string) (err error) {
 	return nil
 }
 
-func writeTarGz(path string, tarWriter *tar.Writer) error {
+func writeTarGz(path string, tarWriter *tar.Writer, prefix string) error {
 	fileInfo, err := os.Lstat(path)
 	if err != nil {
 		return err
@@ -111,7 +113,7 @@ func writeTarGz(path string, tarWriter *tar.Writer) error {
 	if err != nil {
 		return err
 	}
-	header.Name = path
+	header.Name = path[len(prefix):]
 
 	err = tarWriter.WriteHeader(header)
 	if err != nil {
