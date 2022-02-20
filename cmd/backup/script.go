@@ -23,7 +23,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
-	"github.com/m90/targz"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/otiai10/copy"
@@ -364,7 +363,7 @@ func (s *script) takeBackup() error {
 		s.logger.Infof("Removed tar file `%s`.", tarFile)
 		return nil
 	})
-	if err := targz.Compress(backupSources, tarFile); err != nil {
+	if err := createArchive(backupSources, tarFile); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
 
