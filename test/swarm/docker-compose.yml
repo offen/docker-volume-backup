@@ -49,7 +49,7 @@ services:
         condition: on-failure
 
   pg:
-    image: postgres:12.2-alpine
+    image: postgres:14-alpine
     environment:
       POSTGRES_PASSWORD: example
     labels:
