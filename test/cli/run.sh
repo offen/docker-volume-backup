@@ -48,7 +48,7 @@ docker run --rm \
 
 docker run --rm -it \
   -v backup_data:/data alpine \
-  ash -c 'tar -xvf /data/backup/test.tar.gz && test -f ./backup/app_data/offen.db && test -d ./backup/empty_data'
+  ash -c 'tar -xvf /data/backup/test.tar.gz && test -f /backup/app_data/offen.db && test -d /backup/empty_data'
 
 echo "[TEST:PASS] Found relevant files in untared remote backup."
 
