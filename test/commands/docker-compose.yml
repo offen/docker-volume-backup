@@ -5,8 +5,8 @@ services:
     image: alpine:3.15
     command: tail -f /dev/null
     labels:
-      - docker-volume-backup.pre=touch /tmp/volume/pre.txt
-      - docker-volume-backup.post=touch /tmp/volume/post.txt
+      - docker-volume-backup.pre=/bin/sh -c 'echo "ok" > /tmp/volume/pre.txt'
+      - docker-volume-backup.post=/bin/sh -c 'echo "ok" > /tmp/volume/post.txt'
       - docker-volume-backup.stop-during-backup=true
     volumes:
       - app_data:/tmp/volume

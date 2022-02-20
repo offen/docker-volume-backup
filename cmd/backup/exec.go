@@ -6,17 +6,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 	"sync"
 
+	"github.com/cosiner/argv"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/pkg/stdcopy"
 )
 
 func (s *script) exec(containerRef string, command string) ([]byte, []byte, error) {
+	args, _ := argv.Argv(command, nil, nil)
 	execID, err := s.cli.ContainerExecCreate(context.Background(), containerRef, types.ExecConfig{
-		Cmd:          strings.Split(command, " "),
+		Cmd:          args[0],
 		AttachStdin:  true,
 		AttachStderr: true,
 	})
