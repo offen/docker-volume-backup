@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 func createArchive(inputFilePath, outputFilePath string) (err error) {
@@ -113,7 +114,7 @@ func writeTarGz(path string, tarWriter *tar.Writer, prefix string) error {
 	if err != nil {
 		return err
 	}
-	header.Name = path[len(prefix):]
+	header.Name = strings.TrimPrefix(path, prefix)
 
 	err = tarWriter.WriteHeader(header)
 	if err != nil {
