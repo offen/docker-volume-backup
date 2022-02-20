@@ -213,6 +213,22 @@ func newScript() (*script, error) {
 	return s, nil
 }
 
+func (s *script) runCommands() (func() error, error) {
+	if s.cli == nil {
+		return noop, nil
+	}
+
+	if err := s.runLabeledCommands("docker-volume-backup.pre"); err != nil {
+		return noop, fmt.Errorf("runCommands: error running pre commands: %w", err)
+	}
+	return func() error {
+		if err := s.runLabeledCommands("docker-volume-backup.post"); err != nil {
+			return fmt.Errorf("runCommands: error running post commands: %w", err)
+		}
+		return nil
+	}, nil
+}
+
 // stopContainers stops all Docker containers that are marked as to being
 // stopped during the backup and returns a function that can be called to
 // restart everything that has been stopped.

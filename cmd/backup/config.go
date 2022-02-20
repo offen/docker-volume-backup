@@ -39,4 +39,5 @@ type Config struct {
 	WebdavPath                 string        `split_words:"true" default:"/"`
 	WebdavUsername             string        `split_words:"true"`
 	WebdavPassword             string        `split_words:"true"`
+	ForwardCommandOutput       bool          `split_words:true`
 }

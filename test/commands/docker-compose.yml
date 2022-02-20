@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  dummy:
+    image: alpine:3.15
+    command: tail -f /dev/null
+    labels:
+      - docker-volume-backup.pre=touch /tmp/volume/pre.txt
+      - docker-volume-backup.post=touch /tmp/volume/post.txt
+      - docker-volume-backup.stop-during-backup=true
+    volumes:
+      - app_data:/tmp/volume
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    restart: always
+    environment:
+      BACKUP_FILENAME: test.tar.gz
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      FORWARD_COMMAND_OUTPUT: "true"
+    volumes:
+      - ./local:/archive
+      - app_data:/backup/data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  app_data:
