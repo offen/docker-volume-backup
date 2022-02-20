@@ -1,3 +1,9 @@
+// Copyright 2022 - Offen Authors <hioffen@posteo.de>
+// SPDX-License-Identifier: MPL-2.0
+
+// Portions of this file are taken from package `targz`, Copyright (c) 2014 Fredrik Wallgren
+// Licensed under the MIT License: https://github.com/walle/targz/blob/57fe4206da5abf7dd3901b4af3891ec2f08c7b08/LICENSE
+
 package main
 
 import (
