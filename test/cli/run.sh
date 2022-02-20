@@ -44,7 +44,7 @@ docker run --rm \
   --env BACKUP_FILENAME=test.tar.gz \
   --env "BACKUP_FROM_SNAPSHOT=true" \
   --entrypoint backup \
-  offen/docker-volume-backup:$TEST_VERSION
+  offen/docker-volume-backup:${TEST_VERSION:-canary}
 
 docker run --rm -it \
   -v backup_data:/data alpine \

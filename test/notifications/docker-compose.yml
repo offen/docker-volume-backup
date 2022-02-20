@@ -2,7 +2,7 @@ version: '3'
 
 services:
   backup:
-    image: offen/docker-volume-backup:${TEST_VERSION}
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
     restart: always
     environment:
       BACKUP_FILENAME: test.tar.gz
