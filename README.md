@@ -37,6 +37,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Running on a custom cron schedule](#running-on-a-custom-cron-schedule)
   - [Rotating away backups that are older than 7 days](#rotating-away-backups-that-are-older-than-7-days)
   - [Encrypting your backups using GPG](#encrypting-your-backups-using-gpg)
+  - [Using mysqldump to prepare the backup](#using-mysqldump-to-prepare-the-backup)
   - [Running multiple instances in the same setup](#running-multiple-instances-in-the-same-setup)
 - [Differences to `futurice/docker-volume-backup`](#differences-to-futuricedocker-volume-backup)
 
@@ -476,7 +477,7 @@ services:
     volumes:
       - backup_data:/tmp/backups
     labels:
-      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump > /tmp/backups/db-latest.sql'
+      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump --all-databases > /backups/dump.sql'
 
 volumes:
   backup_data:
@@ -496,7 +497,7 @@ services:
     volumes:
       - backup_data:/tmp/backups
     labels:
-      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump > /tmp/backups/db-latest.sql'
+      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump --all-databases > /tmp/volume/dump.sql'
       - docker-volume-backup.exec-label=database
 
   backup:
@@ -810,6 +811,32 @@ services:
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  data:
+```
+
+### Using mysqldump to prepare the backup
+
+```
+version: '3'
+
+services:
+  database:
+    image: mariadb:latest
+    labels:
+      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump -psecret --all-databases > /tmp/dumps/dump.sql'
+    volumes:
+      - app_data:/tmp/dumps
+  backup:
+    image: offen/docker-volume-backup:latest
+    environment:
+      BACKUP_FILENAME: db.tar.gz
+      BACKUP_CRON_EXPRESSION: "0 2 * * *"
+    volumes:
+      - ./local:/archive
+      - data:/backup/data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   data:
