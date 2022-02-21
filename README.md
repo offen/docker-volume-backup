@@ -513,6 +513,9 @@ volumes:
 ```
 
 
+The backup procedure is guaranteed to wait for all `pre` commands to finish.
+However there are no guarantees about the order in which they are run, which could also happen concurrently.
+
 ### Encrypting your backup using GPG
 
 The image supports encrypting backups using GPG out of the box.
