@@ -5,8 +5,9 @@ services:
     image: alpine:3.15
     command: tail -f /dev/null
     labels:
-      - docker-volume-backup.pre=/bin/sh -c 'echo "ok" > /tmp/volume/pre.txt'
-      - docker-volume-backup.post=/bin/sh -c 'echo "ok" > /tmp/volume/post.txt'
+      - docker-volume-backup.exec-pre=/bin/sh -c 'echo "ok" > /tmp/volume/pre.txt'
+      - docker-volume-backup.exec-post=/bin/sh -c 'echo "ok" > /tmp/volume/post.txt'
+      - docker-volume-backup.exec-label=test
       - docker-volume-backup.stop-during-backup=true
     volumes:
       - app_data:/tmp/volume
@@ -16,7 +17,8 @@ services:
     environment:
       BACKUP_FILENAME: test.tar.gz
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
-      FORWARD_COMMAND_OUTPUT: "true"
+      EXEC_LABEL: test
+      EXEC_FORWARD_OUTPUT: "true"
     volumes:
       - ./local:/archive
       - app_data:/backup/data:ro

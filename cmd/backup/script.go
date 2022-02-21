@@ -218,11 +218,11 @@ func (s *script) runCommands() (func() error, error) {
 		return noop, nil
 	}
 
-	if err := s.runLabeledCommands("docker-volume-backup.pre"); err != nil {
+	if err := s.runLabeledCommands("docker-volume-backup.exec-pre"); err != nil {
 		return noop, fmt.Errorf("runCommands: error running pre commands: %w", err)
 	}
 	return func() error {
-		if err := s.runLabeledCommands("docker-volume-backup.post"); err != nil {
+		if err := s.runLabeledCommands("docker-volume-backup.exec-post"); err != nil {
 			return fmt.Errorf("runCommands: error running post commands: %w", err)
 		}
 		return nil
