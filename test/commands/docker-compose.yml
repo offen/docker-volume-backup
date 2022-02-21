@@ -1,14 +1,15 @@
 version: '3'
 
 services:
-  dummy:
-    image: alpine:3.15
-    command: tail -f /dev/null
+  database:
+    image: mariadb:10.7
+    environment:
+      MARIADB_ROOT_PASSWORD: test
+      MARIADB_DATABASE: backup
     labels:
-      - docker-volume-backup.exec-pre=/bin/sh -c 'echo "ok" > /tmp/volume/pre.txt'
-      - docker-volume-backup.exec-post=/bin/sh -c 'echo "ok" > /tmp/volume/post.txt'
+      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump -ptest --all-databases > /tmp/volume/dump.sql'
+      - docker-volume-backup.exec-post=/bin/sh -c 'echo "post" > /tmp/volume/post.txt'
       - docker-volume-backup.exec-label=test
-      - docker-volume-backup.stop-during-backup=true
     volumes:
       - app_data:/tmp/volume
   backup:
