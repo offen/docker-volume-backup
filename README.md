@@ -821,7 +821,7 @@ volumes:
 
 ### Using mysqldump to prepare the backup
 
-```
+```yml
 version: '3'
 
 services:
