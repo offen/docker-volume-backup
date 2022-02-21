@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/cosiner/argv"
@@ -97,7 +98,7 @@ func (s *script) runLabeledCommands(label string) error {
 	for _, container := range containersWithCommand {
 		go func(c types.Container) {
 			cmd, _ := c.Labels[label]
-			s.logger.Infof("Running %s command %s for container %s", label, cmd, c.ID)
+			s.logger.Infof("Running %s command %s for container %s", label, cmd, strings.TrimPrefix(c.Names[0], "/"))
 			stdout, stderr, err := s.exec(c.ID, cmd)
 			if err != nil {
 				cmdErrors = append(cmdErrors, err)
