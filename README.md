@@ -559,6 +559,7 @@ Depending on your setup and the application(s) you are running, this might invol
 
 If you want to rollback an entire volume to an earlier backup snapshot (recommended for database volumes):
 
+- Trigger a manual backup if necessary (see `Manually triggering a backup`).
 - Stop the container(s) that are using the volume.
 - If volume was initially created using docker-compose, find out exact volume name using:
   ```console
