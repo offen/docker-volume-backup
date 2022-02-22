@@ -26,6 +26,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Using with Docker Swarm](#using-with-docker-swarm)
   - [Manually triggering a backup](#manually-triggering-a-backup)
   - [Update deprecated email configuration](#update-deprecated-email-configuration)
+  - [Using a custom Docker host](#using-a-custom-docker-host)
 - [Recipes](#recipes)
   - [Backing up to AWS S3](#backing-up-to-aws-s3)
   - [Backing up to Filebase](#backing-up-to-filebase)
@@ -298,6 +299,13 @@ You can populate below template according to your requirements and use it as you
 
 # NOTIFICATION_LEVEL="error"
 
+########### DOCKER HOST
+
+# If you are interfacing with Docker via TCP you can set the Docker host here
+# instead of mounting the Docker socket as a volume. This is unset by default.
+
+# DOCKER_HOST="tcp://docker_socket_proxy:2375"
+
 ########### EMAIL NOTIFICATIONS
 
 # ************************************************************************
@@ -534,6 +542,13 @@ EMAIL_SMTP_PORT="587"
 After:
 ```ini
 NOTIFICATION_URLS=smtp://me:secret@posteo.de:587/?fromAddress=no-reply@example.com&toAddresses=you@example.com
+```
+
+### Using a custom Docker host
+
+If you are interfacing with Docker via TCP, set `DOCKER_HOST` to the correct URL.
+```ini
+DOCKER_HOST=tcp://docker_socket_proxy:2375
 ```
 
 ## Recipes
