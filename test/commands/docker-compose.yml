@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  database:
+    image: mariadb:10.7
+    deploy:
+      restart_policy:
+        condition: on-failure
+    environment:
+      MARIADB_ROOT_PASSWORD: test
+      MARIADB_DATABASE: backup
+    labels:
+      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump -ptest --all-databases > /tmp/volume/dump.sql'
+      - docker-volume-backup.exec-post=/bin/sh -c 'echo "post" > /tmp/volume/post.txt'
+      - docker-volume-backup.exec-label=test
+    volumes:
+      - app_data:/tmp/volume
+
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    deploy:
+      restart_policy:
+        condition: on-failure
+    environment:
+      BACKUP_FILENAME: test.tar.gz
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      EXEC_LABEL: test
+      EXEC_FORWARD_OUTPUT: "true"
+    volumes:
+      - archive:/archive
+      - app_data:/backup/data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  app_data:
+  archive:

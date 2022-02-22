@@ -16,10 +16,11 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [One-off backups using Docker CLI](#one-off-backups-using-docker-cli)
 - [Configuration reference](#configuration-reference)
 - [How to](#how-to)
-  - [Stopping containers during backup](#stopping-containers-during-backup)
+  - [Stop containers during backup](#stop-containers-during-backup)
   - [Automatically pruning old backups](#automatically-pruning-old-backups)
   - [Send email notifications on failed backup runs](#send-email-notifications-on-failed-backup-runs)
   - [Customize notifications](#customize-notifications)
+  - [Run custom commands before / after backup](#run-custom-commands-before--after-backup)
   - [Encrypting your backup using GPG](#encrypting-your-backup-using-gpg)
   - [Restoring a volume from a backup](#restoring-a-volume-from-a-backup)
   - [Set the timezone the container runs in](#set-the-timezone-the-container-runs-in)
@@ -36,6 +37,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Running on a custom cron schedule](#running-on-a-custom-cron-schedule)
   - [Rotating away backups that are older than 7 days](#rotating-away-backups-that-are-older-than-7-days)
   - [Encrypting your backups using GPG](#encrypting-your-backups-using-gpg)
+  - [Using mysqldump to prepare the backup](#using-mysqldump-to-prepare-the-backup)
   - [Running multiple instances in the same setup](#running-multiple-instances-in-the-same-setup)
 - [Differences to `futurice/docker-volume-backup`](#differences-to-futuricedocker-volume-backup)
 
@@ -278,6 +280,27 @@ You can populate below template according to your requirements and use it as you
 
 # BACKUP_STOP_CONTAINER_LABEL="service1"
 
+########### EXECUTING COMMANDS IN CONTAINERS PRE/POST BACKUP
+
+# It is possible to define commands to be run in any container before and after
+# a backup is conducted. The commands themselves are defined in labels like
+# `docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump [options] > dump.sql'.
+# Several options exist for controlling this feature:
+
+# By default, any output of such a command is suppressed. If this value
+# is configured to be "true", command execution output will be forwarded to
+# the backup container's stdout and stderr.
+
+# EXEC_FORWARD_OUTPUT="true"
+
+# Without any further configuration, all commands defined in labels will be
+# run before and after a backup. If you need more fine grained control, you
+# can use this option to set a label that will be used for narrowing down
+# the set of eligible containers. When set, an eligible container will also need
+# to be labeled as `docker-volume-backup.exec-label=database`.
+
+# EXEC_LABEL="database"
+
 ########### NOTIFICATIONS
 
 # Notifications (email, Slack, etc.) can be sent out when a backup run finishes.
@@ -336,7 +359,7 @@ You can work around this by either updating `docker-compose` or unquoting your c
 
 ## How to
 
-### Stopping containers during backup
+### Stop containers during backup
 
 In many cases, it will be desirable to stop the services that are consuming the volume you want to backup in order to ensure data integrity.
 This image can automatically stop and restart containers and services (in case you are running Docker in Swarm mode).
@@ -435,6 +458,63 @@ The files have to define [nested templates](https://pkg.go.dev/text/template#hdr
 Overridable template names are: `title_success`, `body_success`, `title_failure`, `body_failure`.
 
 For a full list of available variables and functions, see [this page](https://github.com/offen/docker-volume-backup/blob/master/docs/NOTIFICATION-TEMPLATES.md).
+
+### Run custom commands before / after backup
+
+In certain scenarios it can be required to run specific commands before and after a backup is taken (e.g. dumping a database).
+When mounting the Docker socket into the `docker-volume-backup` container, you can define pre- and post-commands that will be run in the context of the target container.
+Such commands are defined by specifying the command in a `docker-volume-backup.exec-[pre|post]` label.
+
+Taking a database dump using `mysqldump` would look like this:
+
+```yml
+version: '3'
+
+services:
+  # ... define other services using the `data` volume here
+  database:
+    image: mariadb
+    volumes:
+      - backup_data:/tmp/backups
+    labels:
+      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump --all-databases > /backups/dump.sql'
+
+volumes:
+  backup_data:
+```
+
+Due to Docker limitations, you currently cannot use any kind of redirection in these commands unless you pass the command to `/bin/sh -c` or similar.
+I.e. instead of using `echo "ok" > ok.txt` you will need to use `/bin/sh -c 'echo "ok" > ok.txt'`.
+
+If you need fine grained control about which container's commands are run, you can use the `EXEC_LABEL` configuration on your `docker-volume-backup` container:
+
+```yml
+version: '3'
+
+services:
+  database:
+    image: mariadb
+    volumes:
+      - backup_data:/tmp/backups
+    labels:
+      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump --all-databases > /tmp/volume/dump.sql'
+      - docker-volume-backup.exec-label=database
+
+  backup:
+    image: offen/docker-volume-backup:latest
+    environment:
+      EXEC_LABEL: database
+    volumes:
+      - data:/backup/dump:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  backup_data:
+```
+
+
+The backup procedure is guaranteed to wait for all `pre` commands to finish.
+However there are no guarantees about the order in which they are run, which could also happen concurrently.
 
 ### Encrypting your backup using GPG
 
@@ -739,6 +819,32 @@ volumes:
   data:
 ```
 
+### Using mysqldump to prepare the backup
+
+```yml
+version: '3'
+
+services:
+  database:
+    image: mariadb:latest
+    labels:
+      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump -psecret --all-databases > /tmp/dumps/dump.sql'
+    volumes:
+      - app_data:/tmp/dumps
+  backup:
+    image: offen/docker-volume-backup:latest
+    environment:
+      BACKUP_FILENAME: db.tar.gz
+      BACKUP_CRON_EXPRESSION: "0 2 * * *"
+    volumes:
+      - ./local:/archive
+      - data:/backup/data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  data:
+```
+
 ### Running multiple instances in the same setup
 
 ```yml
@@ -780,12 +886,12 @@ This image is heavily inspired by `futurice/docker-volume-backup`. We decided to
 
 - The original image is based on `ubuntu` and requires additional tools, making it heavy.
 This version is roughly 1/25 in compressed size (it's ~12MB).
-- The original image uses a shell script, when this version is written in Go, which makes it easier to extend and maintain (more verbose too).
+- The original image uses a shell script, when this version is written in Go.
 - The original image proposed to handle backup rotation through AWS S3 lifecycle policies.
 This image adds the option to rotate away old backups through the same command so this functionality can also be offered for non-AWS storage backends like MinIO.
 Local copies of backups can also be pruned once they reach a certain age.
 - InfluxDB specific functionality from the original image was removed.
 - `arm64` and `arm/v7` architectures are supported.
 - Docker in Swarm mode is supported.
-- Notifications on failed backups are supported
-- IAM authentication through instance profiles is supported
+- Notifications on finished backups are supported.
+- IAM authentication through instance profiles is supported.

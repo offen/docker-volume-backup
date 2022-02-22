@@ -38,6 +38,13 @@ func main() {
 	}()
 
 	s.must(func() error {
+		runPostCommands, err := s.runCommands()
+		defer func() {
+			s.must(runPostCommands())
+		}()
+		if err != nil {
+			return err
+		}
 		restartContainers, err := s.stopContainers()
 		// The mechanism for restarting containers is not using hooks as it
 		// should happen as soon as possible (i.e. before uploading backups or
