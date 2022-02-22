@@ -551,6 +551,8 @@ If you are interfacing with Docker via TCP, set `DOCKER_HOST` to the correct URL
 DOCKER_HOST=tcp://docker_socket_proxy:2375
 ```
 
+At a minimum, the socket proxy must support `GET` and `POST` requests to the `/containers` endpoint. If you are using Docker Swarm, it must also support the `/services` endpoint.
+
 ## Recipes
 
 This section lists configuration for some real-world use cases that you can mix and match according to your needs.
