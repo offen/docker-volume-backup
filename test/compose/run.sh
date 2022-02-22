@@ -27,8 +27,8 @@ docker run --rm -it \
   -v compose_minio_backup_data:/minio_data \
   -v compose_webdav_backup_data:/webdav_data alpine \
   ash -c 'apk add gnupg && \
-          echo 1234secret | gpg -d --pinentry-mode loopback --passphrase-fd 0 --yes /minio_data/backup/test-hostnametoken.tar.gz.gpg > /tmp/test-hostnametoken.tar.gz && tar -xf /tmp/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db && \
-          echo 1234secret | gpg -d --pinentry-mode loopback --passphrase-fd 0 --yes /webdav_data/data/my/new/path/test-hostnametoken.tar.gz.gpg > /tmp/test-hostnametoken.tar.gz && tar -xf /tmp/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db'
+          echo 1234secret | gpg -d --pinentry-mode loopback --passphrase-fd 0 --yes /minio_data/backup/test-hostnametoken.tar.gz.gpg > /tmp/test-hostnametoken.tar.gz && tar -xvf /tmp/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db && \
+          echo 1234secret | gpg -d --pinentry-mode loopback --passphrase-fd 0 --yes /webdav_data/data/my/new/path/test-hostnametoken.tar.gz.gpg > /tmp/test-hostnametoken.tar.gz && tar -xvf /tmp/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db'
 
 echo "[TEST:PASS] Found relevant files in decrypted and untared remote backups."
 
