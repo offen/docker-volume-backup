@@ -555,6 +555,26 @@ In case you need to restore a volume from a backup, the most straight forward pr
 
 Depending on your setup and the application(s) you are running, this might involve other steps to be taken still.
 
+---
+
+If you want to rollback an entire volume to an earlier backup snapshot (recommended for database volumes):
+
+- Trigger a manual backup if necessary (see `Manually triggering a backup`).
+- Stop the container(s) that are using the volume.
+- If volume was initially created using docker-compose, find out exact volume name using:
+  ```console
+  docker volume ls
+  ```
+- Remove existing volume (the example assumes it's named `data`):
+  ```console
+  docker volume rm data
+  ```
+- Create new volume with the same name and restore a snapshot:
+  ```console
+  docker run --rm -it -v data:/backup/my-app-backup -v /path/to/local_backups:/archive:ro alpine tar -xvzf /archive/full_backup_filename.tar.gz
+  ```
+- Restart the container(s) that are using the volume.
+
 ### Set the timezone the container runs in
 
 By default a container based on this image will run in the UTC timezone.
