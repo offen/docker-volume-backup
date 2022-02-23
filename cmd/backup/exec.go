@@ -87,7 +87,7 @@ func (s *script) runLabeledCommands(label string) error {
 		Filters: filters.NewArgs(f...),
 	})
 	if err != nil {
-		return fmt.Errorf("runLabeledCommands: error querying for containers", err)
+		return fmt.Errorf("runLabeledCommands: error querying for containers: %w", err)
 	}
 
 	if len(containersWithCommand) == 0 {
