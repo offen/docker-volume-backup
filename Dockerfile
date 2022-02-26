@@ -14,7 +14,7 @@ FROM alpine:3.15
 
 WORKDIR /root
 
-RUN apk add --update --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /app/cmd/backup/backup /usr/bin/backup
 
