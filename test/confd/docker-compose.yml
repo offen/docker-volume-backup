@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  backup: &default_backup_service
+  backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
     restart: always
     volumes:

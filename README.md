@@ -28,6 +28,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Manually triggering a backup](#manually-triggering-a-backup)
   - [Update deprecated email configuration](#update-deprecated-email-configuration)
   - [Using a custom Docker host](#using-a-custom-docker-host)
+  - [Run multiple backup schedules in the same container](#run-multiple-backup-schedules-in-the-same-container)
 - [Recipes](#recipes)
   - [Backing up to AWS S3](#backing-up-to-aws-s3)
   - [Backing up to Filebase](#backing-up-to-filebase)
@@ -652,6 +653,32 @@ DOCKER_HOST=tcp://docker_socket_proxy:2375
 ```
 
 In case you are using a socket proxy, it must support `GET` and `POST` requests to the `/containers` endpoint. If you are using Docker Swarm, it must also support the `/services` endpoint. If you are using pre/post backup commands, it must also support the `/exec` endpoint.
+
+### Run multiple backup schedules in the same container
+
+Multiple backup schedules with different configuration can be configured by mounting an arbitrary number of configuration files (using the `.env` format) into `/etc/dockervolumebackup/conf.d`:
+
+```
+version: '3'
+
+services:
+  # ... define other services using the `data` volume here
+  backup:
+    image: offen/docker-volume-backup:latest
+    volumes:
+      - data:/backup/my-app-backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./configuration:/etc/dockervolumebackup/conf.d
+
+volumes:
+  data:
+```
+
+A separate cronjob will be created for each config file.
+If a configuration value is set both in the global environment as well as in the config file, the config file will take precedence.
+The `backup` command expects to run on an exclusive lock, so it is your responsibility to make sure the invocations do not overlap.
+In case you need your schedules to overlap, you need to create a dedicated container for each schedule instead.
+When changing the configuration, you currently need to manually restart the container for the changes to take effect.
 
 ## Recipes
 
