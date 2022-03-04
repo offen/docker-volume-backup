@@ -18,3 +18,9 @@ if [ ! -f ./local/conf.tar.gz ]; then
   exit 1
 fi
 echo "[TEST:PASS] Config from file was used."
+
+if [ -f ./local/never.tar.gz ]; then
+  echo "[TEST:FAIL] Unexpected file was found."
+  exit 1
+fi
+echo "[TEST:PASS] Unexpected cron did not run."

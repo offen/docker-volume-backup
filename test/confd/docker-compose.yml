@@ -7,8 +7,9 @@ services:
     volumes:
       - ./local:/archive
       - app_data:/backup/app_data:ro
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./backup.env:/etc/dockervolumebackup/conf.d/00backup.env
+      - ./never.env:/etc/dockervolumebackup/conf.d/10never.env
+      - /var/run/docker.sock:/var/run/docker.sock
 
   offen:
     image: offen/offen:latest

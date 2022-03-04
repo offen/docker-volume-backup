@@ -12,7 +12,7 @@ if [ -d "/etc/dockervolumebackup/conf.d" ]; then
     source $file
     BACKUP_CRON_EXPRESSION="${BACKUP_CRON_EXPRESSION:-@daily}"
     echo "Installing cron.d entry with expression $BACKUP_CRON_EXPRESSION."
-    echo "$BACKUP_CRON_EXPRESSION /bin/sh -c 'set -a; source $file; set +a && backup' 2>&1" | crontab -
+    (crontab -l; echo "$BACKUP_CRON_EXPRESSION /bin/sh -c 'set -a; source $file; set +a && backup' 2>&1") | crontab -
   done
 else
   BACKUP_CRON_EXPRESSION="${BACKUP_CRON_EXPRESSION:-@daily}"
