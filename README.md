@@ -156,6 +156,11 @@ You can populate below template according to your requirements and use it as you
 
 # BACKUP_FROM_SNAPSHOT="false"
 
+# By default, the `/backup` directory inside the container will be backed up.
+# In case you need to use a custom location, set `BACKUP_SOURCES`.
+
+# BACKUP_SOURCES="/other/location"
+
 ########### BACKUP STORAGE
 
 # The name of the remote bucket that should be used for storing backups. If
