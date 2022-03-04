@@ -658,7 +658,7 @@ In case you are using a socket proxy, it must support `GET` and `POST` requests 
 
 Multiple backup schedules with different configuration can be configured by mounting an arbitrary number of configuration files (using the `.env` format) into `/etc/dockervolumebackup/conf.d`:
 
-```
+```yml
 version: '3'
 
 services:
