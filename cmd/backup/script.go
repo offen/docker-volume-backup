@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -580,6 +581,9 @@ func (s *script) pruneBackups() error {
 		var matches []fs.FileInfo
 		var lenCandidates int
 		for _, candidate := range candidates {
+			if !strings.HasPrefix(candidate.Name(), s.c.BackupPruningPrefix) {
+				continue
+			}
 			lenCandidates++
 			if candidate.ModTime().Before(deadline) {
 				matches = append(matches, candidate)
