@@ -27,6 +27,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Using with Docker Swarm](#using-with-docker-swarm)
   - [Manually triggering a backup](#manually-triggering-a-backup)
   - [Update deprecated email configuration](#update-deprecated-email-configuration)
+  - [Replace deprecated `BACKUP_FROM_SNAPSHOT` usage](#replace-deprecated-backup_from_snapshot-usage)
   - [Using a custom Docker host](#using-a-custom-docker-host)
   - [Run multiple backup schedules in the same container](#run-multiple-backup-schedules-in-the-same-container)
 - [Recipes](#recipes)
@@ -149,6 +150,11 @@ You can populate below template according to your requirements and use it as you
 
 # BACKUP_LATEST_SYMLINK="backup.latest.tar.gz"
 
+# ************************************************************************
+# The BACKUP_FROM_SNAPSHOT option has been deprecated and will be removed
+# in the next major version. Please use exec-pre and exec-post
+# as documented below instead.
+# ************************************************************************
 # Whether to copy the content of backup folder before creating the tar archive.
 # In the rare scenario where the content of the source backup volume is continously
 # updating, but we do not wish to stop the container while performing the backup,
@@ -648,6 +654,37 @@ EMAIL_SMTP_PORT="587"
 After:
 ```ini
 NOTIFICATION_URLS=smtp://me:secret@posteo.de:587/?fromAddress=no-reply@example.com&toAddresses=you@example.com
+```
+
+### Replace deprecated `BACKUP_FROM_SNAPSHOT` usage
+
+Starting with version 2.15.0, the `BACKUP_FROM_SNAPSHOT` feature has been deprecated.
+If you need to prepare your sources before the backup is taken, use `exec-pre`, `exec-post` and an intermediate volume:
+
+```yml
+version: '3'
+
+services:
+  my_app:
+    build: .
+    volumes:
+      - data:/var/my_app
+      - backup:/tmp/backup
+    labels:
+      - docker-volume-backup.exec-pre=cp -r /var/my_app /tmp/backup/my-app
+      - docker-volume-backup.exec-post=rm -rf /tmp/backup/my-app
+
+  backup:
+    image: offen/docker-volume-backup:latest
+    environment:
+      BACKUP_SOURCES: /tmp/backup
+    volumes:
+      - backup:/backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  data:
+  backup:
 ```
 
 ### Using a custom Docker host
