@@ -13,12 +13,12 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/cosiner/argv"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/pkg/stdcopy"
+	"golang.org/x/sync/errgroup"
 )
 
 func (s *script) exec(containerRef string, command string) ([]byte, []byte, error) {
@@ -97,29 +97,27 @@ func (s *script) runLabeledCommands(label string) error {
 		return nil
 	}
 
-	wg := sync.WaitGroup{}
-	wg.Add(len(containersWithCommand))
+	g := new(errgroup.Group)
 
-	var cmdErrors []error
 	for _, container := range containersWithCommand {
-		go func(c types.Container) {
+		c := container
+		g.Go(func() error {
 			cmd, _ := c.Labels[label]
 			s.logger.Infof("Running %s command %s for container %s", label, cmd, strings.TrimPrefix(c.Names[0], "/"))
 			stdout, stderr, err := s.exec(c.ID, cmd)
-			if err != nil {
-				cmdErrors = append(cmdErrors, err)
-			}
 			if s.c.ExecForwardOutput {
 				os.Stderr.Write(stderr)
 				os.Stdout.Write(stdout)
 			}
-			wg.Done()
-		}(container)
+			if err != nil {
+				return fmt.Errorf("runLabeledCommands: error executing command: %w", err)
+			}
+			return nil
+		})
 	}
 
-	wg.Wait()
-	if len(cmdErrors) != 0 {
-		return join(cmdErrors...)
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("runLabeledCommands: error from errgroup: %w", err)
 	}
 	return nil
 }
