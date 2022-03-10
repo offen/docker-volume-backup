@@ -48,6 +48,7 @@ jobs:
             if [[ "$CIRCLE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
               # prerelease tags like `v2.0.0-alpha.1` should not be released as `latest`
               tag_args="$tag_args -t offen/docker-volume-backup:latest"
+              tag_args="$tag_args -t offen/docker-volume-backup:$(echo "$CIRCLE_TAG" | cut -d. -f1)"
             fi
             docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 \
                $tag_args . --push

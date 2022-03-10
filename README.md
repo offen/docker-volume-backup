@@ -107,7 +107,7 @@ docker run --rm \
   --env AWS_SECRET_ACCESS_KEY="<xxx>" \
   --env AWS_S3_BUCKET_NAME="<xxx>" \
   --entrypoint backup \
-  offen/docker-volume-backup:latest
+  offen/docker-volume-backup:v2
 ```
 
 Alternatively, pass a `--env-file` in order to use a full config as described below.
@@ -391,7 +391,7 @@ services:
       - docker-volume-backup.stop-during-backup=service1
 
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       BACKUP_STOP_CONTAINER_LABEL: service1
     volumes:
@@ -414,7 +414,7 @@ version: '3'
 services:
   # ... define other services using the `data` volume here
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-
@@ -437,7 +437,7 @@ version: '3'
 
 services:
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       # ... other configuration values go here
       NOTIFICATION_URLS=smtp://me:secret@smtp.example.com:587/?fromAddress=no-reply@example.com&toAddresses=you@example.com
@@ -515,7 +515,7 @@ services:
       - docker-volume-backup.exec-label=database
 
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       EXEC_LABEL: database
     volumes:
@@ -592,7 +592,7 @@ version: '3'
 
 services:
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     volumes:
       - data:/backup/my-app-backup:ro
       - /etc/timezone:/etc/timezone:ro
@@ -615,7 +615,7 @@ When running in Swarm mode, it's also advised to set a hard memory limit on your
 ```yml
 services:
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     deployment:
       resources:
         limits:
@@ -669,7 +669,7 @@ version: '3'
 services:
   # ... define other services using the `data` volume here
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -697,7 +697,7 @@ version: '3'
 services:
   # ... define other services using the `data` volume here
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       AWS_BUCKET_NAME: backup-bucket
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
@@ -718,7 +718,7 @@ version: '3'
 services:
   # ... define other services using the `data` volume here
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       AWS_ENDPOINT: s3.filebase.com
       AWS_BUCKET_NAME: filebase-bucket
@@ -740,7 +740,7 @@ version: '3'
 services:
   # ... define other services using the `data` volume here
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       AWS_ENDPOINT: minio.example.com
       AWS_BUCKET_NAME: backup-bucket
@@ -762,7 +762,7 @@ version: '3'
 services:
   # ... define other services using the `data` volume here
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       WEBDAV_URL: https://webdav.mydomain.me
       WEBDAV_PATH: /my/directory/
@@ -784,7 +784,7 @@ version: '3'
 services:
   # ... define other services using the `data` volume here
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_LATEST_SYMLINK: backup-latest.tar.gz
@@ -805,7 +805,7 @@ version: '3'
 services:
   # ... define other services using the `data` volume here
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       AWS_BUCKET_NAME: backup-bucket
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
@@ -827,7 +827,7 @@ version: '3'
 services:
   # ... define other services using the `data` volume here
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       # take a backup on every hour
       BACKUP_CRON_EXPRESSION: "0 * * * *"
@@ -850,7 +850,7 @@ version: '3'
 services:
   # ... define other services using the `data` volume here
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       AWS_BUCKET_NAME: backup-bucket
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
@@ -874,7 +874,7 @@ version: '3'
 services:
   # ... define other services using the `data` volume here
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       AWS_BUCKET_NAME: backup-bucket
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
@@ -901,7 +901,7 @@ services:
     volumes:
       - app_data:/tmp/dumps
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       BACKUP_FILENAME: db.tar.gz
       BACKUP_CRON_EXPRESSION: "0 2 * * *"
@@ -922,7 +922,7 @@ version: '3'
 services:
   # ... define other services using the `data_1` and `data_2` volumes here
   backup_1: &backup_service
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment: &backup_environment
       BACKUP_CRON_EXPRESSION: "0 2 * * *"
       AWS_BUCKET_NAME: backup-bucket
