@@ -43,6 +43,8 @@ services:
     image: offen/offen:latest
     labels:
       - docker-volume-backup.stop-during-backup=true
+    healthcheck:
+      disable: true
     deploy:
       replicas: 2
       restart_policy:
