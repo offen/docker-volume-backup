@@ -18,9 +18,10 @@ import (
 var noop = func() error { return nil }
 
 // lock opens a lockfile at the given location, keeping it locked until the
-// caller invokes the returned release func. When invoked while the file is
-// still locked the function panics.
-func lock(lockfile string, timeout time.Duration) func() error {
+// caller invokes the returned release func. In case the lock is currently blocked
+// by another execution, it will repeatedly retry until the lock is available
+// or the given timeout is exceeded.
+func lock(lockfile string, timeout time.Duration) (func() error, error) {
 	deadline := time.NewTimer(timeout)
 	retry := time.NewTicker(5 * time.Second)
 	fileLock := flock.New(lockfile)
@@ -28,16 +29,16 @@ func lock(lockfile string, timeout time.Duration) func() error {
 	for {
 		acquired, err := fileLock.TryLock()
 		if err != nil {
-			panic(err)
+			return noop, fmt.Errorf("lock: error trying lock: %w", err)
 		}
 		if acquired {
-			return fileLock.Unlock
+			return fileLock.Unlock, nil
 		}
 		select {
 		case <-retry.C:
 			continue
 		case <-deadline.C:
-			panic("timed out waiting for lockfile to become available")
+			return noop, errors.New("lock: timed out waiting for lockfile to become available")
 		}
 	}
 }

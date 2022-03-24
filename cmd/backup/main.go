@@ -13,8 +13,9 @@ func main() {
 		panic(err)
 	}
 
-	unlock := lock("/var/lock/dockervolumebackup.lock", s.c.LockTimeout)
+	unlock, err := lock("/var/lock/dockervolumebackup.lock", s.c.LockTimeout)
 	defer unlock()
+	s.must(err)
 
 	defer func() {
 		if pArg := recover(); pArg != nil {
