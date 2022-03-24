@@ -13,7 +13,7 @@ func main() {
 		panic(err)
 	}
 
-	unlock, err := lock("/var/lock/dockervolumebackup.lock", s.c.LockTimeout)
+	unlock, err := s.lock("/var/lock/dockervolumebackup.lock", s.c.LockTimeout)
 	defer unlock()
 	s.must(err)
 

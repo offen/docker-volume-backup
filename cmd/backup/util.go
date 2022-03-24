@@ -21,7 +21,11 @@ var noop = func() error { return nil }
 // caller invokes the returned release func. In case the lock is currently blocked
 // by another execution, it will repeatedly retry until the lock is available
 // or the given timeout is exceeded.
-func lock(lockfile string, timeout time.Duration) (func() error, error) {
+func (s *script) lock(lockfile string, timeout time.Duration) (func() error, error) {
+	start := time.Now()
+	defer func() {
+		s.stats.LockedTime = time.Now().Sub(start)
+	}()
 	deadline := time.NewTimer(timeout)
 	retry := time.NewTicker(5 * time.Second)
 	fileLock := flock.New(lockfile)

@@ -681,7 +681,8 @@ volumes:
 
 A separate cronjob will be created for each config file.
 If a configuration value is set both in the global environment as well as in the config file, the config file will take precedence.
-The `backup` command expects to run on an exclusive lock, so it is your responsibility to make sure the invocations do not overlap.
+The `backup` command expects to run on an exclusive lock, so in case you provide the same or overlapping schedules in your cron expressions, the runs will still be executed serially, one after the other.
+The exact order of schedules that use the same cron expression is not specified.
 In case you need your schedules to overlap, you need to create a dedicated container for each schedule instead.
 When changing the configuration, you currently need to manually restart the container for the changes to take effect.
 

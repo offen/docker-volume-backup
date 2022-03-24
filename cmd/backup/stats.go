@@ -42,6 +42,7 @@ type Stats struct {
 	StartTime  time.Time
 	EndTime    time.Time
 	TookTime   time.Duration
+	LockedTime time.Duration
 	LogOutput  *bytes.Buffer
 	Containers ContainersStats
 	BackupFile BackupFileStats
