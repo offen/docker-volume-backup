@@ -335,6 +335,16 @@ You can populate below template according to your requirements and use it as you
 
 # DOCKER_HOST="tcp://docker_socket_proxy:2375"
 
+########### LOCK_TIMEOUT
+
+# In the case of overlapping cron schedules run by the same container,
+# subsequent invocations will wait for previous runs to finish before starting.
+# By default, this will time out and fail in case the lock could not be acquired
+# after 60 minutes. In case you need to adjust this timeout, supply a duration
+# value as per https://pkg.go.dev/time#ParseDuration to `LOCK_TIMEOUT`
+
+# LOCK_TIMEOUT="60m"
+
 ########### EMAIL NOTIFICATIONS
 
 # ************************************************************************
