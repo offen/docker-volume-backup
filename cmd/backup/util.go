@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gofrs/flock"
 )
@@ -19,16 +20,26 @@ var noop = func() error { return nil }
 // lock opens a lockfile at the given location, keeping it locked until the
 // caller invokes the returned release func. When invoked while the file is
 // still locked the function panics.
-func lock(lockfile string) func() error {
+func lock(lockfile string, timeout time.Duration) func() error {
+	deadline := time.NewTimer(timeout)
+	retry := time.NewTicker(5 * time.Second)
 	fileLock := flock.New(lockfile)
-	acquired, err := fileLock.TryLock()
-	if err != nil {
-		panic(err)
+
+	for {
+		acquired, err := fileLock.TryLock()
+		if err != nil {
+			panic(err)
+		}
+		if acquired {
+			return fileLock.Unlock
+		}
+		select {
+		case <-retry.C:
+			continue
+		case <-deadline.C:
+			panic("timed out waiting for lockfile to become available")
+		}
 	}
-	if !acquired {
-		panic("unable to acquire file lock")
-	}
-	return fileLock.Unlock
 }
 
 // copy creates a copy of the file located at `dst` at `src`.

@@ -41,4 +41,5 @@ type Config struct {
 	WebdavPassword             string        `split_words:"true"`
 	ExecLabel                  string        `split_words:"true"`
 	ExecForwardOutput          bool          `split_words:"true"`
+	LockTimeout                time.Duration `split_words:"true" default:"60m"`
 }
