@@ -20,8 +20,12 @@ func (s *script) lock(lockfile string) (func() error, error) {
 	defer func() {
 		s.stats.LockedTime = time.Now().Sub(start)
 	}()
-	deadline := time.NewTimer(s.c.LockTimeout)
+
 	retry := time.NewTicker(5 * time.Second)
+	defer retry.Stop()
+	deadline := time.NewTimer(s.c.LockTimeout)
+	defer deadline.Stop()
+
 	fileLock := flock.New(lockfile)
 
 	for {
