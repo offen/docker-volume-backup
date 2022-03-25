@@ -13,6 +13,7 @@ Here is a list of all data passed to the template:
   * `StartTime`: time when the script started execution
   * `EndTime`: time when the backup has completed successfully (after pruning)
   * `TookTime`: amount of time it took for the backup to run. (equal to `EndTime - StartTime`)
+  * `LockedTime`: amount of time it took for the backup to acquire the exclusive lock
   * `LogOutput`: full log of the application
   * `Containers`: object containing stats about the docker containers
     * `All`: total number of containers

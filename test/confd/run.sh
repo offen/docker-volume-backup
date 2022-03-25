@@ -19,6 +19,12 @@ if [ ! -f ./local/conf.tar.gz ]; then
 fi
 echo "[TEST:PASS] Config from file was used."
 
+if [ ! -f ./local/other.tar.gz ]; then
+  echo "[TEST:FAIL] Run on same schedule did not succeed."
+  exit 1
+fi
+echo "[TEST:PASS] Run on same schedule succeeded."
+
 if [ -f ./local/never.tar.gz ]; then
   echo "[TEST:FAIL] Unexpected file was found."
   exit 1

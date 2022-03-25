@@ -8,13 +8,14 @@ import (
 )
 
 func main() {
-	unlock := lock("/var/lock/dockervolumebackup.lock")
-	defer unlock()
-
 	s, err := newScript()
 	if err != nil {
 		panic(err)
 	}
+
+	unlock, err := s.lock("/var/lock/dockervolumebackup.lock")
+	defer unlock()
+	s.must(err)
 
 	defer func() {
 		if pArg := recover(); pArg != nil {

@@ -47,6 +47,8 @@ type script struct {
 	file  string
 	stats *Stats
 
+	encounteredLock bool
+
 	c *Config
 }
 
