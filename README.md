@@ -747,7 +747,7 @@ services:
   backup:
     image: offen/docker-volume-backup:v2
     environment:
-      AWS_BUCKET_NAME: backup-bucket
+      AWS_S3_BUCKET_NAME: backup-bucket
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
     volumes:
@@ -769,7 +769,7 @@ services:
     image: offen/docker-volume-backup:v2
     environment:
       AWS_ENDPOINT: s3.filebase.com
-      AWS_BUCKET_NAME: filebase-bucket
+      AWS_S3_BUCKET_NAME: filebase-bucket
       AWS_ACCESS_KEY_ID: FILEBASE-ACCESS-KEY
       AWS_SECRET_ACCESS_KEY: FILEBASE-SECRET-KEY
     volumes:
@@ -791,7 +791,7 @@ services:
     image: offen/docker-volume-backup:v2
     environment:
       AWS_ENDPOINT: minio.example.com
-      AWS_BUCKET_NAME: backup-bucket
+      AWS_S3_BUCKET_NAME: backup-bucket
       AWS_ACCESS_KEY_ID: MINIOACCESSKEY
       AWS_SECRET_ACCESS_KEY: MINIOSECRETKEY
     volumes:
@@ -855,7 +855,7 @@ services:
   backup:
     image: offen/docker-volume-backup:v2
     environment:
-      AWS_BUCKET_NAME: backup-bucket
+      AWS_S3_BUCKET_NAME: backup-bucket
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
     volumes:
@@ -879,7 +879,7 @@ services:
     environment:
       # take a backup on every hour
       BACKUP_CRON_EXPRESSION: "0 * * * *"
-      AWS_BUCKET_NAME: backup-bucket
+      AWS_S3_BUCKET_NAME: backup-bucket
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
     volumes:
@@ -900,7 +900,7 @@ services:
   backup:
     image: offen/docker-volume-backup:v2
     environment:
-      AWS_BUCKET_NAME: backup-bucket
+      AWS_S3_BUCKET_NAME: backup-bucket
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
@@ -924,7 +924,7 @@ services:
   backup:
     image: offen/docker-volume-backup:v2
     environment:
-      AWS_BUCKET_NAME: backup-bucket
+      AWS_S3_BUCKET_NAME: backup-bucket
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
       GPG_PASSPHRASE: somesecretstring
@@ -973,7 +973,7 @@ services:
     image: offen/docker-volume-backup:v2
     environment: &backup_environment
       BACKUP_CRON_EXPRESSION: "0 2 * * *"
-      AWS_BUCKET_NAME: backup-bucket
+      AWS_S3_BUCKET_NAME: backup-bucket
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
       # Label the container using the `data_1` volume as `docker-volume-backup.stop-during-backup=service1`
