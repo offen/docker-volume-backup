@@ -536,7 +536,7 @@ func (s *script) pruneBackups() error {
 	if s.minioClient != nil {
 		candidates := s.minioClient.ListObjects(context.Background(), s.c.AwsS3BucketName, minio.ListObjectsOptions{
 			WithMetadata: true,
-			Prefix:       s.c.BackupPruningPrefix,
+			Prefix:       filepath.Join(s.c.AwsS3Path, s.c.BackupPruningPrefix),
 		})
 
 		var matches []minio.ObjectInfo
