@@ -388,7 +388,9 @@ func (s *script) takeBackup() error {
 		s.logger.Infof("Removed tar file `%s`.", tarFile)
 		return nil
 	})
-	if err := createArchive(backupSources, tarFile); err != nil {
+	if err := createArchive(backupSources, tarFile, createArchiveOptions{
+		format: s.c.TarArchiveHeaderFormat.Format(),
+	}); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
 

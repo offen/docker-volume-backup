@@ -3,7 +3,11 @@
 
 package main
 
-import "time"
+import (
+	"archive/tar"
+	"fmt"
+	"time"
+)
 
 // Config holds all configuration values that are expected to be set
 // by users.
@@ -42,4 +46,30 @@ type Config struct {
 	ExecLabel                  string        `split_words:"true"`
 	ExecForwardOutput          bool          `split_words:"true"`
 	LockTimeout                time.Duration `split_words:"true" default:"60m"`
+	TarArchiveHeaderFormat     TarFormat     `split_words:"true"`
+}
+
+type TarFormat tar.Format
+
+func (t *TarFormat) Decode(value string) error {
+	switch value {
+	case "PAX":
+		*t = TarFormat(tar.FormatPAX)
+		return nil
+	case "USTAR":
+		*t = TarFormat(tar.FormatUSTAR)
+		return nil
+	case "GNU":
+		*t = TarFormat(tar.FormatGNU)
+		return nil
+	case "":
+		*t = TarFormat(-1)
+		return nil
+	default:
+		return fmt.Errorf("tarFormat: unknown format %s", value)
+	}
+}
+
+func (t *TarFormat) Format() tar.Format {
+	return tar.Format(*t)
 }

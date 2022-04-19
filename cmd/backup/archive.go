@@ -18,7 +18,7 @@ import (
 	"strings"
 )
 
-func createArchive(inputFilePath, outputFilePath string) error {
+func createArchive(inputFilePath, outputFilePath string, options createArchiveOptions) error {
 	inputFilePath = stripTrailingSlashes(inputFilePath)
 	inputFilePath, outputFilePath, err := makeAbsolute(inputFilePath, outputFilePath)
 	if err != nil {
@@ -28,7 +28,7 @@ func createArchive(inputFilePath, outputFilePath string) error {
 		return fmt.Errorf("createArchive: error creating output file path: %w", err)
 	}
 
-	if err := compress(inputFilePath, outputFilePath, filepath.Dir(inputFilePath)); err != nil {
+	if err := compress(inputFilePath, outputFilePath, filepath.Dir(inputFilePath), options); err != nil {
 		return fmt.Errorf("createArchive: error creating archive: %w", err)
 	}
 
@@ -52,7 +52,7 @@ func makeAbsolute(inputFilePath, outputFilePath string) (string, string, error) 
 	return inputFilePath, outputFilePath, err
 }
 
-func compress(inPath, outFilePath, subPath string) error {
+func compress(inPath, outFilePath, subPath string, options createArchiveOptions) error {
 	file, err := os.Create(outFilePath)
 	if err != nil {
 		return fmt.Errorf("compress: error creating out file: %w", err)
@@ -71,7 +71,7 @@ func compress(inPath, outFilePath, subPath string) error {
 	}
 
 	for _, p := range paths {
-		if err := writeTarGz(p, tarWriter, prefix); err != nil {
+		if err := writeTarGz(p, tarWriter, prefix, options.format); err != nil {
 			return fmt.Errorf("compress error writing %s to archive: %w", p, err)
 		}
 	}
@@ -94,7 +94,7 @@ func compress(inPath, outFilePath, subPath string) error {
 	return nil
 }
 
-func writeTarGz(path string, tarWriter *tar.Writer, prefix string) error {
+func writeTarGz(path string, tarWriter *tar.Writer, prefix string, format tar.Format) error {
 	fileInfo, err := os.Lstat(path)
 	if err != nil {
 		return fmt.Errorf("writeTarGz: error getting file infor for %s: %w", path, err)
@@ -113,6 +113,10 @@ func writeTarGz(path string, tarWriter *tar.Writer, prefix string) error {
 	}
 
 	header, err := tar.FileInfoHeader(fileInfo, link)
+	if format >= 0 {
+		header.Format = format
+	}
+
 	if err != nil {
 		return fmt.Errorf("writeTarGz: error getting file info header: %w", err)
 	}
@@ -139,4 +143,8 @@ func writeTarGz(path string, tarWriter *tar.Writer, prefix string) error {
 	}
 
 	return nil
+}
+
+type createArchiveOptions struct {
+	format tar.Format
 }
