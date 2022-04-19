@@ -351,6 +351,19 @@ You can populate below template according to your requirements and use it as you
 
 # LOCK_TIMEOUT="60m"
 
+########### HEADER FORMAT USED BY THE TAR ARCHIVE
+
+# By default, tar archive creation will pick a header format that is appropriate
+# for the archive's contents. In case you have special requirements or need to
+# work with tools that do not support all standard header formats, you can use
+# this option to enforce a certain header format. Valid options are "USTAR",
+# "PAX" and "GNU". Be aware that setting this value might create situations where
+# it's not possible to encode the information about a certain file, making the
+# backup fail.
+# In case no value is set, an appropriate format will be selected for each file.
+
+# TAR_ARCHIVE_HEADER_FORMAT="USTAR"
+
 ########### EMAIL NOTIFICATIONS
 
 # ************************************************************************
