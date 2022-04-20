@@ -43,6 +43,7 @@ services:
       BACKUP_PRUNING_PREFIX: test
       GPG_PASSPHRASE: 1234secret
       WEBDAV_URL: http://webdav/
+      WEBDAV_URL_INSECURE: 'true'
       WEBDAV_PATH: /my/new/path/
       WEBDAV_USERNAME: test
       WEBDAV_PASSWORD: test
