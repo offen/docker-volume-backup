@@ -30,6 +30,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Replace deprecated `BACKUP_FROM_SNAPSHOT` usage](#replace-deprecated-backup_from_snapshot-usage)
   - [Using a custom Docker host](#using-a-custom-docker-host)
   - [Run multiple backup schedules in the same container](#run-multiple-backup-schedules-in-the-same-container)
+  - [Define different retention schedules](#define-different-retention-schedules)
 - [Recipes](#recipes)
   - [Backing up to AWS S3](#backing-up-to-aws-s3)
   - [Backing up to Filebase](#backing-up-to-filebase)
@@ -738,6 +739,39 @@ The `backup` command expects to run on an exclusive lock, so in case you provide
 The exact order of schedules that use the same cron expression is not specified.
 In case you need your schedules to overlap, you need to create a dedicated container for each schedule instead.
 When changing the configuration, you currently need to manually restart the container for the changes to take effect.
+
+### Define different retention schedules
+
+If you want to manage backup retention on different schedules, the most straight forward approach is to define a dedicated configuration for retention rule using a different prefix in the `BACKUP_FILENAME` parameter and then run them on different cron schedules.
+
+For example, if you wanted to keep daily backups for 7 days, weekly backups for a month, and retain monthly backups forever, you could create three configuration files and mount them into `/etc/dockervolumebackup.d`:
+
+```ini
+# 01daily.conf
+BACKUP_FILENAME="daily-backup-%Y-%m-%dT%H-%M-%S.tar.gz"
+# run every day at 2am
+BACKUP_CRON_EXPRESSION="0 2 * * *"
+BACKUP_PRUNING_PREFIX="daily-backup-"
+BACKUP_RETENTION_DAYS="7"
+```
+
+```ini
+# 02weekly.conf
+BACKUP_FILENAME="weekly-backup-%Y-%m-%dT%H-%M-%S.tar.gz"
+# run every monday at 3am
+BACKUP_CRON_EXPRESSION="0 3 * * 1"
+BACKUP_PRUNING_PREFIX="weekly-backup-"
+BACKUP_RETENTION_DAYS="31"
+```
+
+```ini
+# 03monthly.conf
+BACKUP_FILENAME="monthly-backup-%Y-%m-%dT%H-%M-%S.tar.gz"
+# run every 1st of a month at 4am
+BACKUP_CRON_EXPRESSION="0 4 1 * *"
+```
+
+Note that while it's possible to define colliding cron schedules for each of these configurations, you might need to adjust the value for `LOCK_TIMEOUT` in case your backups are large and might take longer than an hour.
 
 ## Recipes
 
