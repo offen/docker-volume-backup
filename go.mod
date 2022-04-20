@@ -12,7 +12,7 @@ require (
 	github.com/minio/minio-go/v7 v7.0.16
 	github.com/otiai10/copy v1.7.0
 	github.com/sirupsen/logrus v1.8.1
-	github.com/studio-b12/gowebdav v0.0.0-20211109083228-3f8721cd4b6f
+	github.com/studio-b12/gowebdav v0.0.0-20220128162035-c7b1ff8a5e62
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
