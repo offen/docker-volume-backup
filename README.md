@@ -207,9 +207,9 @@ You can populate below template according to your requirements and use it as you
 # AWS_ENDPOINT_PROTO="https"
 
 # Setting this variable to `true` will disable verification of
-# SSL certificates. You shouldn't use this unless you use self-signed
-# certificates for your remote storage backend. This can only be used
-# when AWS_ENDPOINT_PROTO is set to `https`.
+# SSL certificates for AWS_ENDPOINT. You shouldn't use this unless you use
+# self-signed certificates for your remote storage backend. This can only be
+# used when AWS_ENDPOINT_PROTO is set to `https`.
 
 # AWS_ENDPOINT_INSECURE="true"
 
@@ -231,6 +231,12 @@ You can populate below template according to your requirements and use it as you
 # The password for the WebDAV server
 
 # WEBDAV_PASSWORD="password"
+
+# Setting this variable to `true` will disable verification of
+# SSL certificates for WEBDAV_URL. You shouldn't use this unless you use
+# self-signed certificates for your remote storage backend.
+
+# WEBDAV_URL_INSECURE="true"
 
 # In addition to storing backups remotely, you can also keep local copies.
 # Pass a container-local path to store your backups if needed. You also need to

@@ -36,6 +36,7 @@ type Config struct {
 	EmailSMTPUsername          string        `envconfig:"EMAIL_SMTP_USERNAME"`
 	EmailSMTPPassword          string        `envconfig:"EMAIL_SMTP_PASSWORD"`
 	WebdavUrl                  string        `split_words:"true"`
+	WebdavUrlInsecure          bool          `split_words:"true"`
 	WebdavPath                 string        `split_words:"true" default:"/"`
 	WebdavUsername             string        `split_words:"true"`
 	WebdavPassword             string        `split_words:"true"`

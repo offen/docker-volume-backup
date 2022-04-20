@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -146,6 +147,15 @@ func newScript() (*script, error) {
 		} else {
 			webdavClient := gowebdav.NewClient(s.c.WebdavUrl, s.c.WebdavUsername, s.c.WebdavPassword)
 			s.webdavClient = webdavClient
+			if s.c.WebdavUrlInsecure {
+				defaultTransport, ok := http.DefaultTransport.(*http.Transport)
+				if !ok {
+					return nil, errors.New("newScript: unexpected error when asserting type for http.DefaultTransport")
+				}
+				webdavTransport := defaultTransport.Clone()
+				webdavTransport.TLSClientConfig.InsecureSkipVerify = s.c.WebdavUrlInsecure
+				s.webdavClient.SetTransport(webdavTransport)
+			}
 		}
 	}
 
