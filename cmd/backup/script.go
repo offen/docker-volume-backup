@@ -406,8 +406,20 @@ func (s *script) takeBackup() error {
 
 	var filesEligibleForBackup []string
 	if err := filepath.WalkDir(backupPath, func(path string, di fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		for _, p := range s.c.BackupIgnorePatterns {
+			m, matchErr := filepath.Match(p, path)
+			if matchErr != nil {
+				return matchErr
+			}
+			if m {
+				return nil
+			}
+		}
 		filesEligibleForBackup = append(filesEligibleForBackup, path)
-		return err
+		return nil
 	}); err != nil {
 		return fmt.Errorf("compress: error walking filesystem tree: %w", err)
 	}

@@ -18,6 +18,7 @@ type Config struct {
 	BackupPruningPrefix        string        `split_words:"true"`
 	BackupStopContainerLabel   string        `split_words:"true" default:"true"`
 	BackupFromSnapshot         bool          `split_words:"true"`
+	BackupIgnorePatterns       []string      `split_words:"true"`
 	AwsS3BucketName            string        `split_words:"true"`
 	AwsS3Path                  string        `split_words:"true"`
 	AwsEndpoint                string        `split_words:"true" default:"s3.amazonaws.com"`
