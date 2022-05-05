@@ -409,12 +409,8 @@ func (s *script) takeBackup() error {
 		if err != nil {
 			return err
 		}
-		for _, p := range s.c.BackupIgnorePatterns {
-			m, matchErr := filepath.Match(p, path)
-			if matchErr != nil {
-				return matchErr
-			}
-			if m {
+		for _, re := range s.c.BackupIgnoreRegexps {
+			if re.Match([]byte(path)) {
 				return nil
 			}
 		}
