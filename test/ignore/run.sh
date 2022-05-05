@@ -9,6 +9,8 @@ docker-compose up -d
 sleep 5
 docker-compose exec backup backup
 
+docker-compose down --volumes
+
 out=$(mktemp -d)
 sudo tar --same-owner -xvf ./local/test.tar.gz -C "$out"
 
