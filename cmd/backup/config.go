@@ -6,7 +6,6 @@ package main
 import (
 	"fmt"
 	"regexp"
-	"strings"
 	"time"
 )
 
@@ -23,7 +22,7 @@ type Config struct {
 	BackupPruningPrefix        string        `split_words:"true"`
 	BackupStopContainerLabel   string        `split_words:"true" default:"true"`
 	BackupFromSnapshot         bool          `split_words:"true"`
-	BackupIgnoreRegexps        RegexpDecoder `split_words:"true"`
+	BackupIgnoreRegexp         RegexpDecoder `split_words:"true"`
 	AwsS3BucketName            string        `split_words:"true"`
 	AwsS3Path                  string        `split_words:"true"`
 	AwsEndpoint                string        `split_words:"true" default:"s3.amazonaws.com"`
@@ -51,17 +50,18 @@ type Config struct {
 	LockTimeout                time.Duration `split_words:"true" default:"60m"`
 }
 
-type RegexpDecoder []*regexp.Regexp
+type RegexpDecoder struct {
+	Re *regexp.Regexp
+}
 
 func (r *RegexpDecoder) Decode(v string) error {
-	result := RegexpDecoder{}
-	for _, expr := range strings.Split(v, ",") {
-		re, err := regexp.Compile(expr)
-		if err != nil {
-			return fmt.Errorf("config: error compiling given regexp: %w", err)
-		}
-		result = append(result, re)
+	if v == "" {
+		return nil
 	}
-	*r = result
+	re, err := regexp.Compile(v)
+	if err != nil {
+		return fmt.Errorf("config: error compiling given regexp: %w", err)
+	}
+	*r = RegexpDecoder{Re: re}
 	return nil
 }
