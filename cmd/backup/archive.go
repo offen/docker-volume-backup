@@ -11,14 +11,13 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 )
 
-func createArchive(inputFilePath, outputFilePath string) error {
+func createArchive(files []string, inputFilePath, outputFilePath string) error {
 	inputFilePath = stripTrailingSlashes(inputFilePath)
 	inputFilePath, outputFilePath, err := makeAbsolute(inputFilePath, outputFilePath)
 	if err != nil {
@@ -28,7 +27,7 @@ func createArchive(inputFilePath, outputFilePath string) error {
 		return fmt.Errorf("createArchive: error creating output file path: %w", err)
 	}
 
-	if err := compress(inputFilePath, outputFilePath, filepath.Dir(inputFilePath)); err != nil {
+	if err := compress(files, outputFilePath, filepath.Dir(inputFilePath)); err != nil {
 		return fmt.Errorf("createArchive: error creating archive: %w", err)
 	}
 
@@ -52,7 +51,7 @@ func makeAbsolute(inputFilePath, outputFilePath string) (string, string, error) 
 	return inputFilePath, outputFilePath, err
 }
 
-func compress(inPath, outFilePath, subPath string) error {
+func compress(paths []string, outFilePath, subPath string) error {
 	file, err := os.Create(outFilePath)
 	if err != nil {
 		return fmt.Errorf("compress: error creating out file: %w", err)
@@ -61,14 +60,6 @@ func compress(inPath, outFilePath, subPath string) error {
 	prefix := path.Dir(outFilePath)
 	gzipWriter := gzip.NewWriter(file)
 	tarWriter := tar.NewWriter(gzipWriter)
-
-	var paths []string
-	if err := filepath.WalkDir(inPath, func(path string, di fs.DirEntry, err error) error {
-		paths = append(paths, path)
-		return err
-	}); err != nil {
-		return fmt.Errorf("compress: error walking filesystem tree: %w", err)
-	}
 
 	for _, p := range paths {
 		if err := writeTarGz(p, tarWriter, prefix); err != nil {
