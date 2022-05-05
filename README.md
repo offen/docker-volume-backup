@@ -168,6 +168,12 @@ You can populate below template according to your requirements and use it as you
 
 # BACKUP_SOURCES="/other/location"
 
+# When given, all files in BACKUP_SOURCES whose full path matches the given
+# regular expression will be excluded from the archive. Regular Expressions
+# can be used as from the Go standard library https://pkg.go.dev/regexp
+
+# BACKUP_EXCLUDE_REGEXP="\.log$"
+
 ########### BACKUP STORAGE
 
 # The name of the remote bucket that should be used for storing backups. If
