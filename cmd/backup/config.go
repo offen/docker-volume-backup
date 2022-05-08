@@ -60,7 +60,7 @@ func (r *RegexpDecoder) Decode(v string) error {
 	}
 	re, err := regexp.Compile(v)
 	if err != nil {
-		return fmt.Errorf("config: error compiling given regexp: %w", err)
+		return fmt.Errorf("config: error compiling given regexp `%s`: %w", v, err)
 	}
 	*r = RegexpDecoder{Re: re}
 	return nil

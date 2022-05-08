@@ -410,7 +410,7 @@ func (s *script) takeBackup() error {
 			return err
 		}
 
-		if s.c.BackupExcludeRegexp.Re != nil && s.c.BackupExcludeRegexp.Re.Match([]byte(path)) {
+		if s.c.BackupExcludeRegexp.Re != nil && s.c.BackupExcludeRegexp.Re.MatchString(path) {
 			return nil
 		}
 		filesEligibleForBackup = append(filesEligibleForBackup, path)
