@@ -3,7 +3,11 @@
 
 package main
 
-import "time"
+import (
+	"fmt"
+	"regexp"
+	"time"
+)
 
 // Config holds all configuration values that are expected to be set
 // by users.
@@ -18,6 +22,7 @@ type Config struct {
 	BackupPruningPrefix        string        `split_words:"true"`
 	BackupStopContainerLabel   string        `split_words:"true" default:"true"`
 	BackupFromSnapshot         bool          `split_words:"true"`
+	BackupExcludeRegexp        RegexpDecoder `split_words:"true"`
 	AwsS3BucketName            string        `split_words:"true"`
 	AwsS3Path                  string        `split_words:"true"`
 	AwsEndpoint                string        `split_words:"true" default:"s3.amazonaws.com"`
@@ -43,4 +48,20 @@ type Config struct {
 	ExecLabel                  string        `split_words:"true"`
 	ExecForwardOutput          bool          `split_words:"true"`
 	LockTimeout                time.Duration `split_words:"true" default:"60m"`
+}
+
+type RegexpDecoder struct {
+	Re *regexp.Regexp
+}
+
+func (r *RegexpDecoder) Decode(v string) error {
+	if v == "" {
+		return nil
+	}
+	re, err := regexp.Compile(v)
+	if err != nil {
+		return fmt.Errorf("config: error compiling given regexp `%s`: %w", v, err)
+	}
+	*r = RegexpDecoder{Re: re}
+	return nil
 }

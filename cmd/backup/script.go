@@ -398,7 +398,28 @@ func (s *script) takeBackup() error {
 		s.logger.Infof("Removed tar file `%s`.", tarFile)
 		return nil
 	})
-	if err := createArchive(backupSources, tarFile); err != nil {
+
+	backupPath, err := filepath.Abs(stripTrailingSlashes(backupSources))
+	if err != nil {
+		return fmt.Errorf("takeBackup: error getting absolute path: %w", err)
+	}
+
+	var filesEligibleForBackup []string
+	if err := filepath.WalkDir(backupPath, func(path string, di fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if s.c.BackupExcludeRegexp.Re != nil && s.c.BackupExcludeRegexp.Re.MatchString(path) {
+			return nil
+		}
+		filesEligibleForBackup = append(filesEligibleForBackup, path)
+		return nil
+	}); err != nil {
+		return fmt.Errorf("compress: error walking filesystem tree: %w", err)
+	}
+
+	if err := createArchive(filesEligibleForBackup, backupSources, tarFile); err != nil {
 		return fmt.Errorf("takeBackup: error compressing backup folder: %w", err)
 	}
 

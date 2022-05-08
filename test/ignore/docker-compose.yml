@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    deploy:
+      restart_policy:
+        condition: on-failure
+    environment:
+      BACKUP_FILENAME: test.tar.gz
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      BACKUP_EXCLUDE_REGEXP: '\.(me|you)$$'
+    volumes:
+      - ./local:/archive
+      - ./sources:/backup/data:ro
