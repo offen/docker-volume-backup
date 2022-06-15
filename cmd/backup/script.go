@@ -7,6 +7,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/pkg/sftp"
+	"golang.org/x/crypto/ssh"
 	"io"
 	"io/fs"
 	"net/http"
@@ -39,6 +41,8 @@ type script struct {
 	cli          *client.Client
 	minioClient  *minio.Client
 	webdavClient *gowebdav.Client
+	sshClient    *ssh.Client
+	sftpClient   *sftp.Client
 	logger       *logrus.Logger
 	sender       *router.ServiceRouter
 	template     *template.Template
@@ -156,6 +160,12 @@ func newScript() (*script, error) {
 				webdavTransport.TLSClientConfig.InsecureSkipVerify = s.c.WebdavUrlInsecure
 				s.webdavClient.SetTransport(webdavTransport)
 			}
+		}
+	}
+
+	if s.c.SSHHostName != "" {
+		if err := s.sshConnect(); err != nil {
+			return nil, err
 		}
 	}
 
@@ -512,6 +522,25 @@ func (s *script) copyBackup() error {
 		s.logger.Infof("Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", s.file, s.c.WebdavUrl, s.c.WebdavPath)
 	}
 
+	if s.sshClient != nil {
+		source, err := os.Open(s.file)
+		if err != nil {
+			return fmt.Errorf("copyBackup: error reading the file to be uploaded: %w", err)
+		}
+		defer source.Close()
+
+		destination, err := s.sshCreateFile(filepath.Join(s.c.SSHRemotePath, name))
+		if err != nil {
+			return fmt.Errorf("copyBackup: error creating file on SSH storage: %w", err)
+		}
+		defer destination.Close()
+
+		if err := s.sshUpload(source, destination, 1000000); err != nil {
+			return fmt.Errorf("copyBackup: error uploading the file to SSH storage: %w", err)
+		}
+		s.logger.Infof("Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", s.file, s.c.SSHHostName, s.c.SSHRemotePath)
+	}
+
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
 		if err := copyFile(s.file, path.Join(s.c.BackupArchive, name)); err != nil {
 			return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
@@ -639,6 +668,37 @@ func (s *script) pruneBackups() error {
 			for _, match := range matches {
 				if err := s.webdavClient.Remove(filepath.Join(s.c.WebdavPath, match.Name())); err != nil {
 					return fmt.Errorf("pruneBackups: error removing file from WebDAV storage: %w", err)
+				}
+			}
+			return nil
+		})
+	}
+
+	if s.sshClient != nil {
+		candidates, err := s.sshReadDir(s.c.SSHRemotePath)
+		if err != nil {
+			return fmt.Errorf("pruneBackups: error reading directory from SSH storage: %w", err)
+		}
+
+		var matches []string
+		for _, candidate := range candidates {
+			if !strings.HasPrefix(candidate.Name(), s.c.BackupPruningPrefix) {
+				continue
+			}
+			if candidate.ModTime().Before(deadline) {
+				matches = append(matches, candidate.Name())
+			}
+		}
+
+		s.stats.Storages.SSH = StorageStats{
+			Total:  uint(len(candidates)),
+			Pruned: uint(len(matches)),
+		}
+
+		doPrune(len(matches), len(candidates), "SSH backup(s)", func() error {
+			for _, match := range matches {
+				if err := s.sshDeleteFile(filepath.Join(s.c.SSHRemotePath, match)); err != nil {
+					return fmt.Errorf("pruneBackups: error removing file from SSH storage: %w", err)
 				}
 			}
 			return nil

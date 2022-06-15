@@ -25,7 +25,7 @@ Here is a list of all data passed to the template:
     * `FullPath`: full path of the backup file (e.g. `/archive/backup-2022-02-11T01-00-00.tar.gz`)
     * `Size`: size in bytes of the backup file
   * `Storages`: object that holds stats about each storage
-    * `Local`, `S3` or `WebDAV`:
+    * `Local`, `S3`, `WebDAV` or `SSH`:
       * `Total`: total number of backup files
       * `Pruned`: number of backup files that were deleted due to pruning rule
       * `PruneErrors`: number of backup files that were unable to be pruned

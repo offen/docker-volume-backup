@@ -30,10 +30,11 @@ type StorageStats struct {
 	PruneErrors uint
 }
 
-// StoragesStats stats about each possible archival location (Local, WebDAV, S3)
+// StoragesStats stats about each possible archival location (Local, WebDAV, SSH, S3)
 type StoragesStats struct {
 	Local  StorageStats
 	WebDAV StorageStats
+	SSH    StorageStats
 	S3     StorageStats
 }
 

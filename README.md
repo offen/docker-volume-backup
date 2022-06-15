@@ -7,7 +7,7 @@
 Backup Docker volumes locally or to any S3 compatible storage.
 
 The [offen/docker-volume-backup](https://hub.docker.com/r/offen/docker-volume-backup) Docker image can be used as a lightweight (below 15MB) sidecar container to an existing Docker setup.
-It handles __recurring or one-off backups of Docker volumes__ to a __local directory__, __any S3 or WebDAV compatible storage (or any combination) and rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__ and __sending notifications for failed backup runs__.
+It handles __recurring or one-off backups of Docker volumes__ to a __local directory__, __any S3, WebDAV or SSH compatible storage (or any combination) and rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__ and __sending notifications for failed backup runs__.
 
 <!-- MarkdownTOC -->
 
@@ -36,6 +36,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Backing up to Filebase](#backing-up-to-filebase)
   - [Backing up to MinIO](#backing-up-to-minio)
   - [Backing up to WebDAV](#backing-up-to-webdav)
+  - [Backing up to SSH](#backing-up-to-ssh)
   - [Backing up locally](#backing-up-locally)
   - [Backing up to AWS S3 as well as locally](#backing-up-to-aws-s3-as-well-as-locally)
   - [Running on a custom cron schedule](#running-on-a-custom-cron-schedule)
@@ -244,6 +245,29 @@ You can populate below template according to your requirements and use it as you
 # self-signed certificates for your remote storage backend.
 
 # WEBDAV_URL_INSECURE="true"
+
+# You can also backup files to any SSH server:
+
+# The URL of the remote SSH server
+
+# SSH_HOST_NAME="server.local"
+
+# The port of the remote SSH server
+# Optional variable default value is `22`
+
+# SSH_PORT=2222
+
+# The Directory to place the backups to on the SSH server.
+
+# SSH_REMOTE_PATH="/my/directory/"
+
+# The username for the SSH server
+
+# SSH_USER="user"
+
+# The password for the SSH server
+
+# SSH_PASSWORD="password"
 
 # In addition to storing backups remotely, you can also keep local copies.
 # Pass a container-local path to store your backups if needed. You also need to
@@ -862,6 +886,29 @@ services:
       WEBDAV_PATH: /my/directory/
       WEBDAV_USERNAME: user
       WEBDAV_PASSWORD: password
+    volumes:
+      - data:/backup/my-app-backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  data:
+```
+
+### Backing up to SSH
+
+```yml
+version: '3'
+
+services:
+  # ... define other services using the `data` volume here
+  backup:
+    image: offen/docker-volume-backup:v2
+    environment:
+      SSH_HOST_NAME: server.local
+      SSH_PORT: 2222
+      SSH_USER: user
+      SSH_PASSWORD: password
+      SSH_REMOTE_PATH: /data
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
