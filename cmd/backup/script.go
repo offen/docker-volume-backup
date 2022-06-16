@@ -173,23 +173,35 @@ func newScript() (*script, error) {
 
 		if _, err := os.Stat(s.c.SSHIdentityFile); err == nil {
 			key, err := ioutil.ReadFile(s.c.SSHIdentityFile)
-			if err == nil {
-				var signer ssh.Signer
-				if s.c.SSHPassphrase != "" {
-					signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(s.c.SSHPassphrase))
-				} else {
-					signer, err = ssh.ParsePrivateKey(key)
+			if err != nil {
+				return nil, errors.New("newScript: error reading the private key")
+			}
+
+			var signer ssh.Signer
+			if s.c.SSHPassphrase != "" {
+				signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(s.c.SSHPassphrase))
+				if err != nil {
+					return nil, errors.New("newScript: error parsing the encrypted private key")
 				}
-				if err == nil {
-					authMethods = append(authMethods, ssh.PublicKeys(signer))
+				authMethods = append(authMethods, ssh.PublicKeys(signer))
+			} else {
+				signer, err = ssh.ParsePrivateKey(key)
+				if err != nil {
+					return nil, errors.New("newScript: error parsing the private key")
 				}
+				authMethods = append(authMethods, ssh.PublicKeys(signer))
 			}
 		}
 
-		sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%v:%v", s.c.SSHHostName, s.c.SSHPort), &ssh.ClientConfig{User: s.c.SSHUser, Auth: authMethods, HostKeyCallback: ssh.InsecureIgnoreHostKey()})
+		sshClientConfig := &ssh.ClientConfig{
+			User:            s.c.SSHUser,
+			Auth:            authMethods,
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		}
+		sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", s.c.SSHHostName, s.c.SSHPort), sshClientConfig)
 		s.sshClient = sshClient
 		if err != nil {
-			return nil, fmt.Errorf("newScript: ssh new client: %w", err)
+			return nil, fmt.Errorf("newScript: error creating ssh client: %w", err)
 		}
 		_, _, err = s.sshClient.SendRequest("keepalive", false, nil)
 		if err != nil {
@@ -199,7 +211,7 @@ func newScript() (*script, error) {
 		sftpClient, err := sftp.NewClient(sshClient)
 		s.sftpClient = sftpClient
 		if err != nil {
-			return nil, fmt.Errorf("newScript: sftp new client: %w", err)
+			return nil, fmt.Errorf("newScript: error creating sftp client: %w", err)
 		}
 	}
 
