@@ -2,9 +2,10 @@
 
 set -e
 
-cd $(dirname $0)
+cd "$(dirname "$0")"
 
 mkdir -p local
+ssh-keygen -t rsa -m pem -b 4096 -N "" -f id_rsa -C "docker-volume-backup@local"
 
 docker-compose up -d
 sleep 5
@@ -70,3 +71,4 @@ fi
 echo "[TEST:PASS] Local backups have not been deleted."
 
 docker-compose down --volumes
+rm id_rsa id_rsa.pub

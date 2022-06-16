@@ -11,6 +11,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"io"
 	"io/fs"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -164,8 +165,41 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.SSHHostName != "" {
-		if err := s.sshConnect(); err != nil {
+		var authMethods []ssh.AuthMethod
+
+		if s.c.SSHPassword != "" {
+			authMethods = append(authMethods, ssh.Password(s.c.SSHPassword))
+		}
+
+		if _, err := os.Stat(s.c.SSHIdentityFile); err == nil {
+			key, err := ioutil.ReadFile(s.c.SSHIdentityFile)
+			if err == nil {
+				var signer ssh.Signer
+				if s.c.SSHPassphrase != "" {
+					signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(s.c.SSHPassphrase))
+				} else {
+					signer, err = ssh.ParsePrivateKey(key)
+				}
+				if err == nil {
+					authMethods = append(authMethods, ssh.PublicKeys(signer))
+				}
+			}
+		}
+
+		sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%v:%v", s.c.SSHHostName, s.c.SSHPort), &ssh.ClientConfig{User: s.c.SSHUser, Auth: authMethods, HostKeyCallback: ssh.InsecureIgnoreHostKey()})
+		s.sshClient = sshClient
+		if err != nil {
+			return nil, fmt.Errorf("newScript: ssh new client: %w", err)
+		}
+		_, _, err = s.sshClient.SendRequest("keepalive", false, nil)
+		if err != nil {
 			return nil, err
+		}
+
+		sftpClient, err := sftp.NewClient(sshClient)
+		s.sftpClient = sftpClient
+		if err != nil {
+			return nil, fmt.Errorf("newScript: sftp new client: %w", err)
 		}
 	}
 
@@ -529,15 +563,42 @@ func (s *script) copyBackup() error {
 		}
 		defer source.Close()
 
-		destination, err := s.sshCreateFile(filepath.Join(s.c.SSHRemotePath, name))
+		destination, err := s.sftpClient.Create(filepath.Join(s.c.SSHRemotePath, name))
 		if err != nil {
 			return fmt.Errorf("copyBackup: error creating file on SSH storage: %w", err)
 		}
 		defer destination.Close()
 
-		if err := s.sshUpload(source, destination, 1000000); err != nil {
-			return fmt.Errorf("copyBackup: error uploading the file to SSH storage: %w", err)
+		chunk := make([]byte, 1000000)
+		for {
+			num, err := source.Read(chunk)
+			if err == io.EOF {
+				tot, err := destination.Write(chunk[:num])
+				if err != nil {
+					return fmt.Errorf("copyBackup: error uploading the file to SSH storage: %w", err)
+				}
+
+				if tot != len(chunk[:num]) {
+					return fmt.Errorf("sshClient: failed to write stream")
+				}
+
+				break
+			}
+
+			if err != nil {
+				return fmt.Errorf("copyBackup: error uploading the file to SSH storage: %w", err)
+			}
+
+			tot, err := destination.Write(chunk[:num])
+			if err != nil {
+				return fmt.Errorf("copyBackup: error uploading the file to SSH storage: %w", err)
+			}
+
+			if tot != len(chunk[:num]) {
+				return fmt.Errorf("sshClient: failed to write stream")
+			}
 		}
+
 		s.logger.Infof("Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", s.file, s.c.SSHHostName, s.c.SSHRemotePath)
 	}
 
@@ -675,7 +736,7 @@ func (s *script) pruneBackups() error {
 	}
 
 	if s.sshClient != nil {
-		candidates, err := s.sshReadDir(s.c.SSHRemotePath)
+		candidates, err := s.sftpClient.ReadDir(s.c.SSHRemotePath)
 		if err != nil {
 			return fmt.Errorf("pruneBackups: error reading directory from SSH storage: %w", err)
 		}
@@ -697,7 +758,7 @@ func (s *script) pruneBackups() error {
 
 		doPrune(len(matches), len(candidates), "SSH backup(s)", func() error {
 			for _, match := range matches {
-				if err := s.sshDeleteFile(filepath.Join(s.c.SSHRemotePath, match)); err != nil {
+				if err := s.sftpClient.Remove(filepath.Join(s.c.SSHRemotePath, match)); err != nil {
 					return fmt.Errorf("pruneBackups: error removing file from SSH storage: %w", err)
 				}
 			}

@@ -269,6 +269,16 @@ You can populate below template according to your requirements and use it as you
 
 # SSH_PASSWORD="password"
 
+# The private key path in container for SSH server
+# Default value: /root/.ssh/id_rsa
+# If file is mounted to /root/.ssh/id_rsa path it will be used.
+
+# SSH_IDENTITY_FILE="/root/.ssh/id_rsa"
+
+# The passphrase for the identity file
+
+# SSH_PASSPHRASE="pass"
+
 # In addition to storing backups remotely, you can also keep local copies.
 # Pass a container-local path to store your backups if needed. You also need to
 # mount a local folder or Docker volume into that location (`/archive`
@@ -907,11 +917,11 @@ services:
       SSH_HOST_NAME: server.local
       SSH_PORT: 2222
       SSH_USER: user
-      SSH_PASSWORD: password
       SSH_REMOTE_PATH: /data
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /path/to/private_key:/root/.ssh/id_rsa
 
 volumes:
   data:
