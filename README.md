@@ -270,10 +270,11 @@ You can populate below template according to your requirements and use it as you
 # SSH_PASSWORD="password"
 
 # The private key path in container for SSH server
-# Default value: /root/.ssh/id
-# If file is mounted to /root/.ssh/id path it will be used.
+# Default value: /root/.ssh/id_rsa
+# If file is mounted to /root/.ssh/id_rsa path it will be used. Non-RSA keys will
+# also work.
 
-# SSH_IDENTITY_FILE="/root/.ssh/id"
+# SSH_IDENTITY_FILE="/root/.ssh/id_rsa"
 
 # The passphrase for the identity file
 

@@ -71,4 +71,4 @@ fi
 echo "[TEST:PASS] Local backups have not been deleted."
 
 docker-compose down --volumes
-rm id_rsa id_rsa.pub
+rm -f id_rsa id_rsa.pub

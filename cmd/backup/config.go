@@ -49,7 +49,7 @@ type Config struct {
 	SSHPort                    string        `split_words:"true" default:"22"`
 	SSHUser                    string        `split_words:"true"`
 	SSHPassword                string        `split_words:"true"`
-	SSHIdentityFile            string        `split_words:"true" default:"/root/.ssh/id"`
+	SSHIdentityFile            string        `split_words:"true" default:"/root/.ssh/id_rsa"`
 	SSHIdentityPassphrase      string        `split_words:"true"`
 	SSHRemotePath              string        `split_words:"true"`
 	ExecLabel                  string        `split_words:"true"`
