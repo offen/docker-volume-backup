@@ -5,7 +5,7 @@ set -e
 cd "$(dirname "$0")"
 
 mkdir -p local
-ssh-keygen -t rsa -m pem -b 4096 -N "" -f id_rsa -C "docker-volume-backup@local"
+ssh-keygen -t rsa -m pem -b 4096 -N "test1234" -f id_rsa -C "docker-volume-backup@local"
 
 docker-compose up -d
 sleep 5

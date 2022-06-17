@@ -178,8 +178,8 @@ func newScript() (*script, error) {
 			}
 
 			var signer ssh.Signer
-			if s.c.SSHPassphrase != "" {
-				signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(s.c.SSHPassphrase))
+			if s.c.SSHIdentityPassphrase != "" {
+				signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(s.c.SSHIdentityPassphrase))
 				if err != nil {
 					return nil, errors.New("newScript: error parsing the encrypted private key")
 				}

@@ -63,9 +63,10 @@ services:
       SSH_PORT: 2222
       SSH_USER: test
       SSH_REMOTE_PATH: /tmp
+      SSH_IDENTITY_PASSPHRASE: test1234
     volumes:
       - ./local:/archive
-      - ./id_rsa:/root/.ssh/id_rsa
+      - ./id_rsa:/root/.ssh/id
       - app_data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock
 
