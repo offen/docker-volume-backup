@@ -45,6 +45,13 @@ type Config struct {
 	WebdavPath                 string        `split_words:"true" default:"/"`
 	WebdavUsername             string        `split_words:"true"`
 	WebdavPassword             string        `split_words:"true"`
+	SSHHostName                string        `split_words:"true"`
+	SSHPort                    string        `split_words:"true" default:"22"`
+	SSHUser                    string        `split_words:"true"`
+	SSHPassword                string        `split_words:"true"`
+	SSHIdentityFile            string        `split_words:"true" default:"/root/.ssh/id"`
+	SSHIdentityPassphrase      string        `split_words:"true"`
+	SSHRemotePath              string        `split_words:"true"`
 	ExecLabel                  string        `split_words:"true"`
 	ExecForwardOutput          bool          `split_words:"true"`
 	LockTimeout                time.Duration `split_words:"true" default:"60m"`

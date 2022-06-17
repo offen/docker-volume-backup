@@ -21,12 +21,24 @@ services:
     volumes:
       - webdav_backup_data:/var/lib/dav
 
+  ssh:
+    image: linuxserver/openssh-server:version-8.6_p1-r3
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - USER_NAME=test
+    volumes:
+      - ./id_rsa.pub:/config/.ssh/authorized_keys
+      - ssh_backup_data:/tmp
+      - ssh_config:/config
+
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
     hostname: hostnametoken
     depends_on:
       - minio
       - webdav
+      - ssh
     restart: always
     environment:
       AWS_ACCESS_KEY_ID: test
@@ -47,8 +59,14 @@ services:
       WEBDAV_PATH: /my/new/path/
       WEBDAV_USERNAME: test
       WEBDAV_PASSWORD: test
+      SSH_HOST_NAME: ssh
+      SSH_PORT: 2222
+      SSH_USER: test
+      SSH_REMOTE_PATH: /tmp
+      SSH_IDENTITY_PASSPHRASE: test1234
     volumes:
       - ./local:/archive
+      - ./id_rsa:/root/.ssh/id
       - app_data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock
 
@@ -62,4 +80,6 @@ services:
 volumes:
   minio_backup_data:
   webdav_backup_data:
+  ssh_backup_data:
+  ssh_config:
   app_data:
