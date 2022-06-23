@@ -1,0 +1,47 @@
+version: '3'
+
+services:
+  ssh:
+    image: linuxserver/openssh-server:version-8.6_p1-r3
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - USER_NAME=test
+    volumes:
+      - ./id_rsa.pub:/config/.ssh/authorized_keys
+      - ssh_backup_data:/tmp
+
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    hostname: hostnametoken
+    depends_on:
+      - ssh
+    restart: always
+    environment:
+      BACKUP_FILENAME_EXPAND: 'true'
+      BACKUP_FILENAME: test-$$HOSTNAME.tar.gz
+      BACKUP_LATEST_SYMLINK: test-$$HOSTNAME.latest.tar.gz.gpg
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_PRUNING_LEEWAY: 5s
+      BACKUP_PRUNING_PREFIX: test
+      SSH_HOST_NAME: ssh
+      SSH_PORT: 2222
+      SSH_USER: test
+      SSH_REMOTE_PATH: /tmp
+      SSH_IDENTITY_PASSPHRASE: test1234
+    volumes:
+      - ./id_rsa:/root/.ssh/id_rsa
+      - app_data:/backup/app_data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  offen:
+    image: offen/offen:latest
+    labels:
+      - docker-volume-backup.stop-during-backup=true
+    volumes:
+      - app_data:/var/opt/offen
+
+volumes:
+  ssh_backup_data:
+  app_data:
