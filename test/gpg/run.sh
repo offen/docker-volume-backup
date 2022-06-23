@@ -14,10 +14,14 @@ docker-compose exec backup backup
 
 expect_running_containers "2"
 
+tmp_dir=$(mktemp -d)
+
 echo 1234secret | gpg -d --pinentry-mode loopback --yes --passphrase-fd 0 ./local/test.tar.gz.gpg > ./local/decrypted.tar.gz
-tar -xf ./local/decrypted.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db
+tar -xf ./local/decrypted.tar.gz -C $tmp_dir
+ls -lah $tmp_dir
+test -f $tmp_dir/backup/app_data/offen.db
 rm ./local/decrypted.tar.gz
-test -L /tmp/backup/app_data/db.link
+test -L $tmp_dir/backup/app_data/db.link
 
 pass "Found relevant files in decrypted and untared local backup."
 
