@@ -4,6 +4,7 @@ set -e
 
 cd $(dirname $0)
 . ../util.sh
+current_test=$(basename $(pwd))
 
 mkdir -p local
 

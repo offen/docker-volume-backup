@@ -3,8 +3,8 @@
 set -e
 
 cd $(dirname $0)
-
 . ../util.sh
+current_test=$(basename $(pwd))
 
 docker network create test_network
 docker volume create backup_data

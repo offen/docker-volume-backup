@@ -3,15 +3,15 @@
 set -e
 
 info () {
-  echo "[TEST:INFO] "$1""
+  echo "[test:${current_test:-none}:info] "$1""
 }
 
 pass () {
-  echo "[TEST:PASS] "$1""
+  echo "[test:${current_test:-none}:pass] "$1""
 }
 
 fail () {
-  echo "[TEST:FAIL] "$1""
+  echo "[test:${current_test:-none}:fail] "$1""
   exit 1
 }
 

@@ -4,6 +4,7 @@ set -e
 
 cd "$(dirname "$0")"
 . ../util.sh
+current_test=$(basename $(pwd))
 
 ssh-keygen -t rsa -m pem -b 4096 -N "test1234" -f id_rsa -C "docker-volume-backup@local"
 

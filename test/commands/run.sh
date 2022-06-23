@@ -4,7 +4,7 @@ set -e
 
 cd $(dirname $0)
 . ../util.sh
-
+current_test=$(basename $(pwd))
 
 docker-compose up -d
 sleep 30 # mariadb likes to take a bit before responding
