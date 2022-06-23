@@ -26,7 +26,7 @@ test -L $tmp_dir/backup/app_data/db.link
 
 pass "Found relevant files in decrypted and untared local backup."
 
-test -L ./local/test-hostnametoken.latest.tar.gz
+test -L ./local/test-hostnametoken.latest.tar.gz.gpg
 pass "Found symlink to latest version in local backup."
 
 # The second part of this test checks if backups get deleted when the retention
