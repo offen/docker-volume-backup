@@ -7,8 +7,6 @@ cd "$(dirname "$0")"
 docker-compose up -d
 sleep 5
 
-# A symlink for a known file in the volume is created so the test can check
-# whether symlinks are preserved on backup.
 docker-compose exec backup backup
 
 sleep 5
@@ -21,11 +19,11 @@ echo "[TEST:PASS] All containers running post backup."
 
 
 docker run --rm -it \
-  -v compose_minio_backup_data:/minio_data \
+  -v compose_webdav_backup_data:/webdav_data \
   alpine \
-  ash -c 'tar -xvf /minio_data/backup/test-hostnametoken.tar.gz.gpg -C /tmp && test -f /tmp/backup/app_data/offen.db'
+  ash -c 'tar -xvf /webdav_data/data/my/new/path/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db && \'
 
-echo "[TEST:PASS] Found relevant files in untared remote backups."
+echo "[TEST:PASS] Found relevant files in untared remote backup."
 
 # The second part of this test checks if backups get deleted when the retention
 # is set to 0 days (which it should not as it would mean all backups get deleted)
@@ -36,9 +34,9 @@ sleep 5
 docker-compose exec backup backup
 
 docker run --rm -it \
-  -v compose_minio_backup_data:/minio_data \
+  -v compose_webdav_backup_data:/webdav_data \
   alpine \
-  ash -c '[ $(find /minio_data/backup/ -type f | wc -l) = "1" ]'
+  ash -c '[ $(find /webdav_data/data/my/new/path/ -type f | wc -l) = "1" ]'
 
 echo "[TEST:PASS] Remote backups have not been deleted."
 
