@@ -3,6 +3,7 @@
 set -e
 
 cd $(dirname $0)
+. ../util.sh
 
 mkdir -p local
 
@@ -14,19 +15,16 @@ sleep 100
 docker-compose down --volumes
 
 if [ ! -f ./local/conf.tar.gz ]; then
-  echo "[TEST:FAIL] Config from file was not used."
-  exit 1
+  fail "Config from file was not used."
 fi
-echo "[TEST:PASS] Config from file was used."
+pass "Config from file was used."
 
 if [ ! -f ./local/other.tar.gz ]; then
-  echo "[TEST:FAIL] Run on same schedule did not succeed."
-  exit 1
+  fail "Run on same schedule did not succeed."
 fi
-echo "[TEST:PASS] Run on same schedule succeeded."
+pass "Run on same schedule succeeded."
 
 if [ -f ./local/never.tar.gz ]; then
-  echo "[TEST:FAIL] Unexpected file was found."
-  exit 1
+  fail "Unexpected file was found."
 fi
-echo "[TEST:PASS] Unexpected cron did not run."
+pass "Unexpected cron did not run."

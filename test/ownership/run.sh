@@ -4,6 +4,7 @@
 set -e
 
 cd $(dirname $0)
+. ../util.sh
 
 mkdir -p local
 
@@ -15,14 +16,13 @@ docker-compose exec backup backup
 sudo tar --same-owner -xvf ./local/backup.tar.gz -C /tmp
 
 sudo find /tmp/backup/postgres > /dev/null
-echo "[TEST:PASS] Backup contains files at expected location"
+pass "Backup contains files at expected location"
 
 for file in $(sudo find /tmp/backup/postgres); do
   if [ "$(sudo stat -c '%u:%g' $file)" != "70:70" ]; then
-    echo "[TEST:FAIL] Unexpected file ownership for $file: $(sudo stat -c '%u:%g' $file)"
-    exit 1
+    fail "Unexpected file ownership for $file: $(sudo stat -c '%u:%g' $file)"
   fi
 done
-echo "[TEST:PASS] All files and directories in backup preserved their ownership."
+pass "All files and directories in backup preserved their ownership."
 
 docker-compose down --volumes
