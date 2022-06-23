@@ -19,9 +19,10 @@ sleep 5
 
 expect_running_containers "2"
 
-tar -xvf ./local/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db
+tmp_dir=$(mktemp -d)
+tar -xvf ./local/test-hostnametoken.tar.gz -C $tmp_dir && test -f $tmp_dir/backup/app_data/offen.db
 rm ./local/test-hostnametoken.tar.gz
-test -L /tmp/backup/app_data/db.link
+test -L $tmp_dir/backup/app_data/db.link
 
 pass "Found relevant files in decrypted and untared local backup."
 

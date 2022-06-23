@@ -13,12 +13,13 @@ sleep 5
 
 docker-compose exec backup backup
 
-sudo tar --same-owner -xvf ./local/backup.tar.gz -C /tmp
+tmp_dir=$(mktemp -d)
+sudo tar --same-owner -xvf ./local/backup.tar.gz -C $tmp_dir
 
-sudo find /tmp/backup/postgres > /dev/null
+sudo find $tmp_dir/backup/postgres > /dev/null
 pass "Backup contains files at expected location"
 
-for file in $(sudo find /tmp/backup/postgres); do
+for file in $(sudo find $tmp_dir/backup/postgres); do
   if [ "$(sudo stat -c '%u:%g' $file)" != "70:70" ]; then
     fail "Unexpected file ownership for $file: $(sudo stat -c '%u:%g' $file)"
   fi
