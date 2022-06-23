@@ -5,6 +5,7 @@ jobs:
     machine:
       image: ubuntu-2004:202201-02
     working_directory: ~/docker-volume-backup
+    resource_class: large
     steps:
       - checkout
       - run:
@@ -29,6 +30,7 @@ jobs:
           DOCKER_BUILDKIT: '1'
           DOCKER_CLI_EXPERIMENTAL: enabled
     working_directory: ~/docker-volume-backup
+    resource_class: large
     steps:
       - checkout
       - setup_remote_docker:

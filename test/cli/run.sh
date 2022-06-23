@@ -3,6 +3,8 @@
 set -e
 
 cd $(dirname $0)
+. ../util.sh
+current_test=$(basename $(pwd))
 
 docker network create test_network
 docker volume create backup_data
@@ -50,17 +52,11 @@ docker run --rm -it \
   -v backup_data:/data alpine \
   ash -c 'tar -xvf /data/backup/test.tar.gz && test -f /backup/app_data/offen.db && test -d /backup/empty_data'
 
-echo "[TEST:PASS] Found relevant files in untared remote backup."
+pass "Found relevant files in untared remote backup."
 
 # This test does not stop containers during backup. This is happening on
 # purpose in order to cover this setup as well.
-if [ "$(docker ps -q | wc -l)" != "2" ]; then
-  echo "[TEST:FAIL] Expected all containers to be running post backup, instead seen:"
-  docker ps
-  exit 1
-fi
-
-echo "[TEST:PASS] All containers running post backup."
+expect_running_containers "2"
 
 docker rm $(docker stop minio offen)
 docker volume rm backup_data app_data

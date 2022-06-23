@@ -1,0 +1,45 @@
+version: '3'
+
+services:
+  webdav:
+    image: bytemark/webdav:2.4
+    environment:
+      AUTH_TYPE: Digest
+      USERNAME: test
+      PASSWORD: test
+    volumes:
+      - webdav_backup_data:/var/lib/dav
+
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    hostname: hostnametoken
+    depends_on:
+      - webdav
+    restart: always
+    environment:
+      BACKUP_FILENAME_EXPAND: 'true'
+      BACKUP_FILENAME: test-$$HOSTNAME.tar.gz
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_PRUNING_LEEWAY: 5s
+      BACKUP_PRUNING_PREFIX: test
+      WEBDAV_URL: http://webdav/
+      WEBDAV_URL_INSECURE: 'true'
+      WEBDAV_PATH: /my/new/path/
+      WEBDAV_USERNAME: test
+      WEBDAV_PASSWORD: test
+    volumes:
+      - app_data:/backup/app_data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  offen:
+    image: offen/offen:latest
+    labels:
+      - docker-volume-backup.stop-during-backup=true
+    volumes:
+      - app_data:/var/opt/offen
+
+volumes:
+  webdav_backup_data:
+    name: webdav_backup_data
+  app_data:

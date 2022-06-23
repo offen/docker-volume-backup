@@ -64,4 +64,5 @@ services:
 
 volumes:
   backup_data:
+    name: backup_data
   pg_data:

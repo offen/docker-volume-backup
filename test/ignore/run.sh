@@ -3,6 +3,9 @@
 set -e
 
 cd $(dirname $0)
+. ../util.sh
+current_test=$(basename $(pwd))
+
 mkdir -p local
 
 docker-compose up -d
@@ -15,13 +18,11 @@ out=$(mktemp -d)
 sudo tar --same-owner -xvf ./local/test.tar.gz -C "$out"
 
 if [ ! -f "$out/backup/data/me.txt" ]; then
-  echo "[TEST:FAIL] Expected file was not found."
-  exit 1
+  fail "Expected file was not found."
 fi
-echo "[TEST:PASS] Expected file was found."
+pass "Expected file was found."
 
 if [ -f "$out/backup/data/skip.me" ]; then
-  echo "[TEST:FAIL] Ignored file was found."
-  exit 1
+  fail "Ignored file was found."
 fi
-echo "[TEST:PASS] Ignored file was not found."
+pass "Ignored file was not found."
