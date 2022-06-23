@@ -3,6 +3,7 @@
 set -e
 
 cd $(dirname $0)
+. ../util.sh
 
 
 docker-compose up -d
@@ -13,29 +14,27 @@ sudo cp -r $(docker volume inspect --format='{{ .Mountpoint }}' commands_archive
 
 tar -xvf ./local/test.tar.gz
 if [ ! -f ./backup/data/dump.sql ]; then
-  echo "[TEST:FAIL] Could not find file written by pre command."
-  exit 1
+  fail "Could not find file written by pre command."
 fi
-echo "[TEST:PASS] Found expected file."
+pass "Found expected file."
 
 if [ -f ./backup/data/post.txt ]; then
-  echo "[TEST:FAIL] File created in post command was present in backup."
-  exit 1
+  fail "File created in post command was present in backup."
 fi
-echo "[TEST:PASS] Did not find unexpected file."
+pass "Did not find unexpected file."
 
 docker-compose down --volumes
 sudo rm -rf ./local
 
 
-echo "[TEST:INFO] Running commands test in swarm mode next."
+info "Running commands test in swarm mode next."
 
 docker swarm init
 
 docker stack deploy --compose-file=docker-compose.yml test_stack
 
 while [ -z $(docker ps -q -f name=backup) ]; do
-  echo "[TEST:INFO] Backup container not ready yet. Retrying."
+  info "Backup container not ready yet. Retrying."
   sleep 1
 done
 
@@ -47,16 +46,14 @@ sudo cp -r $(docker volume inspect --format='{{ .Mountpoint }}' test_stack_archi
 
 tar -xvf ./local/test.tar.gz
 if [ ! -f ./backup/data/dump.sql ]; then
-  echo "[TEST:FAIL] Could not find file written by pre command."
-  exit 1
+  fail "Could not find file written by pre command."
 fi
-echo "[TEST:PASS] Found expected file."
+pass "Found expected file."
 
 if [ -f ./backup/data/post.txt ]; then
-  echo "[TEST:FAIL] File created in post command was present in backup."
-  exit 1
+  fail "File created in post command was present in backup."
 fi
-echo "[TEST:PASS] Did not find unexpected file."
+pass "Did not find unexpected file."
 
 docker stack rm test_stack
 docker swarm leave --force
