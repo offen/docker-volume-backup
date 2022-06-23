@@ -23,12 +23,12 @@ fi
 echo "[TEST:PASS] All containers running post backup."
 
 tar -xf ./local/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db
-rm ./local/decrypted.tar.gz
+rm ./local/test-hostnametoken.tar.gz
 test -L /tmp/backup/app_data/db.link
 
 echo "[TEST:PASS] Found relevant files in decrypted and untared local backup."
 
-test -L ./local/test-hostnametoken.latest.tar.gz.gpg
+test -L ./local/test-hostnametoken.latest.tar.gz
 echo "[TEST:PASS] Found symlink to latest version in local backup."
 
 # The second part of this test checks if backups get deleted when the retention
