@@ -17,7 +17,7 @@ sleep 5
 expect_running_containers "3"
 
 docker run --rm -it \
-  -v compose_minio_backup_data:/minio_data \
+  -v s3_minio_backup_data:/minio_data \
   alpine \
   ash -c 'tar -xvf /minio_data/backup/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db'
 
@@ -32,7 +32,7 @@ sleep 5
 docker-compose exec backup backup
 
 docker run --rm -it \
-  -v compose_minio_backup_data:/minio_data \
+  -v s3_minio_backup_data:/minio_data \
   alpine \
   ash -c '[ $(find /minio_data/backup/ -type f | wc -l) = "1" ]'
 
