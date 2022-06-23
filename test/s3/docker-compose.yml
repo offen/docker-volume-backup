@@ -43,4 +43,5 @@ services:
 
 volumes:
   minio_backup_data:
+    name: minio_backup_data
   app_data:

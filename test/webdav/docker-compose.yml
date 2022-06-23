@@ -41,4 +41,5 @@ services:
 
 volumes:
   webdav_backup_data:
+    name: webdav_backup_data
   app_data:

@@ -43,4 +43,5 @@ services:
 
 volumes:
   ssh_backup_data:
+    name: ssh_backup_data
   app_data:
