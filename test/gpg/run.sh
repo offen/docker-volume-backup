@@ -19,11 +19,15 @@ tmp_dir=$(mktemp -d)
 echo 1234secret | gpg -d --pinentry-mode loopback --yes --passphrase-fd 0 ./local/test.tar.gz.gpg > ./local/decrypted.tar.gz
 tar -xf ./local/decrypted.tar.gz -C $tmp_dir
 ls -lah $tmp_dir
-test -f $tmp_dir/backup/app_data/offen.db
+if [ ! -f $tmp_dir/backup/app_data/offen.db ]; then
+  fail "Could not find expected file in untared archive."
+fi
 rm ./local/decrypted.tar.gz
 
-test -L ./local/test-latest.tar.gz.gpg
-
 pass "Found relevant files in decrypted and untared local backup."
+
+if [ ! -L ./local/test-latest.tar.gz.gpg ]; then
+  fail "Could not find local symlink to latest encrypted backup."
+fi
 
 docker-compose down --volumes

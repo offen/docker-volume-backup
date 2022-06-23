@@ -20,13 +20,22 @@ sleep 5
 expect_running_containers "2"
 
 tmp_dir=$(mktemp -d)
-tar -xvf ./local/test-hostnametoken.tar.gz -C $tmp_dir && test -f $tmp_dir/backup/app_data/offen.db
+tar -xvf ./local/test-hostnametoken.tar.gz -C $tmp_dir
+if [ ! -f "$tmp_dir/backup/app_data/offen.db" ]; then
+  fail "Could not find expected file in untared archive."
+fi
 rm -f ./local/test-hostnametoken.tar.gz
-test -L $tmp_dir/backup/app_data/db.link
+
+if [ ! -L "$tmp_dir/backup/app_data/db.link" ]; then
+  fail "Could not find expected symlink in untared archive."
+fi
 
 pass "Found relevant files in decrypted and untared local backup."
 
-test -L ./local/test-hostnametoken.latest.tar.gz.gpg
+if [ ! -L ./local/test-hostnametoken.latest.tar.gz.gpg ]; then
+  fail "Could not find symlink to latest version."
+fi
+
 pass "Found symlink to latest version in local backup."
 
 # The second part of this test checks if backups get deleted when the retention
