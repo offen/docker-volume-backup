@@ -1,0 +1,47 @@
+version: '3'
+
+services:
+  minio:
+    image: minio/minio:RELEASE.2020-08-04T23-10-51Z
+    environment:
+      MINIO_ROOT_USER: test
+      MINIO_ROOT_PASSWORD: test
+      MINIO_ACCESS_KEY: test
+      MINIO_SECRET_KEY: GMusLtUmILge2by+z890kQ
+    entrypoint: /bin/ash -c 'mkdir -p /data/backup && minio server /data'
+    volumes:
+      - minio_backup_data:/data
+
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    hostname: hostnametoken
+    depends_on:
+      - minio
+    restart: always
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: GMusLtUmILge2by+z890kQ
+      AWS_ENDPOINT: minio:9000
+      AWS_ENDPOINT_PROTO: http
+      AWS_S3_BUCKET_NAME: backup
+      BACKUP_FILENAME_EXPAND: 'true'
+      BACKUP_FILENAME: test-$$HOSTNAME.tar.gz
+      BACKUP_LATEST_SYMLINK: test-$$HOSTNAME.latest.tar.gz.gpg
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_PRUNING_LEEWAY: 5s
+      BACKUP_PRUNING_PREFIX: test
+    volumes:
+      - app_data:/backup/app_data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  offen:
+    image: offen/offen:latest
+    labels:
+      - docker-volume-backup.stop-during-backup=true
+    volumes:
+      - app_data:/var/opt/offen
+
+volumes:
+  minio_backup_data:
+  app_data:
