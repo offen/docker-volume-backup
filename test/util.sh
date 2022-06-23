@@ -17,7 +17,7 @@ fail () {
 
 expect_running_containers () {
   if [ "$(docker ps -q | wc -l)" != "$1" ]; then
-    fail "Expected $1 containers to be running, instead seen: "$(docker ps)""
+    fail "Expected $1 containers to be running, instead seen: "$(docker ps -a | wc -l)""
   fi
   pass "$1 containers running."
 }

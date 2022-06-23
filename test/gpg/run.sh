@@ -21,7 +21,8 @@ tar -xf ./local/decrypted.tar.gz -C $tmp_dir
 ls -lah $tmp_dir
 test -f $tmp_dir/backup/app_data/offen.db
 rm ./local/decrypted.tar.gz
-test -L $tmp_dir/backup/app_data/db.link
+
+test -L ./local/test-latest.tar.gz.gpg
 
 pass "Found relevant files in decrypted and untared local backup."
 
