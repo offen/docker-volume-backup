@@ -38,7 +38,7 @@ func main() {
 		s.logger.Info("Finished running backup tasks.")
 	}()
 
-	doArchive := s.withLabeledCommands("exec", func() error {
+	s.must(s.withLabeledCommands("archive", func() error {
 		restartContainers, err := s.stopContainers()
 		// The mechanism for restarting containers is not using hooks as it
 		// should happen as soon as possible (i.e. before uploading backups or
@@ -50,10 +50,9 @@ func main() {
 			return err
 		}
 		return s.takeBackup()
-	})
-	s.must(doArchive())
+	})())
 
-	s.must(s.encryptBackup())
-	s.must(s.copyBackup())
-	s.must(s.pruneBackups())
+	s.must(s.withLabeledCommands("encrypt", s.encryptBackup)())
+	s.must(s.withLabeledCommands("copy", s.copyBackup)())
+	s.must(s.withLabeledCommands("prune", s.pruneBackups)())
 }

@@ -10,8 +10,8 @@ services:
       MARIADB_ROOT_PASSWORD: test
       MARIADB_DATABASE: backup
     labels:
-      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump -ptest --all-databases > /tmp/volume/dump.sql'
-      - docker-volume-backup.exec-post=/bin/sh -c 'echo "post" > /tmp/volume/post.txt'
+      - docker-volume-backup.archive-pre=/bin/sh -c 'mysqldump -ptest --all-databases > /tmp/volume/dump.sql'
+      - docker-volume-backup.copy-post=/bin/sh -c 'echo "post" > /tmp/volume/post.txt'
       - docker-volume-backup.exec-label=test
     volumes:
       - app_data:/tmp/volume
