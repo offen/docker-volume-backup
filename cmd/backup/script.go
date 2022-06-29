@@ -32,9 +32,11 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/otiai10/copy"
+	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
 	"github.com/studio-b12/gowebdav"
 	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/ssh"
 )
 
 // script holds all the stateful information required to orchestrate a
@@ -280,22 +282,6 @@ func newScript() (*script, error) {
 	}
 
 	return s, nil
-}
-
-func (s *script) runCommands() (func() error, error) {
-	if s.cli == nil {
-		return noop, nil
-	}
-
-	if err := s.runLabeledCommands("docker-volume-backup.exec-pre"); err != nil {
-		return noop, fmt.Errorf("runCommands: error running pre commands: %w", err)
-	}
-	return func() error {
-		if err := s.runLabeledCommands("docker-volume-backup.exec-post"); err != nil {
-			return fmt.Errorf("runCommands: error running post commands: %w", err)
-		}
-		return nil
-	}, nil
 }
 
 // stopContainers stops all Docker containers that are marked as to being

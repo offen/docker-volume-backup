@@ -121,3 +121,18 @@ func (s *script) runLabeledCommands(label string) error {
 	}
 	return nil
 }
+
+func (s *script) withLabeledCommands(label string, cb func() error) func() error {
+	if s.cli == nil {
+		return cb
+	}
+	return func() error {
+		if err := s.runLabeledCommands(fmt.Sprintf("docker-volume-backup.%s-pre", label)); err != nil {
+			return fmt.Errorf("withLabeledCommands: %s: error running pre commands: %w", label, err)
+		}
+		defer func() {
+			s.runLabeledCommands(fmt.Sprintf("docker-volume-backup.%s-post", label))
+		}()
+		return cb()
+	}
+}
