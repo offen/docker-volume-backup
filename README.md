@@ -20,7 +20,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Automatically pruning old backups](#automatically-pruning-old-backups)
   - [Send email notifications on failed backup runs](#send-email-notifications-on-failed-backup-runs)
   - [Customize notifications](#customize-notifications)
-  - [Run custom commands before / after backup](#run-custom-commands-before--after-backup)
+  - [Run custom commands during the backup lifecycle](#run-custom-commands-during-the-backup-lifecycle)
   - [Encrypting your backup using GPG](#encrypting-your-backup-using-gpg)
   - [Restoring a volume from a backup](#restoring-a-volume-from-a-backup)
   - [Set the timezone the container runs in](#set-the-timezone-the-container-runs-in)
@@ -28,6 +28,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Manually triggering a backup](#manually-triggering-a-backup)
   - [Update deprecated email configuration](#update-deprecated-email-configuration)
   - [Replace deprecated `BACKUP_FROM_SNAPSHOT` usage](#replace-deprecated-backup_from_snapshot-usage)
+  - [Replace deprecated `exec-pre` and `exec-post` labels](#replace-deprecated-exec-pre-and-exec-post-labels)
   - [Using a custom Docker host](#using-a-custom-docker-host)
   - [Run multiple backup schedules in the same container](#run-multiple-backup-schedules-in-the-same-container)
   - [Define different retention schedules](#define-different-retention-schedules)
@@ -351,7 +352,7 @@ You can populate below template according to your requirements and use it as you
 
 # It is possible to define commands to be run in any container before and after
 # a backup is conducted. The commands themselves are defined in labels like
-# `docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump [options] > dump.sql'.
+# `docker-volume-backup.archive-pre=/bin/sh -c 'mysqldump [options] > dump.sql'.
 # Several options exist for controlling this feature:
 
 # By default, any output of such a command is suppressed. If this value
@@ -543,11 +544,16 @@ Overridable template names are: `title_success`, `body_success`, `title_failure`
 
 For a full list of available variables and functions, see [this page](https://github.com/offen/docker-volume-backup/blob/master/docs/NOTIFICATION-TEMPLATES.md).
 
-### Run custom commands before / after backup
+### Run custom commands during the backup lifecycle
 
 In certain scenarios it can be required to run specific commands before and after a backup is taken (e.g. dumping a database).
 When mounting the Docker socket into the `docker-volume-backup` container, you can define pre- and post-commands that will be run in the context of the target container.
-Such commands are defined by specifying the command in a `docker-volume-backup.exec-[pre|post]` label.
+Such commands are defined by specifying the command in a `docker-volume-backup.[step]-[pre|post]` label where `step` can be any of the following phases of a backup lifecyle:
+
+- `archive` (the tar archive is created)
+- `encrypt` (the tar archive is encrypted - optional)
+- `copy` (the tar archive is copied to all configured storages)
+- `prune` (existing backups are pruned based on the defined ruleset - optional)
 
 Taking a database dump using `mysqldump` would look like this:
 
@@ -561,7 +567,7 @@ services:
     volumes:
       - backup_data:/tmp/backups
     labels:
-      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump --all-databases > /backups/dump.sql'
+      - docker-volume-backup.archive-pre=/bin/sh -c 'mysqldump --all-databases > /backups/dump.sql'
 
 volumes:
   backup_data:
@@ -723,7 +729,7 @@ NOTIFICATION_URLS=smtp://me:secret@posteo.de:587/?fromAddress=no-reply@example.c
 ### Replace deprecated `BACKUP_FROM_SNAPSHOT` usage
 
 Starting with version 2.15.0, the `BACKUP_FROM_SNAPSHOT` feature has been deprecated.
-If you need to prepare your sources before the backup is taken, use `exec-pre`, `exec-post` and an intermediate volume:
+If you need to prepare your sources before the backup is taken, use `archive-pre`, `archive-post` and an intermediate volume:
 
 ```yml
 version: '3'
@@ -735,8 +741,8 @@ services:
       - data:/var/my_app
       - backup:/tmp/backup
     labels:
-      - docker-volume-backup.exec-pre=cp -r /var/my_app /tmp/backup/my-app
-      - docker-volume-backup.exec-post=rm -rf /tmp/backup/my-app
+      - docker-volume-backup.archive-pre=cp -r /var/my_app /tmp/backup/my-app
+      - docker-volume-backup.archive-post=rm -rf /tmp/backup/my-app
 
   backup:
     image: offen/docker-volume-backup:latest
@@ -750,6 +756,22 @@ volumes:
   data:
   backup:
 ```
+
+### Replace deprecated `exec-pre` and `exec-post` labels
+
+Version 2.19.0 introduced the option to run labeled commands at multiple points in time during the backup lifecycle.
+In order to be able to use more obvious terminology in the new labels, the existing `exec-pre` and `exec-post` labels have been deprecated.
+If you want to emulate the existing behavior, all you need to do is change `exec-pre` to `archive-pre` and `exec-post` to `archive-post`:
+
+```diff
+    labels:
+-     - docker-volume-backup.exec-pre=cp -r /var/my_app /tmp/backup/my-app
++     - docker-volume-backup.archive-pre=cp -r /var/my_app /tmp/backup/my-app
+-     - docker-volume-backup.exec-post=rm -rf /tmp/backup/my-app
++     - docker-volume-backup.archive-post=rm -rf /tmp/backup/my-app
+```
+
+Check the additional documentation on running commands during the backup lifecycle to find out about further possibilities.
 
 ### Using a custom Docker host
 
