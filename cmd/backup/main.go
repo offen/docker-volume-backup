@@ -49,10 +49,10 @@ func main() {
 		if err != nil {
 			return err
 		}
-		return s.takeBackup()
+		return s.createArchive()
 	})())
 
-	s.must(s.withLabeledCommands("encrypt", s.encryptBackup)())
-	s.must(s.withLabeledCommands("copy", s.copyBackup)())
+	s.must(s.withLabeledCommands("encrypt", s.encryptArchive)())
+	s.must(s.withLabeledCommands("copy", s.copyArchive)())
 	s.must(s.withLabeledCommands("prune", s.pruneBackups)())
 }
