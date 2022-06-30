@@ -168,7 +168,16 @@ func (s *script) runLabeledCommands(label string) error {
 	return nil
 }
 
-func (s *script) withLabeledCommands(step string, cb func() error) func() error {
+type lifecyclePhase string
+
+const (
+	lifecyclePhaseArchive lifecyclePhase = "archive"
+	lifecyclePhaseEncrypt lifecyclePhase = "encrypt"
+	lifecyclePhaseCopy    lifecyclePhase = "copy"
+	lifecyclePhasePrune   lifecyclePhase = "prune"
+)
+
+func (s *script) withLabeledCommands(step lifecyclePhase, cb func() error) func() error {
 	if s.cli == nil {
 		return cb
 	}
