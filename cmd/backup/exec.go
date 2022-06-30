@@ -93,8 +93,54 @@ func (s *script) runLabeledCommands(label string) error {
 		return fmt.Errorf("runLabeledCommands: error querying for containers: %w", err)
 	}
 
+	var hasDeprecatedContainers bool
+	if label == "docker-volume-backup.archive-pre" {
+		f[0] = filters.KeyValuePair{
+			Key:   "label",
+			Value: "docker-volume-backup.exec-pre",
+		}
+		deprecatedContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
+			Quiet:   true,
+			Filters: filters.NewArgs(f...),
+		})
+		if err != nil {
+			return fmt.Errorf("runLabeledCommands: error querying for containers: %w", err)
+		}
+		if len(deprecatedContainers) != 0 {
+			hasDeprecatedContainers = true
+			containersWithCommand = append(containersWithCommand, deprecatedContainers...)
+		}
+	}
+
+	if label == "docker-volume-backup.archive-post" {
+		f[0] = filters.KeyValuePair{
+			Key:   "label",
+			Value: "docker-volume-backup.exec-post",
+		}
+		deprecatedContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
+			Quiet:   true,
+			Filters: filters.NewArgs(f...),
+		})
+		if err != nil {
+			return fmt.Errorf("runLabeledCommands: error querying for containers: %w", err)
+		}
+		if len(deprecatedContainers) != 0 {
+			hasDeprecatedContainers = true
+			containersWithCommand = append(containersWithCommand, deprecatedContainers...)
+		}
+	}
+
 	if len(containersWithCommand) == 0 {
 		return nil
+	}
+
+	if hasDeprecatedContainers {
+		s.logger.Warn(
+			"Using `docker-volume-backup.exec-pre` and `docker-volume-backup.exec-post` labels has been deprecated and will be removed in the next major version.",
+		)
+		s.logger.Warn(
+			"Please use other `-pre` and `-post` labels instead. Refer to the README for an upgrade guide.",
+		)
 	}
 
 	g := new(errgroup.Group)
