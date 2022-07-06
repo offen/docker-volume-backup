@@ -10,6 +10,7 @@ services:
       BACKUP_PRUNING_PREFIX: test
       NOTIFICATION_LEVEL: info
       NOTIFICATION_URLS: ${NOTIFICATION_URLS}
+      EXTRA_VALUE: extra-value
     volumes:
       - ./local:/archive
       - app_data:/backup/app_data:ro

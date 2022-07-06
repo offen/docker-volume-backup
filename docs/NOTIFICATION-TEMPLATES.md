@@ -32,8 +32,9 @@ Here is a list of all data passed to the template:
 
 ## Functions
 
-Some formatting functions are also available:
+Some formatting and helper functions are also available:
 
 * `formatTime`: formats a time object using [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339) format (e.g. `2022-02-11T01:00:00Z`)
 * `formatBytesBin`: formats an amount of bytes using powers of 1024 (e.g. `7055258` bytes will be `6.7 MiB`) 
 * `formatBytesDec`: formats an amount of bytes using powers of 1000 (e.g. `7055258` bytes will be `7.1 MB`)
+* `env`: returns the value of the environment variable of the given key if set
