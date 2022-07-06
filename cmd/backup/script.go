@@ -7,8 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/pkg/sftp"
-	"golang.org/x/crypto/ssh"
 	"io"
 	"io/fs"
 	"io/ioutil"
@@ -19,6 +17,9 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/pkg/sftp"
+	"golang.org/x/crypto/ssh"
 
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
@@ -547,7 +548,8 @@ func (s *script) copyBackup() error {
 
 	if s.minioClient != nil {
 		if _, err := s.minioClient.FPutObject(context.Background(), s.c.AwsS3BucketName, filepath.Join(s.c.AwsS3Path, name), s.file, minio.PutObjectOptions{
-			ContentType: "application/tar+gzip",
+			ContentType:  "application/tar+gzip",
+			StorageClass: s.c.AwsStorageClass,
 		}); err != nil {
 			return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
 		}

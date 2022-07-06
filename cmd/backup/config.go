@@ -28,6 +28,7 @@ type Config struct {
 	AwsEndpoint                string        `split_words:"true" default:"s3.amazonaws.com"`
 	AwsEndpointProto           string        `split_words:"true" default:"https"`
 	AwsEndpointInsecure        bool          `split_words:"true"`
+	AwsStorageClass            string        `split_words:"true" default:"STANDARD"`
 	AwsAccessKeyID             string        `envconfig:"AWS_ACCESS_KEY_ID"`
 	AwsSecretAccessKey         string        `split_words:"true"`
 	AwsIamRoleEndpoint         string        `split_words:"true"`
