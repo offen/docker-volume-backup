@@ -37,7 +37,7 @@ pass "Correct number of notifications were sent when configured."
 MESSAGE_TITLE=$(curl -sSL http://admin:custom@localhost:8080/message | jq -r '.messages[0].title')
 MESSAGE_BODY=$(curl -sSL http://admin:custom@localhost:8080/message | jq -r '.messages[0].message')
 
-if [ "$MESSAGE_TITLE" != "Successful test run, yay!" ]; then
+if [ "$MESSAGE_TITLE" != "Successful test run with extra-value, yay!" ]; then
   fail "Unexpected notification title $MESSAGE_TITLE"
 fi
 pass "Custom notification title was used."

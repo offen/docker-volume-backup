@@ -7,6 +7,7 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
+	"os"
 	"text/template"
 	"time"
 
@@ -82,6 +83,7 @@ var templateHelpers = template.FuncMap{
 	"formatBytesBin": func(bytes uint64) string {
 		return formatBytes(bytes, false)
 	},
+	"env": os.Getenv,
 }
 
 // formatBytes converts an amount of bytes in a human-readable representation
