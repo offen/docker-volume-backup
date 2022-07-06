@@ -18,9 +18,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/pkg/sftp"
-	"golang.org/x/crypto/ssh"
-
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
 	"github.com/docker/docker/api/types"
