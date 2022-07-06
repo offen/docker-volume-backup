@@ -221,6 +221,11 @@ You can populate below template according to your requirements and use it as you
 
 # AWS_ENDPOINT_INSECURE="true"
 
+# Setting this variable will change the S3 storage class header.
+# Defaults to "STANDARD", you can set this value according to your needs.
+
+# AWS_STORAGE_CLASS="GLACIER"
+
 # You can also backup files to any WebDAV server:
 
 # The URL of the remote WebDAV server
