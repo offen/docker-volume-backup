@@ -22,4 +22,4 @@ else
 fi
 
 echo "Starting cron in foreground."
-crond -f -l 8
+crond -f -d 8
