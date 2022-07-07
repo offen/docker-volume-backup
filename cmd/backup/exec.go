@@ -148,7 +148,13 @@ func (s *script) runLabeledCommands(label string) error {
 	for _, container := range containersWithCommand {
 		c := container
 		g.Go(func() error {
-			cmd, _ := c.Labels[label]
+			cmd, ok := c.Labels[label]
+			if !ok && label == "docker-volume-backup.archive-pre" {
+				cmd, _ = c.Labels["docker-volume-backup.exec-pre"]
+			} else if !ok && label == "docker-volume-backup.archive-post" {
+				cmd, _ = c.Labels["docker-volume-backup.exec-post"]
+			}
+
 			s.logger.Infof("Running %s command %s for container %s", label, cmd, strings.TrimPrefix(c.Names[0], "/"))
 			stdout, stderr, err := s.exec(c.ID, cmd)
 			if s.c.ExecForwardOutput {
