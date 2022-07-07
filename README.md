@@ -31,6 +31,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Using a custom Docker host](#using-a-custom-docker-host)
   - [Run multiple backup schedules in the same container](#run-multiple-backup-schedules-in-the-same-container)
   - [Define different retention schedules](#define-different-retention-schedules)
+  - [Use special characters in notification URLs](#use-special-characters-in-notification-urls)
 - [Recipes](#recipes)
   - [Backing up to AWS S3](#backing-up-to-aws-s3)
   - [Backing up to Filebase](#backing-up-to-filebase)
@@ -818,6 +819,22 @@ BACKUP_CRON_EXPRESSION="0 4 1 * *"
 ```
 
 Note that while it's possible to define colliding cron schedules for each of these configurations, you might need to adjust the value for `LOCK_TIMEOUT` in case your backups are large and might take longer than an hour.
+
+### Use special characters in notification URLs
+
+The value given to `NOTIFICATION_URLS` is a comma separated list of URLs.
+If such a URL contains special characters (e.g. commas) it needs to be URL encoded.
+To get an encoded version of your URL, you can use the CLI tool provided by `shoutrrr` (which is the library used for sending notifications):
+
+```
+docker run --rm -ti containrrr/shoutrrr generate [service]
+```
+
+where service is any of the [supported services][shoutrrr-docs], e.g. for SMTP:
+
+```
+docker run --rm -ti containrrr/shoutrrr generate smtp
+```
 
 ## Recipes
 
