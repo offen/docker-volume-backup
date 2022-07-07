@@ -551,7 +551,7 @@ When mounting the Docker socket into the `docker-volume-backup` container, you c
 Such commands are defined by specifying the command in a `docker-volume-backup.[step]-[pre|post]` label where `step` can be any of the following phases of a backup lifecyle:
 
 - `archive` (the tar archive is created)
-- `encrypt` (the tar archive is encrypted - optional)
+- `process` (the tar archive is processed, e.g. encrypted - optional)
 - `copy` (the tar archive is copied to all configured storages)
 - `prune` (existing backups are pruned based on the defined ruleset - optional)
 

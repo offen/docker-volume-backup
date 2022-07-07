@@ -52,7 +52,7 @@ func main() {
 		return s.createArchive()
 	})())
 
-	s.must(s.withLabeledCommands(lifecyclePhaseEncrypt, s.encryptArchive)())
+	s.must(s.withLabeledCommands(lifecyclePhaseProcess, s.encryptArchive)())
 	s.must(s.withLabeledCommands(lifecyclePhaseCopy, s.copyArchive)())
 	s.must(s.withLabeledCommands(lifecyclePhasePrune, s.pruneBackups)())
 }

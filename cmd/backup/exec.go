@@ -178,7 +178,7 @@ type lifecyclePhase string
 
 const (
 	lifecyclePhaseArchive lifecyclePhase = "archive"
-	lifecyclePhaseEncrypt lifecyclePhase = "encrypt"
+	lifecyclePhaseProcess lifecyclePhase = "process"
 	lifecyclePhaseCopy    lifecyclePhase = "copy"
 	lifecyclePhasePrune   lifecyclePhase = "prune"
 )
