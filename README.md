@@ -787,6 +787,25 @@ The exact order of schedules that use the same cron expression is not specified.
 In case you need your schedules to overlap, you need to create a dedicated container for each schedule instead.
 When changing the configuration, you currently need to manually restart the container for the changes to take effect.
 
+Set `BACKUP_SOURCES` for each config file to control which subset of volume mounts gets backed up:
+
+```yml
+# With a volume configuration like this:
+volumes:
+  - /var/run/docker.sock:/var/run/docker.sock:ro
+  - ./configuration:/etc/dockervolumebackup/conf.d
+  - app1_data:/backup/app1_data:ro
+  - app2_data:/backup/app2_data:ro
+```
+
+```ini
+# In the 1st config file:
+BACKUP_SOURCES=/backup/app1_data
+
+# In the 2nd config file:
+BACKUP_SOURCES=/backup/app2_data
+```
+
 ### Define different retention schedules
 
 If you want to manage backup retention on different schedules, the most straight forward approach is to define a dedicated configuration for retention rule using a different prefix in the `BACKUP_FILENAME` parameter and then run them on different cron schedules.
