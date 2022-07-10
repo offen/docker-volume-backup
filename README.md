@@ -547,7 +547,7 @@ For a full list of available variables and functions, see [this page](https://gi
 ### Run custom commands during the backup lifecycle
 
 In certain scenarios it can be required to run specific commands before and after a backup is taken (e.g. dumping a database).
-When mounting the Docker socket into the `docker-volume-backup` container, you can define pre- and post-commands that will be run in the context of the target container.
+When mounting the Docker socket into the `docker-volume-backup` container, you can define pre- and post-commands that will be run in the context of the target container (it is also possible to run commands inside the `docker-volume-backup` container itself using this feature).
 Such commands are defined by specifying the command in a `docker-volume-backup.[step]-[pre|post]` label where `step` can be any of the following phases of a backup lifecyle:
 
 - `archive` (the tar archive is created)
@@ -587,7 +587,7 @@ services:
     volumes:
       - backup_data:/tmp/backups
     labels:
-      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump --all-databases > /tmp/volume/dump.sql'
+      - docker-volume-backup.archive-pre=/bin/sh -c 'mysqldump --all-databases > /tmp/volume/dump.sql'
       - docker-volume-backup.exec-label=database
 
   backup:
@@ -603,7 +603,7 @@ volumes:
 ```
 
 
-The backup procedure is guaranteed to wait for all `pre` commands to finish.
+The backup procedure is guaranteed to wait for all `pre` or `post` commands to finish before proceeding.
 However there are no guarantees about the order in which they are run, which could also happen concurrently.
 
 ### Encrypting your backup using GPG
@@ -771,6 +771,7 @@ If you want to emulate the existing behavior, all you need to do is change `exec
 +     - docker-volume-backup.archive-post=rm -rf /tmp/backup/my-app
 ```
 
+The `EXEC_LABEL` setting and the `docker-volume-backup.exec-label` label stay as is.
 Check the additional documentation on running commands during the backup lifecycle to find out about further possibilities.
 
 ### Using a custom Docker host
