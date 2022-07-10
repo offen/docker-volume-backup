@@ -93,8 +93,54 @@ func (s *script) runLabeledCommands(label string) error {
 		return fmt.Errorf("runLabeledCommands: error querying for containers: %w", err)
 	}
 
+	var hasDeprecatedContainers bool
+	if label == "docker-volume-backup.archive-pre" {
+		f[0] = filters.KeyValuePair{
+			Key:   "label",
+			Value: "docker-volume-backup.exec-pre",
+		}
+		deprecatedContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
+			Quiet:   true,
+			Filters: filters.NewArgs(f...),
+		})
+		if err != nil {
+			return fmt.Errorf("runLabeledCommands: error querying for containers: %w", err)
+		}
+		if len(deprecatedContainers) != 0 {
+			hasDeprecatedContainers = true
+			containersWithCommand = append(containersWithCommand, deprecatedContainers...)
+		}
+	}
+
+	if label == "docker-volume-backup.archive-post" {
+		f[0] = filters.KeyValuePair{
+			Key:   "label",
+			Value: "docker-volume-backup.exec-post",
+		}
+		deprecatedContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
+			Quiet:   true,
+			Filters: filters.NewArgs(f...),
+		})
+		if err != nil {
+			return fmt.Errorf("runLabeledCommands: error querying for containers: %w", err)
+		}
+		if len(deprecatedContainers) != 0 {
+			hasDeprecatedContainers = true
+			containersWithCommand = append(containersWithCommand, deprecatedContainers...)
+		}
+	}
+
 	if len(containersWithCommand) == 0 {
 		return nil
+	}
+
+	if hasDeprecatedContainers {
+		s.logger.Warn(
+			"Using `docker-volume-backup.exec-pre` and `docker-volume-backup.exec-post` labels has been deprecated and will be removed in the next major version.",
+		)
+		s.logger.Warn(
+			"Please use other `-pre` and `-post` labels instead. Refer to the README for an upgrade guide.",
+		)
 	}
 
 	g := new(errgroup.Group)
@@ -102,7 +148,13 @@ func (s *script) runLabeledCommands(label string) error {
 	for _, container := range containersWithCommand {
 		c := container
 		g.Go(func() error {
-			cmd, _ := c.Labels[label]
+			cmd, ok := c.Labels[label]
+			if !ok && label == "docker-volume-backup.archive-pre" {
+				cmd, _ = c.Labels["docker-volume-backup.exec-pre"]
+			} else if !ok && label == "docker-volume-backup.archive-post" {
+				cmd, _ = c.Labels["docker-volume-backup.exec-post"]
+			}
+
 			s.logger.Infof("Running %s command %s for container %s", label, cmd, strings.TrimPrefix(c.Names[0], "/"))
 			stdout, stderr, err := s.exec(c.ID, cmd)
 			if s.c.ExecForwardOutput {
@@ -120,4 +172,28 @@ func (s *script) runLabeledCommands(label string) error {
 		return fmt.Errorf("runLabeledCommands: error from errgroup: %w", err)
 	}
 	return nil
+}
+
+type lifecyclePhase string
+
+const (
+	lifecyclePhaseArchive lifecyclePhase = "archive"
+	lifecyclePhaseProcess lifecyclePhase = "process"
+	lifecyclePhaseCopy    lifecyclePhase = "copy"
+	lifecyclePhasePrune   lifecyclePhase = "prune"
+)
+
+func (s *script) withLabeledCommands(step lifecyclePhase, cb func() error) func() error {
+	if s.cli == nil {
+		return cb
+	}
+	return func() error {
+		if err := s.runLabeledCommands(fmt.Sprintf("docker-volume-backup.%s-pre", step)); err != nil {
+			return fmt.Errorf("withLabeledCommands: %s: error running pre commands: %w", step, err)
+		}
+		defer func() {
+			s.must(s.runLabeledCommands(fmt.Sprintf("docker-volume-backup.%s-post", step)))
+		}()
+		return cb()
+	}
 }

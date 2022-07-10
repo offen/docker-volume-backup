@@ -38,14 +38,7 @@ func main() {
 		s.logger.Info("Finished running backup tasks.")
 	}()
 
-	s.must(func() error {
-		runPostCommands, err := s.runCommands()
-		defer func() {
-			s.must(runPostCommands())
-		}()
-		if err != nil {
-			return err
-		}
+	s.must(s.withLabeledCommands(lifecyclePhaseArchive, func() error {
 		restartContainers, err := s.stopContainers()
 		// The mechanism for restarting containers is not using hooks as it
 		// should happen as soon as possible (i.e. before uploading backups or
@@ -56,10 +49,10 @@ func main() {
 		if err != nil {
 			return err
 		}
-		return s.takeBackup()
-	}())
+		return s.createArchive()
+	})())
 
-	s.must(s.encryptBackup())
-	s.must(s.copyBackup())
-	s.must(s.pruneBackups())
+	s.must(s.withLabeledCommands(lifecyclePhaseProcess, s.encryptArchive)())
+	s.must(s.withLabeledCommands(lifecyclePhaseCopy, s.copyArchive)())
+	s.must(s.withLabeledCommands(lifecyclePhasePrune, s.pruneBackups)())
 }

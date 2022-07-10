@@ -18,9 +18,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/pkg/sftp"
-	"golang.org/x/crypto/ssh"
-
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
 	"github.com/docker/docker/api/types"
@@ -32,9 +29,11 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/otiai10/copy"
+	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
 	"github.com/studio-b12/gowebdav"
 	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/ssh"
 )
 
 // script holds all the stateful information required to orchestrate a
@@ -282,22 +281,6 @@ func newScript() (*script, error) {
 	return s, nil
 }
 
-func (s *script) runCommands() (func() error, error) {
-	if s.cli == nil {
-		return noop, nil
-	}
-
-	if err := s.runLabeledCommands("docker-volume-backup.exec-pre"); err != nil {
-		return noop, fmt.Errorf("runCommands: error running pre commands: %w", err)
-	}
-	return func() error {
-		if err := s.runLabeledCommands("docker-volume-backup.exec-post"); err != nil {
-			return fmt.Errorf("runCommands: error running post commands: %w", err)
-		}
-		return nil
-	}, nil
-}
-
 // stopContainers stops all Docker containers that are marked as to being
 // stopped during the backup and returns a function that can be called to
 // restart everything that has been stopped.
@@ -417,9 +400,9 @@ func (s *script) stopContainers() (func() error, error) {
 	}, stopError
 }
 
-// takeBackup creates a tar archive of the configured backup location and
+// createArchive creates a tar archive of the configured backup location and
 // saves it to disk.
-func (s *script) takeBackup() error {
+func (s *script) createArchive() error {
 	backupSources := s.c.BackupSources
 
 	if s.c.BackupFromSnapshot {
@@ -427,7 +410,7 @@ func (s *script) takeBackup() error {
 			"Using BACKUP_FROM_SNAPSHOT has been deprecated and will be removed in the next major version.",
 		)
 		s.logger.Warn(
-			"Please use `exec-pre` and `exec-post` commands to prepare your backup sources. Refer to the README for an upgrade guide.",
+			"Please use `archive-pre` and `archive-post` commands to prepare your backup sources. Refer to the README for an upgrade guide.",
 		)
 		backupSources = filepath.Join("/tmp", s.c.BackupSources)
 		// copy before compressing guard against a situation where backup folder's content are still growing.
@@ -484,10 +467,10 @@ func (s *script) takeBackup() error {
 	return nil
 }
 
-// encryptBackup encrypts the backup file using PGP and the configured passphrase.
+// encryptArchive encrypts the backup file using PGP and the configured passphrase.
 // In case no passphrase is given it returns early, leaving the backup file
 // untouched.
-func (s *script) encryptBackup() error {
+func (s *script) encryptArchive() error {
 	if s.c.GpgPassphrase == "" {
 		return nil
 	}
@@ -531,9 +514,9 @@ func (s *script) encryptBackup() error {
 	return nil
 }
 
-// copyBackup makes sure the backup file is copied to both local and remote locations
+// copyArchive makes sure the backup file is copied to both local and remote locations
 // as per the given configuration.
-func (s *script) copyBackup() error {
+func (s *script) copyArchive() error {
 	_, name := path.Split(s.file)
 	if stat, err := os.Stat(s.file); err != nil {
 		return fmt.Errorf("copyBackup: unable to stat backup file: %w", err)
