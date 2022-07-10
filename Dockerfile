@@ -10,7 +10,7 @@ COPY cmd/backup ./cmd/backup/
 WORKDIR /app/cmd/backup
 RUN go build -o backup .
 
-FROM alpine:3.15
+FROM alpine:3.16
 
 WORKDIR /root
 
