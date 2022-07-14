@@ -1115,7 +1115,7 @@ services:
     labels:
       - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump -psecret --all-databases > /tmp/dumps/dump.sql'
     volumes:
-      - app_data:/tmp/dumps
+      - data:/tmp/dumps
   backup:
     image: offen/docker-volume-backup:v2
     environment:

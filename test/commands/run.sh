@@ -18,6 +18,11 @@ if [ ! -f ./backup/data/dump.sql ]; then
 fi
 pass "Found expected file."
 
+if [ -f ./backup/data/not-relevant.txt ]; then
+  fail "Command ran for container with other label."
+fi
+pass "Command did not run for container with other label."
+
 if [ -f ./backup/data/post.txt ]; then
   fail "File created in post command was present in backup."
 fi
