@@ -1113,7 +1113,7 @@ services:
   database:
     image: mariadb:latest
     labels:
-      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump -psecret --all-databases > /tmp/dumps/dump.sql'
+      - docker-volume-backup.archive-pre=/bin/sh -c 'mysqldump -psecret --all-databases > /tmp/dumps/dump.sql'
     volumes:
       - app_data:/tmp/dumps
   backup:
