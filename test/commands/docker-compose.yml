@@ -17,6 +17,20 @@ services:
     volumes:
       - app_data:/tmp/volume
 
+  other_database:
+    image: mariadb:10.7
+    deploy:
+      restart_policy:
+        condition: on-failure
+    environment:
+      MARIADB_ROOT_PASSWORD: test
+      MARIADB_DATABASE: backup
+    labels:
+      - docker-volume-backup.archive-pre=touch /tmp/volume/not-relevant.txt
+      - docker-volume-backup.exec-label=not-relevant
+    volumes:
+      - app_data:/tmp/volume
+
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
     deploy:
