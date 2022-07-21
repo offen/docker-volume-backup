@@ -10,38 +10,39 @@ import (
 
 type LocalHelper struct {
 	*AbstractHelper
+	s *script
 }
 
-func newLocalhelper() *LocalHelper {
+func newLocalhelper(s *script) *LocalHelper {
 	a := &AbstractHelper{}
-	r := &LocalHelper{a}
+	r := &LocalHelper{a, s}
 	a.Helper = r
 	return r
 }
 
-func (helper *LocalHelper) copyArchive(s *script, name string) error {
-	if err := copyFile(s.file, path.Join(s.c.BackupArchive, name)); err != nil {
+func (helper *LocalHelper) copyArchive(name string) error {
+	if err := copyFile(helper.s.file, path.Join(helper.s.c.BackupArchive, name)); err != nil {
 		return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 	}
-	s.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", s.file, s.c.BackupArchive)
-	if s.c.BackupLatestSymlink != "" {
-		symlink := path.Join(s.c.BackupArchive, s.c.BackupLatestSymlink)
+	helper.s.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", helper.s.file, helper.s.c.BackupArchive)
+	if helper.s.c.BackupLatestSymlink != "" {
+		symlink := path.Join(helper.s.c.BackupArchive, helper.s.c.BackupLatestSymlink)
 		if _, err := os.Lstat(symlink); err == nil {
 			os.Remove(symlink)
 		}
 		if err := os.Symlink(name, symlink); err != nil {
 			return fmt.Errorf("copyBackup: error creating latest symlink: %w", err)
 		}
-		s.logger.Infof("Created/Updated symlink `%s` for latest backup.", s.c.BackupLatestSymlink)
+		helper.s.logger.Infof("Created/Updated symlink `%s` for latest backup.", helper.s.c.BackupLatestSymlink)
 	}
 
 	return nil
 }
 
-func (helper *LocalHelper) pruneBackups(s *script, deadline time.Time) error {
+func (helper *LocalHelper) pruneBackups(deadline time.Time) error {
 	globPattern := path.Join(
-		s.c.BackupArchive,
-		fmt.Sprintf("%s*", s.c.BackupPruningPrefix),
+		helper.s.c.BackupArchive,
+		fmt.Sprintf("%s*", helper.s.c.BackupPruningPrefix),
 	)
 	globMatches, err := filepath.Glob(globPattern)
 	if err != nil {
@@ -83,12 +84,12 @@ func (helper *LocalHelper) pruneBackups(s *script, deadline time.Time) error {
 		}
 	}
 
-	s.stats.Storages.Local = StorageStats{
+	helper.s.stats.Storages.Local = StorageStats{
 		Total:  uint(len(candidates)),
 		Pruned: uint(len(matches)),
 	}
 
-	doPrune(s, len(matches), len(candidates), "local backup(s)", func() error {
+	doPrune(helper.s, len(matches), len(candidates), "local backup(s)", func() error {
 		var removeErrors []error
 		for _, match := range matches {
 			if err := os.Remove(match); err != nil {
