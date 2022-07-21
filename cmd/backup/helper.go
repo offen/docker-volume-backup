@@ -3,8 +3,8 @@ package main
 import "time"
 
 type Helper interface {
-	copyArchive(s *script, name string) error
-	pruneBackups(s *script, deadline time.Time) error
+	copyArchive(name string) error
+	pruneBackups(deadline time.Time) error
 }
 
 type AbstractHelper struct {

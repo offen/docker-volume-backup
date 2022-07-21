@@ -16,9 +16,14 @@ import (
 type WebdavHelper struct {
 	*AbstractHelper
 	client *gowebdav.Client
+	s      *script
 }
 
 func newWebdavHelper(s *script) (*WebdavHelper, error) {
+	if s.c.WebdavUrl == "" {
+		return nil, nil
+	}
+
 	if s.c.WebdavUsername == "" || s.c.WebdavPassword == "" {
 		return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
 	} else {
@@ -35,37 +40,37 @@ func newWebdavHelper(s *script) (*WebdavHelper, error) {
 		}
 
 		a := &AbstractHelper{}
-		r := &WebdavHelper{a, webdavClient}
+		r := &WebdavHelper{a, webdavClient, s}
 		a.Helper = r
 		return r, nil
 	}
 }
 
-func (helper *WebdavHelper) copyArchive(s *script, name string) error {
-	bytes, err := os.ReadFile(s.file)
+func (helper *WebdavHelper) copyArchive(name string) error {
+	bytes, err := os.ReadFile(helper.s.file)
 	if err != nil {
 		return fmt.Errorf("copyBackup: error reading the file to be uploaded: %w", err)
 	}
-	if err := helper.client.MkdirAll(s.c.WebdavPath, 0644); err != nil {
-		return fmt.Errorf("copyBackup: error creating directory '%s' on WebDAV server: %w", s.c.WebdavPath, err)
+	if err := helper.client.MkdirAll(helper.s.c.WebdavPath, 0644); err != nil {
+		return fmt.Errorf("copyBackup: error creating directory '%s' on WebDAV server: %w", helper.s.c.WebdavPath, err)
 	}
-	if err := helper.client.Write(filepath.Join(s.c.WebdavPath, name), bytes, 0644); err != nil {
+	if err := helper.client.Write(filepath.Join(helper.s.c.WebdavPath, name), bytes, 0644); err != nil {
 		return fmt.Errorf("copyBackup: error uploading the file to WebDAV server: %w", err)
 	}
-	s.logger.Infof("Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", s.file, s.c.WebdavUrl, s.c.WebdavPath)
+	helper.s.logger.Infof("Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", helper.s.file, helper.s.c.WebdavUrl, helper.s.c.WebdavPath)
 
 	return nil
 }
 
-func (helper *WebdavHelper) pruneBackups(s *script, deadline time.Time) error {
-	candidates, err := helper.client.ReadDir(s.c.WebdavPath)
+func (helper *WebdavHelper) pruneBackups(deadline time.Time) error {
+	candidates, err := helper.client.ReadDir(helper.s.c.WebdavPath)
 	if err != nil {
 		return fmt.Errorf("pruneBackups: error looking up candidates from remote storage: %w", err)
 	}
 	var matches []fs.FileInfo
 	var lenCandidates int
 	for _, candidate := range candidates {
-		if !strings.HasPrefix(candidate.Name(), s.c.BackupPruningPrefix) {
+		if !strings.HasPrefix(candidate.Name(), helper.s.c.BackupPruningPrefix) {
 			continue
 		}
 		lenCandidates++
@@ -74,14 +79,14 @@ func (helper *WebdavHelper) pruneBackups(s *script, deadline time.Time) error {
 		}
 	}
 
-	s.stats.Storages.WebDAV = StorageStats{
+	helper.s.stats.Storages.WebDAV = StorageStats{
 		Total:  uint(lenCandidates),
 		Pruned: uint(len(matches)),
 	}
 
-	doPrune(s, len(matches), lenCandidates, "WebDAV backup(s)", func() error {
+	doPrune(helper.s, len(matches), lenCandidates, "WebDAV backup(s)", func() error {
 		for _, match := range matches {
-			if err := helper.client.Remove(filepath.Join(s.c.WebdavPath, match.Name())); err != nil {
+			if err := helper.client.Remove(filepath.Join(helper.s.c.WebdavPath, match.Name())); err != nil {
 				return fmt.Errorf("pruneBackups: error removing file from WebDAV storage: %w", err)
 			}
 		}

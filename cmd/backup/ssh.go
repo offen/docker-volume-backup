@@ -17,9 +17,14 @@ import (
 type SshHelper struct {
 	*AbstractHelper
 	client *ssh.Client
+	s      *script
 }
 
 func newSshHelper(s *script) (*SshHelper, error) {
+	if s.c.SSHHostName == "" {
+		return nil, nil
+	}
+
 	var authMethods []ssh.AuthMethod
 
 	if s.c.SSHPassword != "" {
@@ -70,19 +75,19 @@ func newSshHelper(s *script) (*SshHelper, error) {
 	}
 
 	a := &AbstractHelper{}
-	r := &SshHelper{a, sshClient}
+	r := &SshHelper{a, sshClient, s}
 	a.Helper = r
 	return r, nil
 }
 
-func (helper *SshHelper) copyArchive(s *script, name string) error {
-	source, err := os.Open(s.file)
+func (helper *SshHelper) copyArchive(name string) error {
+	source, err := os.Open(helper.s.file)
 	if err != nil {
 		return fmt.Errorf("copyBackup: error reading the file to be uploaded: %w", err)
 	}
 	defer source.Close()
 
-	destination, err := s.sftpClient.Create(filepath.Join(s.c.SSHRemotePath, name))
+	destination, err := helper.s.sftpClient.Create(filepath.Join(helper.s.c.SSHRemotePath, name))
 	if err != nil {
 		return fmt.Errorf("copyBackup: error creating file on SSH storage: %w", err)
 	}
@@ -118,20 +123,20 @@ func (helper *SshHelper) copyArchive(s *script, name string) error {
 		}
 	}
 
-	s.logger.Infof("Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", s.file, s.c.SSHHostName, s.c.SSHRemotePath)
+	helper.s.logger.Infof("Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", helper.s.file, helper.s.c.SSHHostName, helper.s.c.SSHRemotePath)
 
 	return nil
 }
 
-func (helper *SshHelper) pruneBackups(s *script, deadline time.Time) error {
-	candidates, err := s.sftpClient.ReadDir(s.c.SSHRemotePath)
+func (helper *SshHelper) pruneBackups(deadline time.Time) error {
+	candidates, err := helper.s.sftpClient.ReadDir(helper.s.c.SSHRemotePath)
 	if err != nil {
 		return fmt.Errorf("pruneBackups: error reading directory from SSH storage: %w", err)
 	}
 
 	var matches []string
 	for _, candidate := range candidates {
-		if !strings.HasPrefix(candidate.Name(), s.c.BackupPruningPrefix) {
+		if !strings.HasPrefix(candidate.Name(), helper.s.c.BackupPruningPrefix) {
 			continue
 		}
 		if candidate.ModTime().Before(deadline) {
@@ -139,14 +144,14 @@ func (helper *SshHelper) pruneBackups(s *script, deadline time.Time) error {
 		}
 	}
 
-	s.stats.Storages.SSH = StorageStats{
+	helper.s.stats.Storages.SSH = StorageStats{
 		Total:  uint(len(candidates)),
 		Pruned: uint(len(matches)),
 	}
 
-	doPrune(s, len(matches), len(candidates), "SSH backup(s)", func() error {
+	doPrune(helper.s, len(matches), len(candidates), "SSH backup(s)", func() error {
 		for _, match := range matches {
-			if err := s.sftpClient.Remove(filepath.Join(s.c.SSHRemotePath, match)); err != nil {
+			if err := helper.s.sftpClient.Remove(filepath.Join(helper.s.c.SSHRemotePath, match)); err != nil {
 				return fmt.Errorf("pruneBackups: error removing file from SSH storage: %w", err)
 			}
 		}

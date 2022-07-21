@@ -100,28 +100,19 @@ func newScript() (*script, error) {
 		s.cli = cli
 	}
 
-	if s.c.AwsS3BucketName != "" {
-		s.minioHelper, err = newMinioHelper(s)
-		if err != nil {
-			return nil, err
-		}
+	if s.minioHelper, err = newMinioHelper(s); err != nil {
+		return nil, err
 	}
 
-	if s.c.WebdavUrl != "" {
-		s.webdavHelper, err = newWebdavHelper(s)
-		if err != nil {
-			return nil, err
-		}
+	if s.webdavHelper, err = newWebdavHelper(s); err != nil {
+		return nil, err
 	}
 
-	if s.c.SSHHostName != "" {
-		s.sshHelper, err = newSshHelper(s)
-		if err != nil {
-			return nil, err
-		}
+	if s.sshHelper, err = newSshHelper(s); err != nil {
+		return nil, err
 	}
 
-	s.localHelper = newLocalhelper()
+	s.localHelper = newLocalhelper(s)
 
 	if s.c.EmailNotificationRecipient != "" {
 		emailURL := fmt.Sprintf(
@@ -438,19 +429,19 @@ func (s *script) copyArchive() error {
 	}
 
 	if s.minioHelper != nil {
-		s.minioHelper.copyArchive(s, name)
+		s.minioHelper.copyArchive(name)
 	}
 
 	if s.webdavHelper != nil {
-		s.webdavHelper.copyArchive(s, name)
+		s.webdavHelper.copyArchive(name)
 	}
 
 	if s.sshHelper != nil {
-		s.sshHelper.copyArchive(s, name)
+		s.sshHelper.copyArchive(name)
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
-		s.localHelper.copyArchive(s, name)
+		s.localHelper.copyArchive(name)
 	}
 	return nil
 }
@@ -466,19 +457,19 @@ func (s *script) pruneBackups() error {
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
 
 	if s.minioHelper != nil {
-		s.minioHelper.pruneBackups(s, deadline)
+		s.minioHelper.pruneBackups(deadline)
 	}
 
 	if s.webdavHelper != nil {
-		s.webdavHelper.pruneBackups(s, deadline)
+		s.webdavHelper.pruneBackups(deadline)
 	}
 
 	if s.sshHelper != nil {
-		s.sshHelper.pruneBackups(s, deadline)
+		s.sshHelper.pruneBackups(deadline)
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
-		s.localHelper.pruneBackups(s, deadline)
+		s.localHelper.pruneBackups(deadline)
 	}
 
 	return nil
