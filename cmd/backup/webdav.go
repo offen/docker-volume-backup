@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,11 +18,27 @@ type WebdavHelper struct {
 	client *gowebdav.Client
 }
 
-func newWebdavHelper(client *gowebdav.Client) *WebdavHelper {
-	a := &AbstractHelper{}
-	r := &WebdavHelper{a, client}
-	a.Helper = r
-	return r
+func newWebdavHelper(s *script) (*WebdavHelper, error) {
+	if s.c.WebdavUsername == "" || s.c.WebdavPassword == "" {
+		return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
+	} else {
+		webdavClient := gowebdav.NewClient(s.c.WebdavUrl, s.c.WebdavUsername, s.c.WebdavPassword)
+
+		if s.c.WebdavUrlInsecure {
+			defaultTransport, ok := http.DefaultTransport.(*http.Transport)
+			if !ok {
+				return nil, errors.New("newScript: unexpected error when asserting type for http.DefaultTransport")
+			}
+			webdavTransport := defaultTransport.Clone()
+			webdavTransport.TLSClientConfig.InsecureSkipVerify = s.c.WebdavUrlInsecure
+			webdavClient.SetTransport(webdavTransport)
+		}
+
+		a := &AbstractHelper{}
+		r := &WebdavHelper{a, webdavClient}
+		a.Helper = r
+		return r, nil
+	}
 }
 
 func (helper *WebdavHelper) copyArchive(s *script, name string) error {

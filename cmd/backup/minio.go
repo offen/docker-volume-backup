@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
 
 	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 type MinioHelper struct {
@@ -14,11 +16,47 @@ type MinioHelper struct {
 	client *minio.Client
 }
 
-func newMinioHelper(client *minio.Client) *MinioHelper {
+func newMinioHelper(s *script) (*MinioHelper, error) {
+	var creds *credentials.Credentials
+	if s.c.AwsAccessKeyID != "" && s.c.AwsSecretAccessKey != "" {
+		creds = credentials.NewStaticV4(
+			s.c.AwsAccessKeyID,
+			s.c.AwsSecretAccessKey,
+			"",
+		)
+	} else if s.c.AwsIamRoleEndpoint != "" {
+		creds = credentials.NewIAM(s.c.AwsIamRoleEndpoint)
+	} else {
+		return nil, errors.New("newScript: AWS_S3_BUCKET_NAME is defined, but no credentials were provided")
+	}
+
+	options := minio.Options{
+		Creds:  creds,
+		Secure: s.c.AwsEndpointProto == "https",
+	}
+
+	if s.c.AwsEndpointInsecure {
+		if !options.Secure {
+			return nil, errors.New("newScript: AWS_ENDPOINT_INSECURE = true is only meaningful for https")
+		}
+
+		transport, err := minio.DefaultTransport(true)
+		if err != nil {
+			return nil, fmt.Errorf("newScript: failed to create default minio transport")
+		}
+		transport.TLSClientConfig.InsecureSkipVerify = true
+		options.Transport = transport
+	}
+
+	mc, err := minio.New(s.c.AwsEndpoint, &options)
+	if err != nil {
+		return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
+	}
+
 	a := &AbstractHelper{}
-	r := &MinioHelper{a, client}
+	r := &MinioHelper{a, mc}
 	a.Helper = r
-	return r
+	return r, nil
 }
 
 func (helper *MinioHelper) copyArchive(s *script, name string) error {

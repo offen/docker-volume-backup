@@ -1,13 +1,16 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -16,11 +19,60 @@ type SshHelper struct {
 	client *ssh.Client
 }
 
-func newSshHelper(client *ssh.Client) *SshHelper {
+func newSshHelper(s *script) (*SshHelper, error) {
+	var authMethods []ssh.AuthMethod
+
+	if s.c.SSHPassword != "" {
+		authMethods = append(authMethods, ssh.Password(s.c.SSHPassword))
+	}
+
+	if _, err := os.Stat(s.c.SSHIdentityFile); err == nil {
+		key, err := ioutil.ReadFile(s.c.SSHIdentityFile)
+		if err != nil {
+			return nil, errors.New("newScript: error reading the private key")
+		}
+
+		var signer ssh.Signer
+		if s.c.SSHIdentityPassphrase != "" {
+			signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(s.c.SSHIdentityPassphrase))
+			if err != nil {
+				return nil, errors.New("newScript: error parsing the encrypted private key")
+			}
+			authMethods = append(authMethods, ssh.PublicKeys(signer))
+		} else {
+			signer, err = ssh.ParsePrivateKey(key)
+			if err != nil {
+				return nil, errors.New("newScript: error parsing the private key")
+			}
+			authMethods = append(authMethods, ssh.PublicKeys(signer))
+		}
+	}
+
+	sshClientConfig := &ssh.ClientConfig{
+		User:            s.c.SSHUser,
+		Auth:            authMethods,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", s.c.SSHHostName, s.c.SSHPort), sshClientConfig)
+
+	if err != nil {
+		return nil, fmt.Errorf("newScript: error creating ssh client: %w", err)
+	}
+	_, _, err = s.sshHelper.client.SendRequest("keepalive", false, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	sftpClient, err := sftp.NewClient(sshClient)
+	s.sftpClient = sftpClient
+	if err != nil {
+		return nil, fmt.Errorf("newScript: error creating sftp client: %w", err)
+	}
+
 	a := &AbstractHelper{}
-	r := &SshHelper{a, client}
+	r := &SshHelper{a, sshClient}
 	a.Helper = r
-	return r
+	return r, nil
 }
 
 func (helper *SshHelper) copyArchive(s *script, name string) error {

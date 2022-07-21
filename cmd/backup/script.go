@@ -5,12 +5,9 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -25,14 +22,10 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/otiai10/copy"
 	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
-	"github.com/studio-b12/gowebdav"
 	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/ssh"
 )
 
 // script holds all the stateful information required to orchestrate a
@@ -108,110 +101,23 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.AwsS3BucketName != "" {
-		var creds *credentials.Credentials
-		if s.c.AwsAccessKeyID != "" && s.c.AwsSecretAccessKey != "" {
-			creds = credentials.NewStaticV4(
-				s.c.AwsAccessKeyID,
-				s.c.AwsSecretAccessKey,
-				"",
-			)
-		} else if s.c.AwsIamRoleEndpoint != "" {
-			creds = credentials.NewIAM(s.c.AwsIamRoleEndpoint)
-		} else {
-			return nil, errors.New("newScript: AWS_S3_BUCKET_NAME is defined, but no credentials were provided")
-		}
-
-		options := minio.Options{
-			Creds:  creds,
-			Secure: s.c.AwsEndpointProto == "https",
-		}
-
-		if s.c.AwsEndpointInsecure {
-			if !options.Secure {
-				return nil, errors.New("newScript: AWS_ENDPOINT_INSECURE = true is only meaningful for https")
-			}
-
-			transport, err := minio.DefaultTransport(true)
-			if err != nil {
-				return nil, fmt.Errorf("newScript: failed to create default minio transport")
-			}
-			transport.TLSClientConfig.InsecureSkipVerify = true
-			options.Transport = transport
-		}
-
-		mc, err := minio.New(s.c.AwsEndpoint, &options)
+		s.minioHelper, err = newMinioHelper(s)
 		if err != nil {
-			return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
+			return nil, err
 		}
-		s.minioHelper = newMinioHelper(mc)
 	}
 
 	if s.c.WebdavUrl != "" {
-		if s.c.WebdavUsername == "" || s.c.WebdavPassword == "" {
-			return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
-		} else {
-			webdavClient := gowebdav.NewClient(s.c.WebdavUrl, s.c.WebdavUsername, s.c.WebdavPassword)
-			s.webdavHelper = newWebdavHelper(webdavClient)
-			if s.c.WebdavUrlInsecure {
-				defaultTransport, ok := http.DefaultTransport.(*http.Transport)
-				if !ok {
-					return nil, errors.New("newScript: unexpected error when asserting type for http.DefaultTransport")
-				}
-				webdavTransport := defaultTransport.Clone()
-				webdavTransport.TLSClientConfig.InsecureSkipVerify = s.c.WebdavUrlInsecure
-				s.webdavHelper.client.SetTransport(webdavTransport)
-			}
+		s.webdavHelper, err = newWebdavHelper(s)
+		if err != nil {
+			return nil, err
 		}
 	}
 
 	if s.c.SSHHostName != "" {
-		var authMethods []ssh.AuthMethod
-
-		if s.c.SSHPassword != "" {
-			authMethods = append(authMethods, ssh.Password(s.c.SSHPassword))
-		}
-
-		if _, err := os.Stat(s.c.SSHIdentityFile); err == nil {
-			key, err := ioutil.ReadFile(s.c.SSHIdentityFile)
-			if err != nil {
-				return nil, errors.New("newScript: error reading the private key")
-			}
-
-			var signer ssh.Signer
-			if s.c.SSHIdentityPassphrase != "" {
-				signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(s.c.SSHIdentityPassphrase))
-				if err != nil {
-					return nil, errors.New("newScript: error parsing the encrypted private key")
-				}
-				authMethods = append(authMethods, ssh.PublicKeys(signer))
-			} else {
-				signer, err = ssh.ParsePrivateKey(key)
-				if err != nil {
-					return nil, errors.New("newScript: error parsing the private key")
-				}
-				authMethods = append(authMethods, ssh.PublicKeys(signer))
-			}
-		}
-
-		sshClientConfig := &ssh.ClientConfig{
-			User:            s.c.SSHUser,
-			Auth:            authMethods,
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		}
-		sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", s.c.SSHHostName, s.c.SSHPort), sshClientConfig)
-		s.sshHelper = newSshHelper(sshClient)
-		if err != nil {
-			return nil, fmt.Errorf("newScript: error creating ssh client: %w", err)
-		}
-		_, _, err = s.sshHelper.client.SendRequest("keepalive", false, nil)
+		s.sshHelper, err = newSshHelper(s)
 		if err != nil {
 			return nil, err
-		}
-
-		sftpClient, err := sftp.NewClient(sshClient)
-		s.sftpClient = sftpClient
-		if err != nil {
-			return nil, fmt.Errorf("newScript: error creating sftp client: %w", err)
 		}
 	}
 
