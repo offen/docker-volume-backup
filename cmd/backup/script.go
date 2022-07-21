@@ -14,7 +14,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 	"text/template"
 	"time"
 
@@ -40,9 +39,10 @@ import (
 // single backup run.
 type script struct {
 	cli          *client.Client
-	minioClient  *minio.Client
-	webdavClient *gowebdav.Client
-	sshClient    *ssh.Client
+	minioHelper  *MinioHelper
+	webdavHelper *WebdavHelper
+	sshHelper    *SshHelper
+	localHelper  *LocalHelper
 	sftpClient   *sftp.Client
 	logger       *logrus.Logger
 	sender       *router.ServiceRouter
@@ -143,7 +143,7 @@ func newScript() (*script, error) {
 		if err != nil {
 			return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
 		}
-		s.minioClient = mc
+		s.minioHelper = newMinioHelper(mc)
 	}
 
 	if s.c.WebdavUrl != "" {
@@ -151,7 +151,7 @@ func newScript() (*script, error) {
 			return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
 		} else {
 			webdavClient := gowebdav.NewClient(s.c.WebdavUrl, s.c.WebdavUsername, s.c.WebdavPassword)
-			s.webdavClient = webdavClient
+			s.webdavHelper = newWebdavHelper(webdavClient)
 			if s.c.WebdavUrlInsecure {
 				defaultTransport, ok := http.DefaultTransport.(*http.Transport)
 				if !ok {
@@ -159,7 +159,7 @@ func newScript() (*script, error) {
 				}
 				webdavTransport := defaultTransport.Clone()
 				webdavTransport.TLSClientConfig.InsecureSkipVerify = s.c.WebdavUrlInsecure
-				s.webdavClient.SetTransport(webdavTransport)
+				s.webdavHelper.client.SetTransport(webdavTransport)
 			}
 		}
 	}
@@ -199,11 +199,11 @@ func newScript() (*script, error) {
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		}
 		sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", s.c.SSHHostName, s.c.SSHPort), sshClientConfig)
-		s.sshClient = sshClient
+		s.sshHelper = newSshHelper(sshClient)
 		if err != nil {
 			return nil, fmt.Errorf("newScript: error creating ssh client: %w", err)
 		}
-		_, _, err = s.sshClient.SendRequest("keepalive", false, nil)
+		_, _, err = s.sshHelper.client.SendRequest("keepalive", false, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -214,6 +214,8 @@ func newScript() (*script, error) {
 			return nil, fmt.Errorf("newScript: error creating sftp client: %w", err)
 		}
 	}
+
+	s.localHelper = newLocalhelper()
 
 	if s.c.EmailNotificationRecipient != "" {
 		emailURL := fmt.Sprintf(
@@ -529,92 +531,20 @@ func (s *script) copyArchive() error {
 		}
 	}
 
-	if s.minioClient != nil {
-		if _, err := s.minioClient.FPutObject(context.Background(), s.c.AwsS3BucketName, filepath.Join(s.c.AwsS3Path, name), s.file, minio.PutObjectOptions{
-			ContentType:  "application/tar+gzip",
-			StorageClass: s.c.AwsStorageClass,
-		}); err != nil {
-			errResp := minio.ToErrorResponse(err)
-			return fmt.Errorf("copyBackup: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d", errResp.Message, errResp.Code, errResp.StatusCode)
-		}
-		s.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", s.file, s.c.AwsS3BucketName)
+	if s.minioHelper != nil {
+		s.minioHelper.copyArchive(s, name)
 	}
 
-	if s.webdavClient != nil {
-		bytes, err := os.ReadFile(s.file)
-		if err != nil {
-			return fmt.Errorf("copyBackup: error reading the file to be uploaded: %w", err)
-		}
-		if err := s.webdavClient.MkdirAll(s.c.WebdavPath, 0644); err != nil {
-			return fmt.Errorf("copyBackup: error creating directory '%s' on WebDAV server: %w", s.c.WebdavPath, err)
-		}
-		if err := s.webdavClient.Write(filepath.Join(s.c.WebdavPath, name), bytes, 0644); err != nil {
-			return fmt.Errorf("copyBackup: error uploading the file to WebDAV server: %w", err)
-		}
-		s.logger.Infof("Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", s.file, s.c.WebdavUrl, s.c.WebdavPath)
+	if s.webdavHelper != nil {
+		s.webdavHelper.copyArchive(s, name)
 	}
 
-	if s.sshClient != nil {
-		source, err := os.Open(s.file)
-		if err != nil {
-			return fmt.Errorf("copyBackup: error reading the file to be uploaded: %w", err)
-		}
-		defer source.Close()
-
-		destination, err := s.sftpClient.Create(filepath.Join(s.c.SSHRemotePath, name))
-		if err != nil {
-			return fmt.Errorf("copyBackup: error creating file on SSH storage: %w", err)
-		}
-		defer destination.Close()
-
-		chunk := make([]byte, 1000000)
-		for {
-			num, err := source.Read(chunk)
-			if err == io.EOF {
-				tot, err := destination.Write(chunk[:num])
-				if err != nil {
-					return fmt.Errorf("copyBackup: error uploading the file to SSH storage: %w", err)
-				}
-
-				if tot != len(chunk[:num]) {
-					return fmt.Errorf("sshClient: failed to write stream")
-				}
-
-				break
-			}
-
-			if err != nil {
-				return fmt.Errorf("copyBackup: error uploading the file to SSH storage: %w", err)
-			}
-
-			tot, err := destination.Write(chunk[:num])
-			if err != nil {
-				return fmt.Errorf("copyBackup: error uploading the file to SSH storage: %w", err)
-			}
-
-			if tot != len(chunk[:num]) {
-				return fmt.Errorf("sshClient: failed to write stream")
-			}
-		}
-
-		s.logger.Infof("Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", s.file, s.c.SSHHostName, s.c.SSHRemotePath)
+	if s.sshHelper != nil {
+		s.sshHelper.copyArchive(s, name)
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
-		if err := copyFile(s.file, path.Join(s.c.BackupArchive, name)); err != nil {
-			return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
-		}
-		s.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", s.file, s.c.BackupArchive)
-		if s.c.BackupLatestSymlink != "" {
-			symlink := path.Join(s.c.BackupArchive, s.c.BackupLatestSymlink)
-			if _, err := os.Lstat(symlink); err == nil {
-				os.Remove(symlink)
-			}
-			if err := os.Symlink(name, symlink); err != nil {
-				return fmt.Errorf("copyBackup: error creating latest symlink: %w", err)
-			}
-			s.logger.Infof("Created/Updated symlink `%s` for latest backup.", s.c.BackupLatestSymlink)
-		}
+		s.localHelper.copyArchive(s, name)
 	}
 	return nil
 }
@@ -629,208 +559,22 @@ func (s *script) pruneBackups() error {
 
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
 
-	// doPrune holds general control flow that applies to any kind of storage.
-	// Callers can pass in a thunk that performs the actual deletion of files.
-	var doPrune = func(lenMatches, lenCandidates int, description string, doRemoveFiles func() error) error {
-		if lenMatches != 0 && lenMatches != lenCandidates {
-			if err := doRemoveFiles(); err != nil {
-				return err
-			}
-			s.logger.Infof(
-				"Pruned %d out of %d %s as their age exceeded the configured retention period of %d days.",
-				lenMatches,
-				lenCandidates,
-				description,
-				s.c.BackupRetentionDays,
-			)
-		} else if lenMatches != 0 && lenMatches == lenCandidates {
-			s.logger.Warnf("The current configuration would delete all %d existing %s.", lenMatches, description)
-			s.logger.Warn("Refusing to do so, please check your configuration.")
-		} else {
-			s.logger.Infof("None of %d existing %s were pruned.", lenCandidates, description)
-		}
-		return nil
+	if s.minioHelper != nil {
+		s.minioHelper.pruneBackups(s, deadline)
 	}
 
-	if s.minioClient != nil {
-		candidates := s.minioClient.ListObjects(context.Background(), s.c.AwsS3BucketName, minio.ListObjectsOptions{
-			WithMetadata: true,
-			Prefix:       filepath.Join(s.c.AwsS3Path, s.c.BackupPruningPrefix),
-			Recursive:    true,
-		})
-
-		var matches []minio.ObjectInfo
-		var lenCandidates int
-		for candidate := range candidates {
-			lenCandidates++
-			if candidate.Err != nil {
-				return fmt.Errorf(
-					"pruneBackups: error looking up candidates from remote storage: %w",
-					candidate.Err,
-				)
-			}
-			if candidate.LastModified.Before(deadline) {
-				matches = append(matches, candidate)
-			}
-		}
-
-		s.stats.Storages.S3 = StorageStats{
-			Total:  uint(lenCandidates),
-			Pruned: uint(len(matches)),
-		}
-
-		doPrune(len(matches), lenCandidates, "remote backup(s)", func() error {
-			objectsCh := make(chan minio.ObjectInfo)
-			go func() {
-				for _, match := range matches {
-					objectsCh <- match
-				}
-				close(objectsCh)
-			}()
-			errChan := s.minioClient.RemoveObjects(context.Background(), s.c.AwsS3BucketName, objectsCh, minio.RemoveObjectsOptions{})
-			var removeErrors []error
-			for result := range errChan {
-				if result.Err != nil {
-					removeErrors = append(removeErrors, result.Err)
-				}
-			}
-			if len(removeErrors) != 0 {
-				return join(removeErrors...)
-			}
-			return nil
-		})
+	if s.webdavHelper != nil {
+		s.webdavHelper.pruneBackups(s, deadline)
 	}
 
-	if s.webdavClient != nil {
-		candidates, err := s.webdavClient.ReadDir(s.c.WebdavPath)
-		if err != nil {
-			return fmt.Errorf("pruneBackups: error looking up candidates from remote storage: %w", err)
-		}
-		var matches []fs.FileInfo
-		var lenCandidates int
-		for _, candidate := range candidates {
-			if !strings.HasPrefix(candidate.Name(), s.c.BackupPruningPrefix) {
-				continue
-			}
-			lenCandidates++
-			if candidate.ModTime().Before(deadline) {
-				matches = append(matches, candidate)
-			}
-		}
-
-		s.stats.Storages.WebDAV = StorageStats{
-			Total:  uint(lenCandidates),
-			Pruned: uint(len(matches)),
-		}
-
-		doPrune(len(matches), lenCandidates, "WebDAV backup(s)", func() error {
-			for _, match := range matches {
-				if err := s.webdavClient.Remove(filepath.Join(s.c.WebdavPath, match.Name())); err != nil {
-					return fmt.Errorf("pruneBackups: error removing file from WebDAV storage: %w", err)
-				}
-			}
-			return nil
-		})
-	}
-
-	if s.sshClient != nil {
-		candidates, err := s.sftpClient.ReadDir(s.c.SSHRemotePath)
-		if err != nil {
-			return fmt.Errorf("pruneBackups: error reading directory from SSH storage: %w", err)
-		}
-
-		var matches []string
-		for _, candidate := range candidates {
-			if !strings.HasPrefix(candidate.Name(), s.c.BackupPruningPrefix) {
-				continue
-			}
-			if candidate.ModTime().Before(deadline) {
-				matches = append(matches, candidate.Name())
-			}
-		}
-
-		s.stats.Storages.SSH = StorageStats{
-			Total:  uint(len(candidates)),
-			Pruned: uint(len(matches)),
-		}
-
-		doPrune(len(matches), len(candidates), "SSH backup(s)", func() error {
-			for _, match := range matches {
-				if err := s.sftpClient.Remove(filepath.Join(s.c.SSHRemotePath, match)); err != nil {
-					return fmt.Errorf("pruneBackups: error removing file from SSH storage: %w", err)
-				}
-			}
-			return nil
-		})
+	if s.sshHelper != nil {
+		s.sshHelper.pruneBackups(s, deadline)
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
-		globPattern := path.Join(
-			s.c.BackupArchive,
-			fmt.Sprintf("%s*", s.c.BackupPruningPrefix),
-		)
-		globMatches, err := filepath.Glob(globPattern)
-		if err != nil {
-			return fmt.Errorf(
-				"pruneBackups: error looking up matching files using pattern %s: %w",
-				globPattern,
-				err,
-			)
-		}
-
-		var candidates []string
-		for _, candidate := range globMatches {
-			fi, err := os.Lstat(candidate)
-			if err != nil {
-				return fmt.Errorf(
-					"pruneBackups: error calling Lstat on file %s: %w",
-					candidate,
-					err,
-				)
-			}
-
-			if fi.Mode()&os.ModeSymlink != os.ModeSymlink {
-				candidates = append(candidates, candidate)
-			}
-		}
-
-		var matches []string
-		for _, candidate := range candidates {
-			fi, err := os.Stat(candidate)
-			if err != nil {
-				return fmt.Errorf(
-					"pruneBackups: error calling stat on file %s: %w",
-					candidate,
-					err,
-				)
-			}
-			if fi.ModTime().Before(deadline) {
-				matches = append(matches, candidate)
-			}
-		}
-
-		s.stats.Storages.Local = StorageStats{
-			Total:  uint(len(candidates)),
-			Pruned: uint(len(matches)),
-		}
-
-		doPrune(len(matches), len(candidates), "local backup(s)", func() error {
-			var removeErrors []error
-			for _, match := range matches {
-				if err := os.Remove(match); err != nil {
-					removeErrors = append(removeErrors, err)
-				}
-			}
-			if len(removeErrors) != 0 {
-				return fmt.Errorf(
-					"pruneBackups: %d error(s) deleting local files, starting with: %w",
-					len(removeErrors),
-					join(removeErrors...),
-				)
-			}
-			return nil
-		})
+		s.localHelper.pruneBackups(s, deadline)
 	}
+
 	return nil
 }
 
