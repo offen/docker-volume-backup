@@ -58,7 +58,7 @@ func newSshHelper(s *script) (*SshHelper, error) {
 	if err != nil {
 		return nil, fmt.Errorf("newScript: error creating ssh client: %w", err)
 	}
-	_, _, err = s.sshHelper.client.SendRequest("keepalive", false, nil)
+	_, _, err = sshClient.SendRequest("keepalive", false, nil)
 	if err != nil {
 		return nil, err
 	}
