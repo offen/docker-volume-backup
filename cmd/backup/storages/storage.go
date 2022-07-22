@@ -17,6 +17,7 @@ type GenericStorage struct {
 	backupRetentionDays int32
 	backupPruningPrefix string
 	logger              *logrus.Logger
+	config              *t.Config
 }
 
 // doPrune holds general control flow that applies to any kind of storage.

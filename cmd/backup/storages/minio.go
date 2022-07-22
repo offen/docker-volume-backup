@@ -12,15 +12,15 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	t "github.com/offen/docker-volume-backup/cmd/backup/types"
 	u "github.com/offen/docker-volume-backup/cmd/backup/utilities"
+	"github.com/sirupsen/logrus"
 )
 
 type S3Storage struct {
 	*GenericStorage
 	client *minio.Client
-	config *t.S3Config
 }
 
-func InitS3(c *t.S3Config) (*S3Storage, error) {
+func InitS3(c *t.Config, l *logrus.Logger) (*S3Storage, error) {
 	if c.AwsS3BucketName == "" {
 		return nil, nil
 	}
@@ -62,12 +62,17 @@ func InitS3(c *t.S3Config) (*S3Storage, error) {
 	}
 
 	a := &GenericStorage{}
-	r := &S3Storage{a, mc, c}
+	r := &S3Storage{a, mc}
+	a.backupRetentionDays = c.BackupRetentionDays
+	a.backupPruningPrefix = c.BackupPruningPrefix
+	a.logger = l
+	a.config = c
 	a.Storage = r
 	return r, nil
 }
 
 func (s3 *S3Storage) Copy(file string) error {
+	s3.logger.Infof("copyArchive->s3stg: Beginning...")
 	_, name := path.Split(file)
 	if _, err := s3.client.FPutObject(context.Background(), s3.config.AwsS3BucketName, filepath.Join(s3.config.AwsS3Path, name), file, minio.PutObjectOptions{
 		ContentType:  "application/tar+gzip",

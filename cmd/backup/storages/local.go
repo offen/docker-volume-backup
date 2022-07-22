@@ -9,17 +9,20 @@ import (
 
 	t "github.com/offen/docker-volume-backup/cmd/backup/types"
 	u "github.com/offen/docker-volume-backup/cmd/backup/utilities"
+	"github.com/sirupsen/logrus"
 )
 
 type LocalStorage struct {
 	*GenericStorage
-	backupArchive       string
-	backupLatestSymlink string
 }
 
-func InitLocal(c *t.Config) *LocalStorage {
+func InitLocal(c *t.Config, l *logrus.Logger) *LocalStorage {
 	a := &GenericStorage{}
-	r := &LocalStorage{a, c.BackupArchive, c.BackupLatestSymlink}
+	r := &LocalStorage{a}
+	a.backupRetentionDays = c.BackupRetentionDays
+	a.backupPruningPrefix = c.BackupPruningPrefix
+	a.logger = l
+	a.config = c
 	a.Storage = r
 	return r
 }
@@ -27,20 +30,20 @@ func InitLocal(c *t.Config) *LocalStorage {
 func (lc *LocalStorage) Copy(file string) error {
 	_, name := path.Split(file)
 
-	if err := u.CopyFile(file, path.Join(lc.backupArchive, name)); err != nil {
+	if err := u.CopyFile(file, path.Join(lc.config.BackupArchive, name)); err != nil {
 		return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 	}
-	lc.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", file, lc.backupArchive)
+	lc.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", file, lc.config.BackupArchive)
 
-	if lc.backupLatestSymlink != "" {
-		symlink := path.Join(lc.backupArchive, lc.backupLatestSymlink)
+	if lc.config.BackupLatestSymlink != "" {
+		symlink := path.Join(lc.config.BackupArchive, lc.config.BackupLatestSymlink)
 		if _, err := os.Lstat(symlink); err == nil {
 			os.Remove(symlink)
 		}
 		if err := os.Symlink(name, symlink); err != nil {
 			return fmt.Errorf("copyBackup: error creating latest symlink: %w", err)
 		}
-		lc.logger.Infof("Created/Updated symlink `%s` for latest backup.", lc.backupLatestSymlink)
+		lc.logger.Infof("Created/Updated symlink `%s` for latest backup.", lc.config.BackupLatestSymlink)
 	}
 
 	return nil
@@ -48,7 +51,7 @@ func (lc *LocalStorage) Copy(file string) error {
 
 func (lc *LocalStorage) Prune(deadline time.Time) (*t.StorageStats, error) {
 	globPattern := path.Join(
-		lc.backupArchive,
+		lc.config.BackupArchive,
 		fmt.Sprintf("%s*", lc.backupPruningPrefix),
 	)
 	globMatches, err := filepath.Glob(globPattern)
