@@ -34,16 +34,13 @@ import (
 // script holds all the stateful information required to orchestrate a
 // single backup run.
 type script struct {
-	cli           *client.Client
-	s3Storage     *strg.S3Storage
-	webdavStorage *strg.WebDavStorage
-	sshStorage    *strg.SshStorage
-	localStorage  *strg.LocalStorage
-	logger        *logrus.Logger
-	sender        *router.ServiceRouter
-	template      *template.Template
-	hooks         []hook
-	hookLevel     hookLevel
+	cli       *client.Client
+	providers *strg.StorageProviders
+	logger    *logrus.Logger
+	sender    *router.ServiceRouter
+	template  *template.Template
+	hooks     []hook
+	hookLevel hookLevel
 
 	file  string
 	stats *t.Stats
@@ -102,19 +99,10 @@ func newScript() (*script, error) {
 		s.cli = cli
 	}
 
-	if s.s3Storage, err = strg.InitS3(s.c, s.logger); err != nil {
+	s.providers = &strg.StorageProviders{}
+	if err = s.providers.InitAll(s.c, s.logger); err != nil {
 		return nil, err
 	}
-
-	if s.webdavStorage, err = strg.InitWebDav(s.c, s.logger); err != nil {
-		return nil, err
-	}
-
-	if s.sshStorage, err = strg.InitSSH(s.c, s.logger); err != nil {
-		return nil, err
-	}
-
-	s.localStorage = strg.InitLocal(s.c, s.logger)
 
 	if s.c.EmailNotificationRecipient != "" {
 		emailURL := fmt.Sprintf(
@@ -430,21 +418,10 @@ func (s *script) copyArchive() error {
 		}
 	}
 
-	if s.s3Storage != nil {
-		s.s3Storage.Copy(s.file)
+	if err := s.providers.CopyAll(s.file); err != nil {
+		return fmt.Errorf("copyBackup: error for at least one storage provider: %w", err)
 	}
 
-	if s.webdavStorage != nil {
-		s.webdavStorage.Copy(s.file)
-	}
-
-	if s.sshStorage != nil {
-		s.sshStorage.Copy(s.file)
-	}
-
-	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
-		s.localStorage.Copy(s.file)
-	}
 	return nil
 }
 
@@ -458,20 +435,8 @@ func (s *script) pruneBackups() error {
 
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
 
-	if s.s3Storage != nil {
-		s.s3Storage.Prune(deadline)
-	}
-
-	if s.webdavStorage != nil {
-		s.webdavStorage.Prune(deadline)
-	}
-
-	if s.sshStorage != nil {
-		s.sshStorage.Prune(deadline)
-	}
-
-	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
-		s.localStorage.Prune(deadline)
+	if err := s.providers.PruneAll(deadline); err != nil {
+		return fmt.Errorf("pruneBackup: error for at least one storage provider: %w", err)
 	}
 
 	return nil
