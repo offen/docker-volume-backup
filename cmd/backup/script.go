@@ -84,11 +84,6 @@ func newScript() (*script, error) {
 		return nil, fmt.Errorf("newScript: failed to process configuration values: %w", err)
 	}
 
-	s3Config := &t.S3Config{}
-	if err := envconfig.Process("", s3Config); err != nil {
-		return nil, fmt.Errorf("newScript: failed to process configuration values for AWS: %w", err)
-	}
-
 	s.file = path.Join("/tmp", s.c.BackupFilename)
 	if s.c.BackupFilenameExpand {
 		s.file = os.ExpandEnv(s.file)
@@ -107,19 +102,19 @@ func newScript() (*script, error) {
 		s.cli = cli
 	}
 
-	if s.s3Storage, err = strg.InitS3(s3Config); err != nil {
+	if s.s3Storage, err = strg.InitS3(s.c, s.logger); err != nil {
 		return nil, err
 	}
 
-	if s.webdavStorage, err = strg.InitWebDav(s.c); err != nil {
+	if s.webdavStorage, err = strg.InitWebDav(s.c, s.logger); err != nil {
 		return nil, err
 	}
 
-	if s.sshStorage, err = strg.InitSSH(s.c); err != nil {
+	if s.sshStorage, err = strg.InitSSH(s.c, s.logger); err != nil {
 		return nil, err
 	}
 
-	s.localStorage = strg.InitLocal(s.c)
+	s.localStorage = strg.InitLocal(s.c, s.logger)
 
 	if s.c.EmailNotificationRecipient != "" {
 		emailURL := fmt.Sprintf(

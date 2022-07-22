@@ -12,17 +12,16 @@ import (
 	"time"
 
 	t "github.com/offen/docker-volume-backup/cmd/backup/types"
+	"github.com/sirupsen/logrus"
 	"github.com/studio-b12/gowebdav"
 )
 
 type WebDavStorage struct {
 	*GenericStorage
-	client     *gowebdav.Client
-	webdavUrl  string
-	webdavPath string
+	client *gowebdav.Client
 }
 
-func InitWebDav(c *t.Config) (*WebDavStorage, error) {
+func InitWebDav(c *t.Config, l *logrus.Logger) (*WebDavStorage, error) {
 	if c.WebdavUrl == "" {
 		return nil, nil
 	}
@@ -43,7 +42,11 @@ func InitWebDav(c *t.Config) (*WebDavStorage, error) {
 		}
 
 		a := &GenericStorage{}
-		r := &WebDavStorage{a, webdavClient, c.WebdavUrl, c.WebdavPath}
+		r := &WebDavStorage{a, webdavClient}
+		a.backupRetentionDays = c.BackupRetentionDays
+		a.backupPruningPrefix = c.BackupPruningPrefix
+		a.logger = l
+		a.config = c
 		a.Storage = r
 		return r, nil
 	}
@@ -55,19 +58,19 @@ func (wd *WebDavStorage) Copy(file string) error {
 	if err != nil {
 		return fmt.Errorf("copyBackup: error reading the file to be uploaded: %w", err)
 	}
-	if err := wd.client.MkdirAll(wd.webdavPath, 0644); err != nil {
-		return fmt.Errorf("copyBackup: error creating directory '%s' on WebDAV server: %w", wd.webdavPath, err)
+	if err := wd.client.MkdirAll(wd.config.WebdavPath, 0644); err != nil {
+		return fmt.Errorf("copyBackup: error creating directory '%s' on WebDAV server: %w", wd.config.WebdavPath, err)
 	}
-	if err := wd.client.Write(filepath.Join(wd.webdavPath, name), bytes, 0644); err != nil {
+	if err := wd.client.Write(filepath.Join(wd.config.WebdavPath, name), bytes, 0644); err != nil {
 		return fmt.Errorf("copyBackup: error uploading the file to WebDAV server: %w", err)
 	}
-	wd.logger.Infof("Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", file, wd.webdavUrl, wd.webdavPath)
+	wd.logger.Infof("Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", file, wd.config.WebdavUrl, wd.config.WebdavPath)
 
 	return nil
 }
 
 func (wd *WebDavStorage) Prune(deadline time.Time) (*t.StorageStats, error) {
-	candidates, err := wd.client.ReadDir(wd.webdavPath)
+	candidates, err := wd.client.ReadDir(wd.config.WebdavPath)
 	if err != nil {
 		return nil, fmt.Errorf("pruneBackups: error looking up candidates from remote storage: %w", err)
 	}
@@ -90,7 +93,7 @@ func (wd *WebDavStorage) Prune(deadline time.Time) (*t.StorageStats, error) {
 
 	wd.doPrune(len(matches), lenCandidates, "WebDAV backup(s)", func() error {
 		for _, match := range matches {
-			if err := wd.client.Remove(filepath.Join(wd.webdavPath, match.Name())); err != nil {
+			if err := wd.client.Remove(filepath.Join(wd.config.WebdavPath, match.Name())); err != nil {
 				return fmt.Errorf("pruneBackups: error removing file from WebDAV storage: %w", err)
 			}
 		}
