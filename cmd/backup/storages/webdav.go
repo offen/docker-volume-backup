@@ -21,6 +21,7 @@ type WebDavStorage struct {
 	client *gowebdav.Client
 }
 
+// Specific init procedure for the WebDav storage provider.
 func InitWebDav(c *t.Config, l *logrus.Logger) (*WebDavStorage, error) {
 	if c.WebdavUrl == "" {
 		return nil, nil
@@ -41,43 +42,40 @@ func InitWebDav(c *t.Config, l *logrus.Logger) (*WebDavStorage, error) {
 			webdavClient.SetTransport(webdavTransport)
 		}
 
-		a := &GenericStorage{}
+		a := &GenericStorage{&WebDavStorage{}, l, c}
 		r := &WebDavStorage{a, webdavClient}
-		a.backupRetentionDays = c.BackupRetentionDays
-		a.backupPruningPrefix = c.BackupPruningPrefix
-		a.logger = l
-		a.config = c
-		a.Storage = r
 		return r, nil
 	}
 }
 
-func (wd *WebDavStorage) Copy(file string) error {
+// Specific copy function for the WebDav storage provider.
+func (stg *WebDavStorage) copy(file string) error {
 	bytes, err := os.ReadFile(file)
 	_, name := path.Split(file)
 	if err != nil {
 		return fmt.Errorf("copyBackup: error reading the file to be uploaded: %w", err)
 	}
-	if err := wd.client.MkdirAll(wd.config.WebdavPath, 0644); err != nil {
-		return fmt.Errorf("copyBackup: error creating directory '%s' on WebDAV server: %w", wd.config.WebdavPath, err)
+	if err := stg.client.MkdirAll(stg.config.WebdavPath, 0644); err != nil {
+		return fmt.Errorf("copyBackup: error creating directory '%s' on WebDAV server: %w", stg.config.WebdavPath, err)
 	}
-	if err := wd.client.Write(filepath.Join(wd.config.WebdavPath, name), bytes, 0644); err != nil {
+	if err := stg.client.Write(filepath.Join(stg.config.WebdavPath, name), bytes, 0644); err != nil {
 		return fmt.Errorf("copyBackup: error uploading the file to WebDAV server: %w", err)
 	}
-	wd.logger.Infof("Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", file, wd.config.WebdavUrl, wd.config.WebdavPath)
+	stg.logger.Infof("Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", file, stg.config.WebdavUrl, stg.config.WebdavPath)
 
 	return nil
 }
 
-func (wd *WebDavStorage) Prune(deadline time.Time) (*t.StorageStats, error) {
-	candidates, err := wd.client.ReadDir(wd.config.WebdavPath)
+// Specific prune function for the WebDav storage provider.
+func (stg *WebDavStorage) prune(deadline time.Time) (*t.StorageStats, error) {
+	candidates, err := stg.client.ReadDir(stg.config.WebdavPath)
 	if err != nil {
 		return nil, fmt.Errorf("pruneBackups: error looking up candidates from remote storage: %w", err)
 	}
 	var matches []fs.FileInfo
 	var lenCandidates int
 	for _, candidate := range candidates {
-		if !strings.HasPrefix(candidate.Name(), wd.backupPruningPrefix) {
+		if !strings.HasPrefix(candidate.Name(), stg.config.BackupPruningPrefix) {
 			continue
 		}
 		lenCandidates++
@@ -91,9 +89,9 @@ func (wd *WebDavStorage) Prune(deadline time.Time) (*t.StorageStats, error) {
 		Pruned: uint(len(matches)),
 	}
 
-	wd.doPrune(len(matches), lenCandidates, "WebDAV backup(s)", func() error {
+	stg.doPrune(len(matches), lenCandidates, "WebDAV backup(s)", func() error {
 		for _, match := range matches {
-			if err := wd.client.Remove(filepath.Join(wd.config.WebdavPath, match.Name())); err != nil {
+			if err := stg.client.Remove(filepath.Join(stg.config.WebdavPath, match.Name())); err != nil {
 				return fmt.Errorf("pruneBackups: error removing file from WebDAV storage: %w", err)
 			}
 		}

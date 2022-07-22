@@ -17,13 +17,14 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-type SshStorage struct {
+type SSHStorage struct {
 	*GenericStorage
 	client     *ssh.Client
 	sftpClient *sftp.Client
 }
 
-func InitSSH(c *t.Config, l *logrus.Logger) (*SshStorage, error) {
+// Specific init procedure for the SSH storage provider.
+func InitSSH(c *t.Config, l *logrus.Logger) (*SSHStorage, error) {
 	if c.SSHHostName == "" {
 		return nil, nil
 	}
@@ -76,17 +77,13 @@ func InitSSH(c *t.Config, l *logrus.Logger) (*SshStorage, error) {
 		return nil, fmt.Errorf("newScript: error creating sftp client: %w", err)
 	}
 
-	a := &GenericStorage{}
-	r := &SshStorage{a, sshClient, sftpClient}
-	a.backupRetentionDays = c.BackupRetentionDays
-	a.backupPruningPrefix = c.BackupPruningPrefix
-	a.logger = l
-	a.config = c
-	a.Storage = r
+	a := &GenericStorage{&SSHStorage{}, l, c}
+	r := &SSHStorage{a, sshClient, sftpClient}
 	return r, nil
 }
 
-func (sh *SshStorage) Copy(file string) error {
+// Specific copy function for the SSH storage provider.
+func (stg *SSHStorage) copy(file string) error {
 	source, err := os.Open(file)
 	_, name := path.Split(file)
 	if err != nil {
@@ -94,7 +91,7 @@ func (sh *SshStorage) Copy(file string) error {
 	}
 	defer source.Close()
 
-	destination, err := sh.sftpClient.Create(filepath.Join(sh.config.SSHRemotePath, name))
+	destination, err := stg.sftpClient.Create(filepath.Join(stg.config.SSHRemotePath, name))
 	if err != nil {
 		return fmt.Errorf("copyBackup: error creating file on SSH storage: %w", err)
 	}
@@ -130,20 +127,21 @@ func (sh *SshStorage) Copy(file string) error {
 		}
 	}
 
-	sh.logger.Infof("Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", file, sh.config.SSHHostName, sh.config.SSHRemotePath)
+	stg.logger.Infof("Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", file, stg.config.SSHHostName, stg.config.SSHRemotePath)
 
 	return nil
 }
 
-func (sh *SshStorage) Prune(deadline time.Time) (*t.StorageStats, error) {
-	candidates, err := sh.sftpClient.ReadDir(sh.config.SSHRemotePath)
+// Specific prune function for the SSH storage provider.
+func (stg *SSHStorage) prune(deadline time.Time) (*t.StorageStats, error) {
+	candidates, err := stg.sftpClient.ReadDir(stg.config.SSHRemotePath)
 	if err != nil {
 		return nil, fmt.Errorf("pruneBackups: error reading directory from SSH storage: %w", err)
 	}
 
 	var matches []string
 	for _, candidate := range candidates {
-		if !strings.HasPrefix(candidate.Name(), sh.backupPruningPrefix) {
+		if !strings.HasPrefix(candidate.Name(), stg.config.BackupPruningPrefix) {
 			continue
 		}
 		if candidate.ModTime().Before(deadline) {
@@ -156,9 +154,9 @@ func (sh *SshStorage) Prune(deadline time.Time) (*t.StorageStats, error) {
 		Pruned: uint(len(matches)),
 	}
 
-	sh.doPrune(len(matches), len(candidates), "SSH backup(s)", func() error {
+	stg.doPrune(len(matches), len(candidates), "SSH backup(s)", func() error {
 		for _, match := range matches {
-			if err := sh.sftpClient.Remove(filepath.Join(sh.config.SSHRemotePath, match)); err != nil {
+			if err := stg.sftpClient.Remove(filepath.Join(stg.config.SSHRemotePath, match)); err != nil {
 				return fmt.Errorf("pruneBackups: error removing file from SSH storage: %w", err)
 			}
 		}

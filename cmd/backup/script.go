@@ -35,7 +35,7 @@ import (
 // single backup run.
 type script struct {
 	cli       *client.Client
-	providers *strg.StorageProviders
+	providers *strg.StoragePool
 	logger    *logrus.Logger
 	sender    *router.ServiceRouter
 	template  *template.Template
@@ -99,7 +99,7 @@ func newScript() (*script, error) {
 		s.cli = cli
 	}
 
-	s.providers = &strg.StorageProviders{}
+	s.providers = &strg.StoragePool{}
 	if err = s.providers.InitAll(s.c, s.logger); err != nil {
 		return nil, err
 	}
