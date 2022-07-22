@@ -1,4 +1,4 @@
-package main
+package storages
 
 import (
 	"fmt"
@@ -6,47 +6,54 @@ import (
 	"path"
 	"path/filepath"
 	"time"
+
+	t "github.com/offen/docker-volume-backup/cmd/backup/types"
+	u "github.com/offen/docker-volume-backup/cmd/backup/utilities"
 )
 
-type LocalHelper struct {
-	*AbstractHelper
-	s *script
+type LocalStorage struct {
+	*GenericStorage
+	backupArchive       string
+	backupLatestSymlink string
 }
 
-func newLocalhelper(s *script) *LocalHelper {
-	a := &AbstractHelper{}
-	r := &LocalHelper{a, s}
-	a.Helper = r
+func InitLocal(c *t.Config) *LocalStorage {
+	a := &GenericStorage{}
+	r := &LocalStorage{a, c.BackupArchive, c.BackupLatestSymlink}
+	a.Storage = r
 	return r
 }
 
-func (helper *LocalHelper) copyArchive(name string) error {
-	if err := copyFile(helper.s.file, path.Join(helper.s.c.BackupArchive, name)); err != nil {
+func (lc *LocalStorage) Copy(file string) error {
+	_, name := path.Split(file)
+
+	if err := u.CopyFile(file, path.Join(lc.backupArchive, name)); err != nil {
 		return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 	}
-	helper.s.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", helper.s.file, helper.s.c.BackupArchive)
-	if helper.s.c.BackupLatestSymlink != "" {
-		symlink := path.Join(helper.s.c.BackupArchive, helper.s.c.BackupLatestSymlink)
+	lc.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", file, lc.backupArchive)
+
+	if lc.backupLatestSymlink != "" {
+		symlink := path.Join(lc.backupArchive, lc.backupLatestSymlink)
 		if _, err := os.Lstat(symlink); err == nil {
 			os.Remove(symlink)
 		}
 		if err := os.Symlink(name, symlink); err != nil {
 			return fmt.Errorf("copyBackup: error creating latest symlink: %w", err)
 		}
-		helper.s.logger.Infof("Created/Updated symlink `%s` for latest backup.", helper.s.c.BackupLatestSymlink)
+		lc.logger.Infof("Created/Updated symlink `%s` for latest backup.", lc.backupLatestSymlink)
 	}
 
 	return nil
 }
 
-func (helper *LocalHelper) pruneBackups(deadline time.Time) error {
+func (lc *LocalStorage) Prune(deadline time.Time) (*t.StorageStats, error) {
 	globPattern := path.Join(
-		helper.s.c.BackupArchive,
-		fmt.Sprintf("%s*", helper.s.c.BackupPruningPrefix),
+		lc.backupArchive,
+		fmt.Sprintf("%s*", lc.backupPruningPrefix),
 	)
 	globMatches, err := filepath.Glob(globPattern)
 	if err != nil {
-		return fmt.Errorf(
+		return nil, fmt.Errorf(
 			"pruneBackups: error looking up matching files using pattern %s: %w",
 			globPattern,
 			err,
@@ -57,7 +64,7 @@ func (helper *LocalHelper) pruneBackups(deadline time.Time) error {
 	for _, candidate := range globMatches {
 		fi, err := os.Lstat(candidate)
 		if err != nil {
-			return fmt.Errorf(
+			return nil, fmt.Errorf(
 				"pruneBackups: error calling Lstat on file %s: %w",
 				candidate,
 				err,
@@ -73,7 +80,7 @@ func (helper *LocalHelper) pruneBackups(deadline time.Time) error {
 	for _, candidate := range candidates {
 		fi, err := os.Stat(candidate)
 		if err != nil {
-			return fmt.Errorf(
+			return nil, fmt.Errorf(
 				"pruneBackups: error calling stat on file %s: %w",
 				candidate,
 				err,
@@ -84,12 +91,12 @@ func (helper *LocalHelper) pruneBackups(deadline time.Time) error {
 		}
 	}
 
-	helper.s.stats.Storages.Local = StorageStats{
+	stats := t.StorageStats{
 		Total:  uint(len(candidates)),
 		Pruned: uint(len(matches)),
 	}
 
-	doPrune(helper.s, len(matches), len(candidates), "local backup(s)", func() error {
+	lc.doPrune(len(matches), len(candidates), "local backup(s)", func() error {
 		var removeErrors []error
 		for _, match := range matches {
 			if err := os.Remove(match); err != nil {
@@ -100,11 +107,11 @@ func (helper *LocalHelper) pruneBackups(deadline time.Time) error {
 			return fmt.Errorf(
 				"pruneBackups: %d error(s) deleting local files, starting with: %w",
 				len(removeErrors),
-				join(removeErrors...),
+				u.Join(removeErrors...),
 			)
 		}
 		return nil
 	})
 
-	return nil
+	return &stats, nil
 }

@@ -1,46 +1,49 @@
-package main
+package storages
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"path/filepath"
 	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	t "github.com/offen/docker-volume-backup/cmd/backup/types"
+	u "github.com/offen/docker-volume-backup/cmd/backup/utilities"
 )
 
-type MinioHelper struct {
-	*AbstractHelper
+type S3Storage struct {
+	*GenericStorage
 	client *minio.Client
-	s      *script
+	config *t.S3Config
 }
 
-func newMinioHelper(s *script) (*MinioHelper, error) {
-	if s.c.AwsS3BucketName == "" {
+func InitS3(c *t.S3Config) (*S3Storage, error) {
+	if c.AwsS3BucketName == "" {
 		return nil, nil
 	}
 
 	var creds *credentials.Credentials
-	if s.c.AwsAccessKeyID != "" && s.c.AwsSecretAccessKey != "" {
+	if c.AwsAccessKeyID != "" && c.AwsSecretAccessKey != "" {
 		creds = credentials.NewStaticV4(
-			s.c.AwsAccessKeyID,
-			s.c.AwsSecretAccessKey,
+			c.AwsAccessKeyID,
+			c.AwsSecretAccessKey,
 			"",
 		)
-	} else if s.c.AwsIamRoleEndpoint != "" {
-		creds = credentials.NewIAM(s.c.AwsIamRoleEndpoint)
+	} else if c.AwsIamRoleEndpoint != "" {
+		creds = credentials.NewIAM(c.AwsIamRoleEndpoint)
 	} else {
 		return nil, errors.New("newScript: AWS_S3_BUCKET_NAME is defined, but no credentials were provided")
 	}
 
 	options := minio.Options{
 		Creds:  creds,
-		Secure: s.c.AwsEndpointProto == "https",
+		Secure: c.AwsEndpointProto == "https",
 	}
 
-	if s.c.AwsEndpointInsecure {
+	if c.AwsEndpointInsecure {
 		if !options.Secure {
 			return nil, errors.New("newScript: AWS_ENDPOINT_INSECURE = true is only meaningful for https")
 		}
@@ -53,33 +56,34 @@ func newMinioHelper(s *script) (*MinioHelper, error) {
 		options.Transport = transport
 	}
 
-	mc, err := minio.New(s.c.AwsEndpoint, &options)
+	mc, err := minio.New(c.AwsEndpoint, &options)
 	if err != nil {
 		return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
 	}
 
-	a := &AbstractHelper{}
-	r := &MinioHelper{a, mc, s}
-	a.Helper = r
+	a := &GenericStorage{}
+	r := &S3Storage{a, mc, c}
+	a.Storage = r
 	return r, nil
 }
 
-func (helper *MinioHelper) copyArchive(name string) error {
-	if _, err := helper.client.FPutObject(context.Background(), helper.s.c.AwsS3BucketName, filepath.Join(helper.s.c.AwsS3Path, name), helper.s.file, minio.PutObjectOptions{
+func (s3 *S3Storage) Copy(file string) error {
+	_, name := path.Split(file)
+	if _, err := s3.client.FPutObject(context.Background(), s3.config.AwsS3BucketName, filepath.Join(s3.config.AwsS3Path, name), file, minio.PutObjectOptions{
 		ContentType:  "application/tar+gzip",
-		StorageClass: helper.s.c.AwsStorageClass,
+		StorageClass: s3.config.AwsStorageClass,
 	}); err != nil {
 		return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
 	}
-	helper.s.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", helper.s.file, helper.s.c.AwsS3BucketName)
+	s3.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", file, s3.config.AwsS3BucketName)
 
 	return nil
 }
 
-func (helper *MinioHelper) pruneBackups(deadline time.Time) error {
-	candidates := helper.client.ListObjects(context.Background(), helper.s.c.AwsS3BucketName, minio.ListObjectsOptions{
+func (s3 *S3Storage) Prune(deadline time.Time) (*t.StorageStats, error) {
+	candidates := s3.client.ListObjects(context.Background(), s3.config.AwsS3BucketName, minio.ListObjectsOptions{
 		WithMetadata: true,
-		Prefix:       filepath.Join(helper.s.c.AwsS3Path, helper.s.c.BackupPruningPrefix),
+		Prefix:       filepath.Join(s3.config.AwsS3Path, s3.backupPruningPrefix),
 		Recursive:    true,
 	})
 
@@ -88,7 +92,7 @@ func (helper *MinioHelper) pruneBackups(deadline time.Time) error {
 	for candidate := range candidates {
 		lenCandidates++
 		if candidate.Err != nil {
-			return fmt.Errorf(
+			return nil, fmt.Errorf(
 				"pruneBackups: error looking up candidates from remote storage: %w",
 				candidate.Err,
 			)
@@ -98,12 +102,12 @@ func (helper *MinioHelper) pruneBackups(deadline time.Time) error {
 		}
 	}
 
-	helper.s.stats.Storages.S3 = StorageStats{
+	stats := t.StorageStats{
 		Total:  uint(lenCandidates),
 		Pruned: uint(len(matches)),
 	}
 
-	doPrune(helper.s, len(matches), lenCandidates, "remote backup(s)", func() error {
+	s3.doPrune(len(matches), lenCandidates, "remote backup(s)", func() error {
 		objectsCh := make(chan minio.ObjectInfo)
 		go func() {
 			for _, match := range matches {
@@ -111,7 +115,7 @@ func (helper *MinioHelper) pruneBackups(deadline time.Time) error {
 			}
 			close(objectsCh)
 		}()
-		errChan := helper.client.RemoveObjects(context.Background(), helper.s.c.AwsS3BucketName, objectsCh, minio.RemoveObjectsOptions{})
+		errChan := s3.client.RemoveObjects(context.Background(), s3.config.AwsS3BucketName, objectsCh, minio.RemoveObjectsOptions{})
 		var removeErrors []error
 		for result := range errChan {
 			if result.Err != nil {
@@ -119,10 +123,10 @@ func (helper *MinioHelper) pruneBackups(deadline time.Time) error {
 			}
 		}
 		if len(removeErrors) != 0 {
-			return join(removeErrors...)
+			return u.Join(removeErrors...)
 		}
 		return nil
 	})
 
-	return nil
+	return &stats, nil
 }

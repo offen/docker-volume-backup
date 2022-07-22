@@ -1,4 +1,4 @@
-package main
+package storages
 
 import (
 	"errors"
@@ -6,40 +6,44 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
+	t "github.com/offen/docker-volume-backup/cmd/backup/types"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
 
-type SshHelper struct {
-	*AbstractHelper
-	client *ssh.Client
-	s      *script
+type SshStorage struct {
+	*GenericStorage
+	client        *ssh.Client
+	sftpClient    *sftp.Client
+	sshRemotePath string
+	sshHostName   string
 }
 
-func newSshHelper(s *script) (*SshHelper, error) {
-	if s.c.SSHHostName == "" {
+func InitSSH(c *t.Config) (*SshStorage, error) {
+	if c.SSHHostName == "" {
 		return nil, nil
 	}
 
 	var authMethods []ssh.AuthMethod
 
-	if s.c.SSHPassword != "" {
-		authMethods = append(authMethods, ssh.Password(s.c.SSHPassword))
+	if c.SSHPassword != "" {
+		authMethods = append(authMethods, ssh.Password(c.SSHPassword))
 	}
 
-	if _, err := os.Stat(s.c.SSHIdentityFile); err == nil {
-		key, err := ioutil.ReadFile(s.c.SSHIdentityFile)
+	if _, err := os.Stat(c.SSHIdentityFile); err == nil {
+		key, err := ioutil.ReadFile(c.SSHIdentityFile)
 		if err != nil {
 			return nil, errors.New("newScript: error reading the private key")
 		}
 
 		var signer ssh.Signer
-		if s.c.SSHIdentityPassphrase != "" {
-			signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(s.c.SSHIdentityPassphrase))
+		if c.SSHIdentityPassphrase != "" {
+			signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(c.SSHIdentityPassphrase))
 			if err != nil {
 				return nil, errors.New("newScript: error parsing the encrypted private key")
 			}
@@ -54,11 +58,11 @@ func newSshHelper(s *script) (*SshHelper, error) {
 	}
 
 	sshClientConfig := &ssh.ClientConfig{
-		User:            s.c.SSHUser,
+		User:            c.SSHUser,
 		Auth:            authMethods,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
-	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", s.c.SSHHostName, s.c.SSHPort), sshClientConfig)
+	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", c.SSHHostName, c.SSHPort), sshClientConfig)
 
 	if err != nil {
 		return nil, fmt.Errorf("newScript: error creating ssh client: %w", err)
@@ -69,25 +73,25 @@ func newSshHelper(s *script) (*SshHelper, error) {
 	}
 
 	sftpClient, err := sftp.NewClient(sshClient)
-	s.sftpClient = sftpClient
 	if err != nil {
 		return nil, fmt.Errorf("newScript: error creating sftp client: %w", err)
 	}
 
-	a := &AbstractHelper{}
-	r := &SshHelper{a, sshClient, s}
-	a.Helper = r
+	a := &GenericStorage{}
+	r := &SshStorage{a, sshClient, sftpClient, c.SSHRemotePath, c.SSHHostName}
+	a.Storage = r
 	return r, nil
 }
 
-func (helper *SshHelper) copyArchive(name string) error {
-	source, err := os.Open(helper.s.file)
+func (sh *SshStorage) Copy(file string) error {
+	source, err := os.Open(file)
+	_, name := path.Split(file)
 	if err != nil {
 		return fmt.Errorf("copyBackup: error reading the file to be uploaded: %w", err)
 	}
 	defer source.Close()
 
-	destination, err := helper.s.sftpClient.Create(filepath.Join(helper.s.c.SSHRemotePath, name))
+	destination, err := sh.sftpClient.Create(filepath.Join(sh.sshRemotePath, name))
 	if err != nil {
 		return fmt.Errorf("copyBackup: error creating file on SSH storage: %w", err)
 	}
@@ -123,20 +127,20 @@ func (helper *SshHelper) copyArchive(name string) error {
 		}
 	}
 
-	helper.s.logger.Infof("Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", helper.s.file, helper.s.c.SSHHostName, helper.s.c.SSHRemotePath)
+	sh.logger.Infof("Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", file, sh.sshHostName, sh.sshRemotePath)
 
 	return nil
 }
 
-func (helper *SshHelper) pruneBackups(deadline time.Time) error {
-	candidates, err := helper.s.sftpClient.ReadDir(helper.s.c.SSHRemotePath)
+func (sh *SshStorage) Prune(deadline time.Time) (*t.StorageStats, error) {
+	candidates, err := sh.sftpClient.ReadDir(sh.sshRemotePath)
 	if err != nil {
-		return fmt.Errorf("pruneBackups: error reading directory from SSH storage: %w", err)
+		return nil, fmt.Errorf("pruneBackups: error reading directory from SSH storage: %w", err)
 	}
 
 	var matches []string
 	for _, candidate := range candidates {
-		if !strings.HasPrefix(candidate.Name(), helper.s.c.BackupPruningPrefix) {
+		if !strings.HasPrefix(candidate.Name(), sh.backupPruningPrefix) {
 			continue
 		}
 		if candidate.ModTime().Before(deadline) {
@@ -144,19 +148,19 @@ func (helper *SshHelper) pruneBackups(deadline time.Time) error {
 		}
 	}
 
-	helper.s.stats.Storages.SSH = StorageStats{
+	stats := t.StorageStats{
 		Total:  uint(len(candidates)),
 		Pruned: uint(len(matches)),
 	}
 
-	doPrune(helper.s, len(matches), len(candidates), "SSH backup(s)", func() error {
+	sh.doPrune(len(matches), len(candidates), "SSH backup(s)", func() error {
 		for _, match := range matches {
-			if err := helper.s.sftpClient.Remove(filepath.Join(helper.s.c.SSHRemotePath, match)); err != nil {
+			if err := sh.sftpClient.Remove(filepath.Join(sh.sshRemotePath, match)); err != nil {
 				return fmt.Errorf("pruneBackups: error removing file from SSH storage: %w", err)
 			}
 		}
 		return nil
 	})
 
-	return nil
+	return &stats, nil
 }

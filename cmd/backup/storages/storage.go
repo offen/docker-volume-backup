@@ -1,19 +1,27 @@
-package main
+package storages
 
-import "time"
+import (
+	"time"
 
-type Helper interface {
-	copyArchive(name string) error
-	pruneBackups(deadline time.Time) error
+	t "github.com/offen/docker-volume-backup/cmd/backup/types"
+	"github.com/sirupsen/logrus"
+)
+
+type Storage interface {
+	Copy(file string) error
+	Prune(deadline time.Time) (*t.StorageStats, error)
 }
 
-type AbstractHelper struct {
-	Helper
+type GenericStorage struct {
+	Storage
+	backupRetentionDays int32
+	backupPruningPrefix string
+	logger              *logrus.Logger
 }
 
 // doPrune holds general control flow that applies to any kind of storage.
 // Callers can pass in a thunk that performs the actual deletion of files.
-func doPrune(s *script, lenMatches, lenCandidates int, description string, doRemoveFiles func() error) error {
+func (s *GenericStorage) doPrune(lenMatches, lenCandidates int, description string, doRemoveFiles func() error) error {
 	if lenMatches != 0 && lenMatches != lenCandidates {
 		if err := doRemoveFiles(); err != nil {
 			return err
@@ -23,7 +31,7 @@ func doPrune(s *script, lenMatches, lenCandidates int, description string, doRem
 			lenMatches,
 			lenCandidates,
 			description,
-			s.c.BackupRetentionDays,
+			s.backupRetentionDays,
 		)
 	} else if lenMatches != 0 && lenMatches == lenCandidates {
 		s.logger.Warnf("The current configuration would delete all %d existing %s.", lenMatches, description)
