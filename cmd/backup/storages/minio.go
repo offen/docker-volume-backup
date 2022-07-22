@@ -20,6 +20,7 @@ type S3Storage struct {
 	client *minio.Client
 }
 
+// Specific init procedure for the S3/Minio storage provider.
 func InitS3(c *t.Config, l *logrus.Logger) (*S3Storage, error) {
 	if c.AwsS3BucketName == "" {
 		return nil, nil
@@ -61,34 +62,30 @@ func InitS3(c *t.Config, l *logrus.Logger) (*S3Storage, error) {
 		return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
 	}
 
-	a := &GenericStorage{}
+	a := &GenericStorage{&S3Storage{}, l, c}
 	r := &S3Storage{a, mc}
-	a.backupRetentionDays = c.BackupRetentionDays
-	a.backupPruningPrefix = c.BackupPruningPrefix
-	a.logger = l
-	a.config = c
-	a.Storage = r
 	return r, nil
 }
 
-func (s3 *S3Storage) Copy(file string) error {
-	s3.logger.Infof("copyArchive->s3stg: Beginning...")
+// Specific copy function for the S3/Minio storage provider.
+func (stg *S3Storage) copy(file string) error {
 	_, name := path.Split(file)
-	if _, err := s3.client.FPutObject(context.Background(), s3.config.AwsS3BucketName, filepath.Join(s3.config.AwsS3Path, name), file, minio.PutObjectOptions{
+	if _, err := stg.client.FPutObject(context.Background(), stg.config.AwsS3BucketName, filepath.Join(stg.config.AwsS3Path, name), file, minio.PutObjectOptions{
 		ContentType:  "application/tar+gzip",
-		StorageClass: s3.config.AwsStorageClass,
+		StorageClass: stg.config.AwsStorageClass,
 	}); err != nil {
 		return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
 	}
-	s3.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", file, s3.config.AwsS3BucketName)
+	stg.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", file, stg.config.AwsS3BucketName)
 
 	return nil
 }
 
-func (s3 *S3Storage) Prune(deadline time.Time) (*t.StorageStats, error) {
-	candidates := s3.client.ListObjects(context.Background(), s3.config.AwsS3BucketName, minio.ListObjectsOptions{
+// Specific prune function for the S3/Minio storage provider.
+func (stg *S3Storage) prune(deadline time.Time) (*t.StorageStats, error) {
+	candidates := stg.client.ListObjects(context.Background(), stg.config.AwsS3BucketName, minio.ListObjectsOptions{
 		WithMetadata: true,
-		Prefix:       filepath.Join(s3.config.AwsS3Path, s3.backupPruningPrefix),
+		Prefix:       filepath.Join(stg.config.AwsS3Path, stg.config.BackupPruningPrefix),
 		Recursive:    true,
 	})
 
@@ -112,7 +109,7 @@ func (s3 *S3Storage) Prune(deadline time.Time) (*t.StorageStats, error) {
 		Pruned: uint(len(matches)),
 	}
 
-	s3.doPrune(len(matches), lenCandidates, "remote backup(s)", func() error {
+	stg.doPrune(len(matches), lenCandidates, "remote backup(s)", func() error {
 		objectsCh := make(chan minio.ObjectInfo)
 		go func() {
 			for _, match := range matches {
@@ -120,7 +117,7 @@ func (s3 *S3Storage) Prune(deadline time.Time) (*t.StorageStats, error) {
 			}
 			close(objectsCh)
 		}()
-		errChan := s3.client.RemoveObjects(context.Background(), s3.config.AwsS3BucketName, objectsCh, minio.RemoveObjectsOptions{})
+		errChan := stg.client.RemoveObjects(context.Background(), stg.config.AwsS3BucketName, objectsCh, minio.RemoveObjectsOptions{})
 		var removeErrors []error
 		for result := range errChan {
 			if result.Err != nil {
