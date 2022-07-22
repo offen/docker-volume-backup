@@ -85,7 +85,7 @@ func newScript() (*script, error) {
 	}
 
 	s3Config := &t.S3Config{}
-	if err := envconfig.Process("Aws", s3Config); err != nil {
+	if err := envconfig.Process("", s3Config); err != nil {
 		return nil, fmt.Errorf("newScript: failed to process configuration values for AWS: %w", err)
 	}
 
