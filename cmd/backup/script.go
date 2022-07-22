@@ -534,7 +534,8 @@ func (s *script) copyArchive() error {
 			ContentType:  "application/tar+gzip",
 			StorageClass: s.c.AwsStorageClass,
 		}); err != nil {
-			return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", minio.ToErrorResponse(err))
+			errResp := minio.ToErrorResponse(err)
+			return fmt.Errorf("copyBackup: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d", errResp.Message, errResp.Code, errResp.StatusCode)
 		}
 		s.logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", s.file, s.c.AwsS3BucketName)
 	}
