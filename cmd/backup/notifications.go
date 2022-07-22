@@ -12,6 +12,8 @@ import (
 	"time"
 
 	sTypes "github.com/containrrr/shoutrrr/pkg/types"
+	t "github.com/offen/docker-volume-backup/cmd/backup/types"
+	u "github.com/offen/docker-volume-backup/cmd/backup/utilities"
 )
 
 //go:embed notifications.tmpl
@@ -20,8 +22,8 @@ var defaultNotifications string
 // NotificationData data to be passed to the notification templates
 type NotificationData struct {
 	Error  error
-	Config *Config
-	Stats  *Stats
+	Config *t.Config
+	Stats  *t.Stats
 }
 
 // notify sends a notification using the given title and body templates.
@@ -68,7 +70,7 @@ func (s *script) sendNotification(title, body string) error {
 		}
 	}
 	if len(errs) != 0 {
-		return fmt.Errorf("sendNotification: error sending message: %w", join(errs...))
+		return fmt.Errorf("sendNotification: error sending message: %w", u.Join(errs...))
 	}
 	return nil
 }

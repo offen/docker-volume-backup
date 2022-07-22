@@ -6,6 +6,8 @@ package main
 import (
 	"fmt"
 	"sort"
+
+	u "github.com/offen/docker-volume-backup/cmd/backup/utilities"
 )
 
 // hook contains a queued action that can be trigger them when the script
@@ -50,7 +52,7 @@ func (s *script) runHooks(err error) error {
 		}
 	}
 	if len(actionErrors) != 0 {
-		return join(actionErrors...)
+		return u.Join(actionErrors...)
 	}
 	return nil
 }

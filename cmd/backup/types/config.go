@@ -1,7 +1,7 @@
 // Copyright 2022 - Offen Authors <hioffen@posteo.de>
 // SPDX-License-Identifier: MPL-2.0
 
-package main
+package types
 
 import (
 	"fmt"
@@ -23,15 +23,6 @@ type Config struct {
 	BackupStopContainerLabel   string        `split_words:"true" default:"true"`
 	BackupFromSnapshot         bool          `split_words:"true"`
 	BackupExcludeRegexp        RegexpDecoder `split_words:"true"`
-	AwsS3BucketName            string        `split_words:"true"`
-	AwsS3Path                  string        `split_words:"true"`
-	AwsEndpoint                string        `split_words:"true" default:"s3.amazonaws.com"`
-	AwsEndpointProto           string        `split_words:"true" default:"https"`
-	AwsEndpointInsecure        bool          `split_words:"true"`
-	AwsStorageClass            string        `split_words:"true"`
-	AwsAccessKeyID             string        `envconfig:"AWS_ACCESS_KEY_ID"`
-	AwsSecretAccessKey         string        `split_words:"true"`
-	AwsIamRoleEndpoint         string        `split_words:"true"`
 	GpgPassphrase              string        `split_words:"true"`
 	NotificationURLs           []string      `envconfig:"NOTIFICATION_URLS"`
 	NotificationLevel          string        `split_words:"true" default:"error"`
@@ -56,6 +47,18 @@ type Config struct {
 	ExecLabel                  string        `split_words:"true"`
 	ExecForwardOutput          bool          `split_words:"true"`
 	LockTimeout                time.Duration `split_words:"true" default:"60m"`
+}
+
+type S3Config struct {
+	AwsS3BucketName     string `split_words:"true"`
+	AwsS3Path           string `split_words:"true"`
+	AwsEndpoint         string `split_words:"true" default:"s3.amazonaws.com"`
+	AwsEndpointProto    string `split_words:"true" default:"https"`
+	AwsEndpointInsecure bool   `split_words:"true"`
+	AwsStorageClass     string `split_words:"true"`
+	AwsAccessKeyID      string `envconfig:"AWS_ACCESS_KEY_ID"`
+	AwsSecretAccessKey  string `split_words:"true"`
+	AwsIamRoleEndpoint  string `split_words:"true"`
 }
 
 type RegexpDecoder struct {

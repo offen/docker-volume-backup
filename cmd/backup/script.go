@@ -14,6 +14,10 @@ import (
 	"text/template"
 	"time"
 
+	strg "github.com/offen/docker-volume-backup/cmd/backup/storages"
+	t "github.com/offen/docker-volume-backup/cmd/backup/types"
+	u "github.com/offen/docker-volume-backup/cmd/backup/utilities"
+
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
 	"github.com/docker/docker/api/types"
@@ -23,7 +27,6 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
 	"github.com/otiai10/copy"
-	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/openpgp"
 )
@@ -31,24 +34,23 @@ import (
 // script holds all the stateful information required to orchestrate a
 // single backup run.
 type script struct {
-	cli          *client.Client
-	minioHelper  *MinioHelper
-	webdavHelper *WebdavHelper
-	sshHelper    *SshHelper
-	localHelper  *LocalHelper
-	sftpClient   *sftp.Client
-	logger       *logrus.Logger
-	sender       *router.ServiceRouter
-	template     *template.Template
-	hooks        []hook
-	hookLevel    hookLevel
+	cli           *client.Client
+	s3Storage     *strg.S3Storage
+	webdavStorage *strg.WebDavStorage
+	sshStorage    *strg.SshStorage
+	localStorage  *strg.LocalStorage
+	logger        *logrus.Logger
+	sender        *router.ServiceRouter
+	template      *template.Template
+	hooks         []hook
+	hookLevel     hookLevel
 
 	file  string
-	stats *Stats
+	stats *t.Stats
 
 	encounteredLock bool
 
-	c *Config
+	c *t.Config
 }
 
 // newScript creates all resources needed for the script to perform actions against
@@ -56,19 +58,19 @@ type script struct {
 // reading from env vars or other configuration sources is expected to happen
 // in this method.
 func newScript() (*script, error) {
-	stdOut, logBuffer := buffer(os.Stdout)
+	stdOut, logBuffer := u.Buffer(os.Stdout)
 	s := &script{
-		c: &Config{},
+		c: &t.Config{},
 		logger: &logrus.Logger{
 			Out:       stdOut,
 			Formatter: new(logrus.TextFormatter),
 			Hooks:     make(logrus.LevelHooks),
 			Level:     logrus.InfoLevel,
 		},
-		stats: &Stats{
+		stats: &t.Stats{
 			StartTime: time.Now(),
 			LogOutput: logBuffer,
-			Storages:  StoragesStats{},
+			Storages:  t.StoragesStats{},
 		},
 	}
 
@@ -80,6 +82,11 @@ func newScript() (*script, error) {
 
 	if err := envconfig.Process("", s.c); err != nil {
 		return nil, fmt.Errorf("newScript: failed to process configuration values: %w", err)
+	}
+
+	s3Config := &t.S3Config{}
+	if err := envconfig.Process("Aws", s3Config); err != nil {
+		return nil, fmt.Errorf("newScript: failed to process configuration values for AWS: %w", err)
 	}
 
 	s.file = path.Join("/tmp", s.c.BackupFilename)
@@ -100,19 +107,19 @@ func newScript() (*script, error) {
 		s.cli = cli
 	}
 
-	if s.minioHelper, err = newMinioHelper(s); err != nil {
+	if s.s3Storage, err = strg.InitS3(s3Config); err != nil {
 		return nil, err
 	}
 
-	if s.webdavHelper, err = newWebdavHelper(s); err != nil {
+	if s.webdavStorage, err = strg.InitWebDav(s.c); err != nil {
 		return nil, err
 	}
 
-	if s.sshHelper, err = newSshHelper(s); err != nil {
+	if s.sshStorage, err = strg.InitSSH(s.c); err != nil {
 		return nil, err
 	}
 
-	s.localHelper = newLocalhelper(s)
+	s.localStorage = strg.InitLocal(s.c)
 
 	if s.c.EmailNotificationRecipient != "" {
 		emailURL := fmt.Sprintf(
@@ -185,14 +192,14 @@ func newScript() (*script, error) {
 // restart everything that has been stopped.
 func (s *script) stopContainers() (func() error, error) {
 	if s.cli == nil {
-		return noop, nil
+		return u.Noop, nil
 	}
 
 	allContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
 		Quiet: true,
 	})
 	if err != nil {
-		return noop, fmt.Errorf("stopContainersAndRun: error querying for containers: %w", err)
+		return u.Noop, fmt.Errorf("stopContainersAndRun: error querying for containers: %w", err)
 	}
 
 	containerLabel := fmt.Sprintf(
@@ -208,11 +215,11 @@ func (s *script) stopContainers() (func() error, error) {
 	})
 
 	if err != nil {
-		return noop, fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
+		return u.Noop, fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
 	}
 
 	if len(containersToStop) == 0 {
-		return noop, nil
+		return u.Noop, nil
 	}
 
 	s.logger.Infof(
@@ -237,11 +244,11 @@ func (s *script) stopContainers() (func() error, error) {
 		stopError = fmt.Errorf(
 			"stopContainersAndRun: %d error(s) stopping containers: %w",
 			len(stopErrors),
-			join(stopErrors...),
+			u.Join(stopErrors...),
 		)
 	}
 
-	s.stats.Containers = ContainersStats{
+	s.stats.Containers = t.ContainersStats{
 		All:     uint(len(allContainers)),
 		ToStop:  uint(len(containersToStop)),
 		Stopped: uint(len(stoppedContainers)),
@@ -288,7 +295,7 @@ func (s *script) stopContainers() (func() error, error) {
 			return fmt.Errorf(
 				"stopContainersAndRun: %d error(s) restarting containers and services: %w",
 				len(restartErrors),
-				join(restartErrors...),
+				u.Join(restartErrors...),
 			)
 		}
 		s.logger.Infof(
@@ -314,7 +321,7 @@ func (s *script) createArchive() error {
 		backupSources = filepath.Join("/tmp", s.c.BackupSources)
 		// copy before compressing guard against a situation where backup folder's content are still growing.
 		s.registerHook(hookLevelPlumbing, func(error) error {
-			if err := remove(backupSources); err != nil {
+			if err := u.Remove(backupSources); err != nil {
 				return fmt.Errorf("takeBackup: error removing snapshot: %w", err)
 			}
 			s.logger.Infof("Removed snapshot `%s`.", backupSources)
@@ -331,7 +338,7 @@ func (s *script) createArchive() error {
 
 	tarFile := s.file
 	s.registerHook(hookLevelPlumbing, func(error) error {
-		if err := remove(tarFile); err != nil {
+		if err := u.Remove(tarFile); err != nil {
 			return fmt.Errorf("takeBackup: error removing tar file: %w", err)
 		}
 		s.logger.Infof("Removed tar file `%s`.", tarFile)
@@ -376,7 +383,7 @@ func (s *script) encryptArchive() error {
 
 	gpgFile := fmt.Sprintf("%s.gpg", s.file)
 	s.registerHook(hookLevelPlumbing, func(error) error {
-		if err := remove(gpgFile); err != nil {
+		if err := u.Remove(gpgFile); err != nil {
 			return fmt.Errorf("encryptBackup: error removing gpg file: %w", err)
 		}
 		s.logger.Infof("Removed GPG file `%s`.", gpgFile)
@@ -384,20 +391,20 @@ func (s *script) encryptArchive() error {
 	})
 
 	outFile, err := os.Create(gpgFile)
-	defer outFile.Close()
 	if err != nil {
 		return fmt.Errorf("encryptBackup: error opening out file: %w", err)
 	}
+	defer outFile.Close()
 
 	_, name := path.Split(s.file)
 	dst, err := openpgp.SymmetricallyEncrypt(outFile, []byte(s.c.GpgPassphrase), &openpgp.FileHints{
 		IsBinary: true,
 		FileName: name,
 	}, nil)
-	defer dst.Close()
 	if err != nil {
 		return fmt.Errorf("encryptBackup: error encrypting backup file: %w", err)
 	}
+	defer dst.Close()
 
 	src, err := os.Open(s.file)
 	if err != nil {
@@ -421,27 +428,27 @@ func (s *script) copyArchive() error {
 		return fmt.Errorf("copyBackup: unable to stat backup file: %w", err)
 	} else {
 		size := stat.Size()
-		s.stats.BackupFile = BackupFileStats{
+		s.stats.BackupFile = t.BackupFileStats{
 			Size:     uint64(size),
 			Name:     name,
 			FullPath: s.file,
 		}
 	}
 
-	if s.minioHelper != nil {
-		s.minioHelper.copyArchive(name)
+	if s.s3Storage != nil {
+		s.s3Storage.Copy(s.file)
 	}
 
-	if s.webdavHelper != nil {
-		s.webdavHelper.copyArchive(name)
+	if s.webdavStorage != nil {
+		s.webdavStorage.Copy(s.file)
 	}
 
-	if s.sshHelper != nil {
-		s.sshHelper.copyArchive(name)
+	if s.sshStorage != nil {
+		s.sshStorage.Copy(s.file)
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
-		s.localHelper.copyArchive(name)
+		s.localStorage.Copy(s.file)
 	}
 	return nil
 }
@@ -456,20 +463,20 @@ func (s *script) pruneBackups() error {
 
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
 
-	if s.minioHelper != nil {
-		s.minioHelper.pruneBackups(deadline)
+	if s.s3Storage != nil {
+		s.s3Storage.Prune(deadline)
 	}
 
-	if s.webdavHelper != nil {
-		s.webdavHelper.pruneBackups(deadline)
+	if s.webdavStorage != nil {
+		s.webdavStorage.Prune(deadline)
 	}
 
-	if s.sshHelper != nil {
-		s.sshHelper.pruneBackups(deadline)
+	if s.sshStorage != nil {
+		s.sshStorage.Prune(deadline)
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
-		s.localHelper.pruneBackups(deadline)
+		s.localStorage.Prune(deadline)
 	}
 
 	return nil
