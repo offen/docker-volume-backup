@@ -7,6 +7,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd/backup ./cmd/backup/
+COPY internal ./internal
 WORKDIR /app/cmd/backup
 RUN go build -o backup .
 
