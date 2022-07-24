@@ -13,7 +13,7 @@ import (
 
 	sTypes "github.com/containrrr/shoutrrr/pkg/types"
 	t "github.com/offen/docker-volume-backup/internal/types"
-	u "github.com/offen/docker-volume-backup/internal/utilities"
+	utilites "github.com/offen/docker-volume-backup/internal/utilities"
 )
 
 //go:embed notifications.tmpl
@@ -70,7 +70,7 @@ func (s *script) sendNotification(title, body string) error {
 		}
 	}
 	if len(errs) != 0 {
-		return fmt.Errorf("sendNotification: error sending message: %w", u.Join(errs...))
+		return fmt.Errorf("sendNotification: error sending message: %w", utilites.Join(errs...))
 	}
 	return nil
 }

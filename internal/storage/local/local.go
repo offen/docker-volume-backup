@@ -7,62 +7,66 @@ import (
 	"path/filepath"
 	"time"
 
-	strg "github.com/offen/docker-volume-backup/internal/storage"
-	t "github.com/offen/docker-volume-backup/internal/types"
-	u "github.com/offen/docker-volume-backup/internal/utilities"
+	"github.com/offen/docker-volume-backup/internal/storage"
+	"github.com/offen/docker-volume-backup/internal/types"
+	utilites "github.com/offen/docker-volume-backup/internal/utilities"
 	"github.com/sirupsen/logrus"
 )
 
-type LocalStorage struct {
-	*strg.StorageBackend
+type localStorage struct {
+	*storage.StorageBackend
+	latestSymlink string
 }
 
-// Specific init procedure for the local storage provider.
-func InitLocal(c *t.Config, l *logrus.Logger, s *t.Stats) *strg.StorageBackend {
-	a := &strg.StorageBackend{
-		Storage: &LocalStorage{},
-		Name:    "Local",
-		Logger:  l,
-		Config:  c,
-		Stats:   s,
+// NewStorageBackend creates and initializes a new local storage backend.
+func NewStorageBackend(archivePath string, latestSymlink string, l *logrus.Logger, s *types.Stats) storage.Backend {
+	strgBackend := &storage.StorageBackend{
+		Backend:         &localStorage{},
+		Name:            "Local",
+		DestinationPath: archivePath,
+		Logger:          l,
+		Stats:           s,
 	}
-	r := &LocalStorage{a}
-	a.Storage = r
-	return a
+	localBackend := &localStorage{
+		StorageBackend: strgBackend,
+		latestSymlink:  latestSymlink,
+	}
+	strgBackend.Backend = localBackend
+	return strgBackend
 }
 
-// Specific copy function for the local storage provider.
-func (stg *LocalStorage) Copy(file string) error {
-	if _, err := os.Stat(stg.Config.BackupArchive); os.IsNotExist(err) {
+// Copy copies the given file to the local storage backend.
+func (stg *localStorage) Copy(file string) error {
+	if _, err := os.Stat(stg.DestinationPath); os.IsNotExist(err) {
 		return nil
 	}
 
 	_, name := path.Split(file)
 
-	if err := u.CopyFile(file, path.Join(stg.Config.BackupArchive, name)); err != nil {
+	if err := utilites.CopyFile(file, path.Join(stg.DestinationPath, name)); err != nil {
 		return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 	}
-	stg.Logger.Infof("Stored copy of backup `%s` in local archive `%s`.", file, stg.Config.BackupArchive)
+	stg.Logger.Infof("Stored copy of backup `%s` in local archive `%s`.", file, stg.DestinationPath)
 
-	if stg.Config.BackupLatestSymlink != "" {
-		symlink := path.Join(stg.Config.BackupArchive, stg.Config.BackupLatestSymlink)
+	if stg.latestSymlink != "" {
+		symlink := path.Join(stg.DestinationPath, stg.latestSymlink)
 		if _, err := os.Lstat(symlink); err == nil {
 			os.Remove(symlink)
 		}
 		if err := os.Symlink(name, symlink); err != nil {
 			return fmt.Errorf("copyBackup: error creating latest symlink: %w", err)
 		}
-		stg.Logger.Infof("Created/Updated symlink `%s` for latest backup.", stg.Config.BackupLatestSymlink)
+		stg.Logger.Infof("Created/Updated symlink `%s` for latest backup.", stg.latestSymlink)
 	}
 
 	return nil
 }
 
-// Specific prune function for the local storage provider.
-func (stg *LocalStorage) Prune(deadline time.Time) error {
+// Prune rotates away backups according to the configuration and provided deadline for the local storage backend.
+func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) error {
 	globPattern := path.Join(
-		stg.Config.BackupArchive,
-		fmt.Sprintf("%s*", stg.Config.BackupPruningPrefix),
+		stg.DestinationPath,
+		fmt.Sprintf("%s*", pruningPrefix),
 	)
 	globMatches, err := filepath.Glob(globPattern)
 	if err != nil {
@@ -104,7 +108,7 @@ func (stg *LocalStorage) Prune(deadline time.Time) error {
 		}
 	}
 
-	stg.Stats.Storages.Local = t.StorageStats{
+	stg.Stats.Storages.Local = types.StorageStats{
 		Total:  uint(len(candidates)),
 		Pruned: uint(len(matches)),
 	}
@@ -120,7 +124,7 @@ func (stg *LocalStorage) Prune(deadline time.Time) error {
 			return fmt.Errorf(
 				"pruneBackups: %d error(s) deleting local files, starting with: %w",
 				len(removeErrors),
-				u.Join(removeErrors...),
+				utilites.Join(removeErrors...),
 			)
 		}
 		return nil

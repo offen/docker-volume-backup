@@ -8,21 +8,22 @@ import (
 )
 
 // Interface for defining functions which all storage providers support.
-type Storage interface {
+type Backend interface {
 	Copy(file string) error
-	Prune(deadline time.Time) error
+	Prune(deadline time.Time, pruningPrefix string) error
 }
 
 // Generic type of storage. Everything here are common properties of all storage types.
 type StorageBackend struct {
-	Storage
-	Name   string
-	Logger *logrus.Logger
-	Config *t.Config
-	Stats  *t.Stats
+	Backend
+	Name            string
+	DestinationPath string
+	RetentionDays   int
+	Logger          *logrus.Logger
+	Stats           *t.Stats
 }
 
-// doPrune holds general control flow that applies to any kind of storage.
+// DoPrune holds general control flow that applies to any kind of storage.
 // Callers can pass in a thunk that performs the actual deletion of files.
 func (stg *StorageBackend) DoPrune(lenMatches, lenCandidates int, description string, doRemoveFiles func() error) error {
 	if lenMatches != 0 && lenMatches != lenCandidates {
@@ -34,7 +35,7 @@ func (stg *StorageBackend) DoPrune(lenMatches, lenCandidates int, description st
 			lenMatches,
 			lenCandidates,
 			description,
-			stg.Config.BackupRetentionDays,
+			stg.RetentionDays,
 		)
 	} else if lenMatches != 0 && lenMatches == lenCandidates {
 		stg.Logger.Warnf("The current configuration would delete all %d existing %s.", lenMatches, description)

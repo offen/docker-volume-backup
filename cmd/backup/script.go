@@ -14,13 +14,13 @@ import (
 	"text/template"
 	"time"
 
-	strg "github.com/offen/docker-volume-backup/internal/storage"
+	"github.com/offen/docker-volume-backup/internal/storage"
 	"github.com/offen/docker-volume-backup/internal/storage/local"
 	"github.com/offen/docker-volume-backup/internal/storage/s3"
 	"github.com/offen/docker-volume-backup/internal/storage/ssh"
 	"github.com/offen/docker-volume-backup/internal/storage/webdav"
 	t "github.com/offen/docker-volume-backup/internal/types"
-	u "github.com/offen/docker-volume-backup/internal/utilities"
+	utilites "github.com/offen/docker-volume-backup/internal/utilities"
 
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
@@ -39,7 +39,7 @@ import (
 // single backup run.
 type script struct {
 	cli         *client.Client
-	storagePool []*strg.StorageBackend
+	storagePool []storage.Backend
 	logger      *logrus.Logger
 	sender      *router.ServiceRouter
 	template    *template.Template
@@ -59,7 +59,7 @@ type script struct {
 // reading from env vars or other configuration sources is expected to happen
 // in this method.
 func newScript() (*script, error) {
-	stdOut, logBuffer := u.Buffer(os.Stdout)
+	stdOut, logBuffer := utilites.Buffer(os.Stdout)
 	s := &script{
 		c: &t.Config{},
 		logger: &logrus.Logger{
@@ -104,7 +104,8 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.AwsS3BucketName != "" {
-		if s3Backend, err := s3.InitS3(s.c, s.logger, s.stats); err != nil {
+		if s3Backend, err := s3.NewStorageBackend(s.c.AwsEndpoint, s.c.AwsAccessKeyID, s.c.AwsSecretAccessKey, s.c.AwsIamRoleEndpoint,
+			s.c.AwsEndpointProto, s.c.AwsEndpointInsecure, s.c.AwsS3Path, s.c.AwsS3BucketName, s.c.AwsStorageClass, s.logger, s.stats); err != nil {
 			return nil, err
 		} else {
 			s.storagePool = append(s.storagePool, s3Backend)
@@ -112,7 +113,8 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.WebdavUrl != "" {
-		if webdavBackend, err := webdav.InitWebDav(s.c, s.logger, s.stats); err != nil {
+		if webdavBackend, err := webdav.NewStorageBackend(s.c.WebdavUrl, s.c.WebdavPath, s.c.WebdavUsername, s.c.WebdavPassword,
+			s.c.WebdavUrlInsecure, s.logger, s.stats); err != nil {
 			return nil, err
 		} else {
 			s.storagePool = append(s.storagePool, webdavBackend)
@@ -120,14 +122,15 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.SSHHostName != "" {
-		if sshBackend, err := ssh.InitSSH(s.c, s.logger, s.stats); err != nil {
+		if sshBackend, err := ssh.NewStorageBackend(s.c.SSHHostName, s.c.SSHPort, s.c.SSHUser, s.c.SSHPassword, s.c.SSHIdentityFile,
+			s.c.SSHIdentityPassphrase, s.c.WebdavPath, s.logger, s.stats); err != nil {
 			return nil, err
 		} else {
 			s.storagePool = append(s.storagePool, sshBackend)
 		}
 	}
 
-	localBackend := local.InitLocal(s.c, s.logger, s.stats)
+	localBackend := local.NewStorageBackend(s.c.BackupArchive, s.c.BackupLatestSymlink, s.logger, s.stats)
 	s.storagePool = append(s.storagePool, localBackend)
 
 	if s.c.EmailNotificationRecipient != "" {
@@ -201,14 +204,14 @@ func newScript() (*script, error) {
 // restart everything that has been stopped.
 func (s *script) stopContainers() (func() error, error) {
 	if s.cli == nil {
-		return u.Noop, nil
+		return utilites.Noop, nil
 	}
 
 	allContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
 		Quiet: true,
 	})
 	if err != nil {
-		return u.Noop, fmt.Errorf("stopContainersAndRun: error querying for containers: %w", err)
+		return utilites.Noop, fmt.Errorf("stopContainersAndRun: error querying for containers: %w", err)
 	}
 
 	containerLabel := fmt.Sprintf(
@@ -224,11 +227,11 @@ func (s *script) stopContainers() (func() error, error) {
 	})
 
 	if err != nil {
-		return u.Noop, fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
+		return utilites.Noop, fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
 	}
 
 	if len(containersToStop) == 0 {
-		return u.Noop, nil
+		return utilites.Noop, nil
 	}
 
 	s.logger.Infof(
@@ -253,7 +256,7 @@ func (s *script) stopContainers() (func() error, error) {
 		stopError = fmt.Errorf(
 			"stopContainersAndRun: %d error(s) stopping containers: %w",
 			len(stopErrors),
-			u.Join(stopErrors...),
+			utilites.Join(stopErrors...),
 		)
 	}
 
@@ -304,7 +307,7 @@ func (s *script) stopContainers() (func() error, error) {
 			return fmt.Errorf(
 				"stopContainersAndRun: %d error(s) restarting containers and services: %w",
 				len(restartErrors),
-				u.Join(restartErrors...),
+				utilites.Join(restartErrors...),
 			)
 		}
 		s.logger.Infof(
@@ -330,7 +333,7 @@ func (s *script) createArchive() error {
 		backupSources = filepath.Join("/tmp", s.c.BackupSources)
 		// copy before compressing guard against a situation where backup folder's content are still growing.
 		s.registerHook(hookLevelPlumbing, func(error) error {
-			if err := u.Remove(backupSources); err != nil {
+			if err := utilites.Remove(backupSources); err != nil {
 				return fmt.Errorf("takeBackup: error removing snapshot: %w", err)
 			}
 			s.logger.Infof("Removed snapshot `%s`.", backupSources)
@@ -347,7 +350,7 @@ func (s *script) createArchive() error {
 
 	tarFile := s.file
 	s.registerHook(hookLevelPlumbing, func(error) error {
-		if err := u.Remove(tarFile); err != nil {
+		if err := utilites.Remove(tarFile); err != nil {
 			return fmt.Errorf("takeBackup: error removing tar file: %w", err)
 		}
 		s.logger.Infof("Removed tar file `%s`.", tarFile)
@@ -392,7 +395,7 @@ func (s *script) encryptArchive() error {
 
 	gpgFile := fmt.Sprintf("%s.gpg", s.file)
 	s.registerHook(hookLevelPlumbing, func(error) error {
-		if err := u.Remove(gpgFile); err != nil {
+		if err := utilites.Remove(gpgFile); err != nil {
 			return fmt.Errorf("encryptBackup: error removing gpg file: %w", err)
 		}
 		s.logger.Infof("Removed GPG file `%s`.", gpgFile)
@@ -464,7 +467,7 @@ func (s *script) pruneBackups() error {
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
 
 	for _, backend := range s.storagePool {
-		if err := backend.Prune(deadline); err != nil {
+		if err := backend.Prune(deadline, s.c.BackupPruningPrefix); err != nil {
 			return err
 		}
 	}

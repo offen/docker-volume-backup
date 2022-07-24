@@ -10,38 +10,42 @@ import (
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	strg "github.com/offen/docker-volume-backup/internal/storage"
-	t "github.com/offen/docker-volume-backup/internal/types"
-	u "github.com/offen/docker-volume-backup/internal/utilities"
+	"github.com/offen/docker-volume-backup/internal/storage"
+	"github.com/offen/docker-volume-backup/internal/types"
+	utilites "github.com/offen/docker-volume-backup/internal/utilities"
 	"github.com/sirupsen/logrus"
 )
 
-type S3Storage struct {
-	*strg.StorageBackend
-	client *minio.Client
+type s3Storage struct {
+	*storage.StorageBackend
+	client       *minio.Client
+	bucket       string
+	storageClass string
 }
 
-// Specific init procedure for the S3/Minio storage provider.
-func InitS3(c *t.Config, l *logrus.Logger, s *t.Stats) (*strg.StorageBackend, error) {
+// NewStorageBackend creates and initializes a new S3/Minio storage backend.
+func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey string, iamRoleEndpoint string, endpointProto string, endpointInsecure bool,
+	remotePath string, bucket string, storageClass string, l *logrus.Logger, s *types.Stats) (storage.Backend, error) {
+
 	var creds *credentials.Credentials
-	if c.AwsAccessKeyID != "" && c.AwsSecretAccessKey != "" {
+	if accessKeyId != "" && secretAccessKey != "" {
 		creds = credentials.NewStaticV4(
-			c.AwsAccessKeyID,
-			c.AwsSecretAccessKey,
+			accessKeyId,
+			secretAccessKey,
 			"",
 		)
-	} else if c.AwsIamRoleEndpoint != "" {
-		creds = credentials.NewIAM(c.AwsIamRoleEndpoint)
+	} else if iamRoleEndpoint != "" {
+		creds = credentials.NewIAM(iamRoleEndpoint)
 	} else {
 		return nil, errors.New("newScript: AWS_S3_BUCKET_NAME is defined, but no credentials were provided")
 	}
 
 	options := minio.Options{
 		Creds:  creds,
-		Secure: c.AwsEndpointProto == "https",
+		Secure: endpointProto == "https",
 	}
 
-	if c.AwsEndpointInsecure {
+	if endpointInsecure {
 		if !options.Secure {
 			return nil, errors.New("newScript: AWS_ENDPOINT_INSECURE = true is only meaningful for https")
 		}
@@ -54,43 +58,48 @@ func InitS3(c *t.Config, l *logrus.Logger, s *t.Stats) (*strg.StorageBackend, er
 		options.Transport = transport
 	}
 
-	mc, err := minio.New(c.AwsEndpoint, &options)
+	mc, err := minio.New(endpoint, &options)
 	if err != nil {
 		return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
 	}
 
-	a := &strg.StorageBackend{
-		Storage: &S3Storage{},
-		Name:    "S3",
-		Logger:  l,
-		Config:  c,
-		Stats:   s,
+	strgBackend := &storage.StorageBackend{
+		Backend:         &s3Storage{},
+		Name:            "S3",
+		DestinationPath: remotePath,
+		Logger:          l,
+		Stats:           s,
 	}
-	r := &S3Storage{a, mc}
-	a.Storage = r
-	return a, nil
+	sshBackend := &s3Storage{
+		StorageBackend: strgBackend,
+		client:         mc,
+		bucket:         bucket,
+		storageClass:   storageClass,
+	}
+	strgBackend.Backend = sshBackend
+	return strgBackend, nil
 }
 
-// Specific copy function for the S3/Minio storage provider.
-func (stg *S3Storage) Copy(file string) error {
+// Copy copies the given file to the S3/Minio storage backend.
+func (stg *s3Storage) Copy(file string) error {
 	_, name := path.Split(file)
 
-	if _, err := stg.client.FPutObject(context.Background(), stg.Config.AwsS3BucketName, filepath.Join(stg.Config.AwsS3Path, name), file, minio.PutObjectOptions{
+	if _, err := stg.client.FPutObject(context.Background(), stg.bucket, filepath.Join(stg.DestinationPath, name), file, minio.PutObjectOptions{
 		ContentType:  "application/tar+gzip",
-		StorageClass: stg.Config.AwsStorageClass,
+		StorageClass: stg.storageClass,
 	}); err != nil {
 		return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
 	}
-	stg.Logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", file, stg.Config.AwsS3BucketName)
+	stg.Logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", file, stg.bucket)
 
 	return nil
 }
 
-// Specific prune function for the S3/Minio storage provider.
-func (stg *S3Storage) Prune(deadline time.Time) error {
-	candidates := stg.client.ListObjects(context.Background(), stg.Config.AwsS3BucketName, minio.ListObjectsOptions{
+// Prune rotates away backups according to the configuration and provided deadline for the S3/Minio storage backend.
+func (stg *s3Storage) Prune(deadline time.Time, pruningPrefix string) error {
+	candidates := stg.client.ListObjects(context.Background(), stg.bucket, minio.ListObjectsOptions{
 		WithMetadata: true,
-		Prefix:       filepath.Join(stg.Config.AwsS3Path, stg.Config.BackupPruningPrefix),
+		Prefix:       filepath.Join(stg.DestinationPath, pruningPrefix),
 		Recursive:    true,
 	})
 
@@ -109,7 +118,7 @@ func (stg *S3Storage) Prune(deadline time.Time) error {
 		}
 	}
 
-	stg.Stats.Storages.S3 = t.StorageStats{
+	stg.Stats.Storages.S3 = types.StorageStats{
 		Total:  uint(lenCandidates),
 		Pruned: uint(len(matches)),
 	}
@@ -122,7 +131,7 @@ func (stg *S3Storage) Prune(deadline time.Time) error {
 			}
 			close(objectsCh)
 		}()
-		errChan := stg.client.RemoveObjects(context.Background(), stg.Config.AwsS3BucketName, objectsCh, minio.RemoveObjectsOptions{})
+		errChan := stg.client.RemoveObjects(context.Background(), stg.bucket, objectsCh, minio.RemoveObjectsOptions{})
 		var removeErrors []error
 		for result := range errChan {
 			if result.Err != nil {
@@ -130,7 +139,7 @@ func (stg *S3Storage) Prune(deadline time.Time) error {
 			}
 		}
 		if len(removeErrors) != 0 {
-			return u.Join(removeErrors...)
+			return utilites.Join(removeErrors...)
 		}
 		return nil
 	})
