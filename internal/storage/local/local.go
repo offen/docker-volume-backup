@@ -33,6 +33,10 @@ func InitLocal(c *t.Config, l *logrus.Logger, s *t.Stats) *strg.StorageBackend {
 
 // Specific copy function for the local storage provider.
 func (stg *LocalStorage) Copy(file string) error {
+	if _, err := os.Stat(stg.Config.BackupArchive); os.IsNotExist(err) {
+		return nil
+	}
+
 	_, name := path.Split(file)
 
 	if err := u.CopyFile(file, path.Join(stg.Config.BackupArchive, name)); err != nil {
