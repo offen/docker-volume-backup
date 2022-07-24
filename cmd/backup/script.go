@@ -123,7 +123,7 @@ func newScript() (*script, error) {
 
 	if s.c.SSHHostName != "" {
 		if sshBackend, err := ssh.NewStorageBackend(s.c.SSHHostName, s.c.SSHPort, s.c.SSHUser, s.c.SSHPassword, s.c.SSHIdentityFile,
-			s.c.SSHIdentityPassphrase, s.c.WebdavPath, s.logger, s.stats); err != nil {
+			s.c.SSHIdentityPassphrase, s.c.SSHRemotePath, s.logger, s.stats); err != nil {
 			return nil, err
 		} else {
 			s.storagePool = append(s.storagePool, sshBackend)
