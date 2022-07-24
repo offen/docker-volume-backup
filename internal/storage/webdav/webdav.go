@@ -1,4 +1,4 @@
-package storages
+package webdav
 
 import (
 	"errors"
@@ -11,22 +11,19 @@ import (
 	"strings"
 	"time"
 
-	t "github.com/offen/docker-volume-backup/cmd/backup/types"
+	strg "github.com/offen/docker-volume-backup/internal/storage"
+	t "github.com/offen/docker-volume-backup/internal/types"
 	"github.com/sirupsen/logrus"
 	"github.com/studio-b12/gowebdav"
 )
 
 type WebDavStorage struct {
-	*GenericStorage
+	*strg.StorageBackend
 	client *gowebdav.Client
 }
 
 // Specific init procedure for the WebDav storage provider.
-func InitWebDav(c *t.Config, l *logrus.Logger) (*WebDavStorage, error) {
-	if c.WebdavUrl == "" {
-		return nil, nil
-	}
-
+func InitWebDav(c *t.Config, l *logrus.Logger, s *t.Stats) (*strg.StorageBackend, error) {
 	if c.WebdavUsername == "" || c.WebdavPassword == "" {
 		return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
 	} else {
@@ -42,40 +39,47 @@ func InitWebDav(c *t.Config, l *logrus.Logger) (*WebDavStorage, error) {
 			webdavClient.SetTransport(webdavTransport)
 		}
 
-		a := &GenericStorage{&WebDavStorage{}, l, c}
+		a := &strg.StorageBackend{
+			Storage: &WebDavStorage{},
+			Name:    "WebDav",
+			Logger:  l,
+			Config:  c,
+			Stats:   s,
+		}
 		r := &WebDavStorage{a, webdavClient}
-		return r, nil
+		a.Storage = r
+		return a, nil
 	}
 }
 
 // Specific copy function for the WebDav storage provider.
-func (stg *WebDavStorage) copy(file string) error {
+func (stg *WebDavStorage) Copy(file string) error {
 	bytes, err := os.ReadFile(file)
 	_, name := path.Split(file)
 	if err != nil {
 		return fmt.Errorf("copyBackup: error reading the file to be uploaded: %w", err)
 	}
-	if err := stg.client.MkdirAll(stg.config.WebdavPath, 0644); err != nil {
-		return fmt.Errorf("copyBackup: error creating directory '%s' on WebDAV server: %w", stg.config.WebdavPath, err)
+	if err := stg.client.MkdirAll(stg.Config.WebdavPath, 0644); err != nil {
+		return fmt.Errorf("copyBackup: error creating directory '%s' on WebDAV server: %w", stg.Config.WebdavPath, err)
 	}
-	if err := stg.client.Write(filepath.Join(stg.config.WebdavPath, name), bytes, 0644); err != nil {
+	if err := stg.client.Write(filepath.Join(stg.Config.WebdavPath, name), bytes, 0644); err != nil {
 		return fmt.Errorf("copyBackup: error uploading the file to WebDAV server: %w", err)
 	}
-	stg.logger.Infof("Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", file, stg.config.WebdavUrl, stg.config.WebdavPath)
+	stg.Logger.Infof("Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", file, stg.Config.WebdavUrl, stg.Config.WebdavPath)
 
 	return nil
 }
 
 // Specific prune function for the WebDav storage provider.
-func (stg *WebDavStorage) prune(deadline time.Time) (*t.StorageStats, error) {
-	candidates, err := stg.client.ReadDir(stg.config.WebdavPath)
+func (stg *WebDavStorage) Prune(deadline time.Time) error {
+	candidates, err := stg.client.ReadDir(stg.Config.WebdavPath)
 	if err != nil {
-		return nil, fmt.Errorf("pruneBackups: error looking up candidates from remote storage: %w", err)
+		return fmt.Errorf("pruneBackups: error looking up candidates from remote storage: %w", err)
 	}
 	var matches []fs.FileInfo
 	var lenCandidates int
 	for _, candidate := range candidates {
-		if !strings.HasPrefix(candidate.Name(), stg.config.BackupPruningPrefix) {
+		if !strings.HasPrefix(candidate.Name(), stg.Config.BackupPruningPrefix) {
 			continue
 		}
 		lenCandidates++
@@ -84,19 +88,19 @@ func (stg *WebDavStorage) prune(deadline time.Time) (*t.StorageStats, error) {
 		}
 	}
 
-	stats := t.StorageStats{
+	stg.Stats.Storages.WebDAV = t.StorageStats{
 		Total:  uint(lenCandidates),
 		Pruned: uint(len(matches)),
 	}
 
-	stg.doPrune(len(matches), lenCandidates, "WebDAV backup(s)", func() error {
+	stg.DoPrune(len(matches), lenCandidates, "WebDAV backup(s)", func() error {
 		for _, match := range matches {
-			if err := stg.client.Remove(filepath.Join(stg.config.WebdavPath, match.Name())); err != nil {
+			if err := stg.client.Remove(filepath.Join(stg.Config.WebdavPath, match.Name())); err != nil {
 				return fmt.Errorf("pruneBackups: error removing file from WebDAV storage: %w", err)
 			}
 		}
 		return nil
 	})
 
-	return &stats, nil
+	return nil
 }

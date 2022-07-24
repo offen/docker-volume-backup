@@ -14,9 +14,13 @@ import (
 	"text/template"
 	"time"
 
-	strg "github.com/offen/docker-volume-backup/cmd/backup/storages"
-	t "github.com/offen/docker-volume-backup/cmd/backup/types"
-	u "github.com/offen/docker-volume-backup/cmd/backup/utilities"
+	strg "github.com/offen/docker-volume-backup/internal/storage"
+	"github.com/offen/docker-volume-backup/internal/storage/local"
+	"github.com/offen/docker-volume-backup/internal/storage/s3"
+	"github.com/offen/docker-volume-backup/internal/storage/ssh"
+	"github.com/offen/docker-volume-backup/internal/storage/webdav"
+	t "github.com/offen/docker-volume-backup/internal/types"
+	u "github.com/offen/docker-volume-backup/internal/utilities"
 
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
@@ -34,13 +38,13 @@ import (
 // script holds all the stateful information required to orchestrate a
 // single backup run.
 type script struct {
-	cli       *client.Client
-	providers *strg.StoragePool
-	logger    *logrus.Logger
-	sender    *router.ServiceRouter
-	template  *template.Template
-	hooks     []hook
-	hookLevel hookLevel
+	cli         *client.Client
+	storagePool []*strg.StorageBackend
+	logger      *logrus.Logger
+	sender      *router.ServiceRouter
+	template    *template.Template
+	hooks       []hook
+	hookLevel   hookLevel
 
 	file  string
 	stats *t.Stats
@@ -99,10 +103,32 @@ func newScript() (*script, error) {
 		s.cli = cli
 	}
 
-	s.providers = &strg.StoragePool{}
-	if err = s.providers.InitAll(s.c, s.logger); err != nil {
-		return nil, err
+	if s.c.AwsS3BucketName != "" {
+		if s3Backend, err := s3.InitS3(s.c, s.logger, s.stats); err != nil {
+			return nil, err
+		} else {
+			s.storagePool = append(s.storagePool, s3Backend)
+		}
 	}
+
+	if s.c.WebdavUrl != "" {
+		if webdavBackend, err := webdav.InitWebDav(s.c, s.logger, s.stats); err != nil {
+			return nil, err
+		} else {
+			s.storagePool = append(s.storagePool, webdavBackend)
+		}
+	}
+
+	if s.c.SSHHostName != "" {
+		if sshBackend, err := ssh.InitSSH(s.c, s.logger, s.stats); err != nil {
+			return nil, err
+		} else {
+			s.storagePool = append(s.storagePool, sshBackend)
+		}
+	}
+
+	localBackend := local.InitLocal(s.c, s.logger, s.stats)
+	s.storagePool = append(s.storagePool, localBackend)
 
 	if s.c.EmailNotificationRecipient != "" {
 		emailURL := fmt.Sprintf(
@@ -418,8 +444,10 @@ func (s *script) copyArchive() error {
 		}
 	}
 
-	if err := s.providers.CopyAll(s.file); err != nil {
-		return fmt.Errorf("copyBackup: error for at least one storage provider: %w", err)
+	for _, backend := range s.storagePool {
+		if err := backend.Copy(s.file); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -435,8 +463,10 @@ func (s *script) pruneBackups() error {
 
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
 
-	if err := s.providers.PruneAll(deadline); err != nil {
-		return fmt.Errorf("pruneBackup: error for at least one storage provider: %w", err)
+	for _, backend := range s.storagePool {
+		if err := backend.Prune(deadline); err != nil {
+			return err
+		}
 	}
 
 	return nil

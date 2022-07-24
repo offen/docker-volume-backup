@@ -12,8 +12,8 @@ import (
 	"time"
 
 	sTypes "github.com/containrrr/shoutrrr/pkg/types"
-	t "github.com/offen/docker-volume-backup/cmd/backup/types"
-	u "github.com/offen/docker-volume-backup/cmd/backup/utilities"
+	t "github.com/offen/docker-volume-backup/internal/types"
+	u "github.com/offen/docker-volume-backup/internal/utilities"
 )
 
 //go:embed notifications.tmpl

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
-	u "github.com/offen/docker-volume-backup/cmd/backup/utilities"
+	u "github.com/offen/docker-volume-backup/internal/utilities"
 )
 
 // lock opens a lockfile at the given location, keeping it locked until the

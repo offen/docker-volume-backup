@@ -1,4 +1,4 @@
-package storages
+package local
 
 import (
 	"fmt"
@@ -7,54 +7,62 @@ import (
 	"path/filepath"
 	"time"
 
-	t "github.com/offen/docker-volume-backup/cmd/backup/types"
-	u "github.com/offen/docker-volume-backup/cmd/backup/utilities"
+	strg "github.com/offen/docker-volume-backup/internal/storage"
+	t "github.com/offen/docker-volume-backup/internal/types"
+	u "github.com/offen/docker-volume-backup/internal/utilities"
 	"github.com/sirupsen/logrus"
 )
 
 type LocalStorage struct {
-	*GenericStorage
+	*strg.StorageBackend
 }
 
 // Specific init procedure for the local storage provider.
-func InitLocal(c *t.Config, l *logrus.Logger) *LocalStorage {
-	a := &GenericStorage{&LocalStorage{}, l, c}
+func InitLocal(c *t.Config, l *logrus.Logger, s *t.Stats) *strg.StorageBackend {
+	a := &strg.StorageBackend{
+		Storage: &LocalStorage{},
+		Name:    "Local",
+		Logger:  l,
+		Config:  c,
+		Stats:   s,
+	}
 	r := &LocalStorage{a}
-	return r
+	a.Storage = r
+	return a
 }
 
 // Specific copy function for the local storage provider.
-func (stg *LocalStorage) copy(file string) error {
+func (stg *LocalStorage) Copy(file string) error {
 	_, name := path.Split(file)
 
-	if err := u.CopyFile(file, path.Join(stg.config.BackupArchive, name)); err != nil {
+	if err := u.CopyFile(file, path.Join(stg.Config.BackupArchive, name)); err != nil {
 		return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 	}
-	stg.logger.Infof("Stored copy of backup `%s` in local archive `%s`.", file, stg.config.BackupArchive)
+	stg.Logger.Infof("Stored copy of backup `%s` in local archive `%s`.", file, stg.Config.BackupArchive)
 
-	if stg.config.BackupLatestSymlink != "" {
-		symlink := path.Join(stg.config.BackupArchive, stg.config.BackupLatestSymlink)
+	if stg.Config.BackupLatestSymlink != "" {
+		symlink := path.Join(stg.Config.BackupArchive, stg.Config.BackupLatestSymlink)
 		if _, err := os.Lstat(symlink); err == nil {
 			os.Remove(symlink)
 		}
 		if err := os.Symlink(name, symlink); err != nil {
 			return fmt.Errorf("copyBackup: error creating latest symlink: %w", err)
 		}
-		stg.logger.Infof("Created/Updated symlink `%s` for latest backup.", stg.config.BackupLatestSymlink)
+		stg.Logger.Infof("Created/Updated symlink `%s` for latest backup.", stg.Config.BackupLatestSymlink)
 	}
 
 	return nil
 }
 
 // Specific prune function for the local storage provider.
-func (stg *LocalStorage) prune(deadline time.Time) (*t.StorageStats, error) {
+func (stg *LocalStorage) Prune(deadline time.Time) error {
 	globPattern := path.Join(
-		stg.config.BackupArchive,
-		fmt.Sprintf("%s*", stg.config.BackupPruningPrefix),
+		stg.Config.BackupArchive,
+		fmt.Sprintf("%s*", stg.Config.BackupPruningPrefix),
 	)
 	globMatches, err := filepath.Glob(globPattern)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return fmt.Errorf(
 			"pruneBackups: error looking up matching files using pattern %s: %w",
 			globPattern,
 			err,
@@ -65,7 +73,7 @@ func (stg *LocalStorage) prune(deadline time.Time) (*t.StorageStats, error) {
 	for _, candidate := range globMatches {
 		fi, err := os.Lstat(candidate)
 		if err != nil {
-			return nil, fmt.Errorf(
+			return fmt.Errorf(
 				"pruneBackups: error calling Lstat on file %s: %w",
 				candidate,
 				err,
@@ -81,7 +89,7 @@ func (stg *LocalStorage) prune(deadline time.Time) (*t.StorageStats, error) {
 	for _, candidate := range candidates {
 		fi, err := os.Stat(candidate)
 		if err != nil {
-			return nil, fmt.Errorf(
+			return fmt.Errorf(
 				"pruneBackups: error calling stat on file %s: %w",
 				candidate,
 				err,
@@ -92,12 +100,12 @@ func (stg *LocalStorage) prune(deadline time.Time) (*t.StorageStats, error) {
 		}
 	}
 
-	stats := t.StorageStats{
+	stg.Stats.Storages.Local = t.StorageStats{
 		Total:  uint(len(candidates)),
 		Pruned: uint(len(matches)),
 	}
 
-	stg.doPrune(len(matches), len(candidates), "local backup(s)", func() error {
+	stg.DoPrune(len(matches), len(candidates), "local backup(s)", func() error {
 		var removeErrors []error
 		for _, match := range matches {
 			if err := os.Remove(match); err != nil {
@@ -114,5 +122,5 @@ func (stg *LocalStorage) prune(deadline time.Time) (*t.StorageStats, error) {
 		return nil
 	})
 
-	return &stats, nil
+	return nil
 }
