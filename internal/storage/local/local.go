@@ -45,7 +45,7 @@ func (stg *localStorage) Copy(file string) error {
 	_, name := path.Split(file)
 
 	if err := utilites.CopyFile(file, path.Join(stg.DestinationPath, name)); err != nil {
-		return stg.Log(storage.ERROR, stg.Name, "copyBackup: error copying file to local archive: %w", err)
+		return stg.Log(storage.ERROR, stg.Name, "Copy: Error copying file to local archive! %w", err)
 	}
 	stg.Log(storage.INFO, stg.Name, "Stored copy of backup `%s` in local archive `%s`.", file, stg.DestinationPath)
 
