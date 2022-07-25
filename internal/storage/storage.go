@@ -18,7 +18,7 @@ type StorageBackend struct {
 	Name            string
 	DestinationPath string
 	RetentionDays   int
-	Log             func(logType LogType, msg string, params ...interface{})
+	Log             LogFuncDef
 	Stats           *t.Stats
 }
 
@@ -30,6 +30,8 @@ const (
 	ERROR   LogType = "ERROR"
 )
 
+type LogFuncDef func(logType LogType, context string, msg string, params ...interface{}) error
+
 // DoPrune holds general control flow that applies to any kind of storage.
 // Callers can pass in a thunk that performs the actual deletion of files.
 func (stg *StorageBackend) DoPrune(lenMatches, lenCandidates int, description string, doRemoveFiles func() error) error {
@@ -37,7 +39,7 @@ func (stg *StorageBackend) DoPrune(lenMatches, lenCandidates int, description st
 		if err := doRemoveFiles(); err != nil {
 			return err
 		}
-		stg.Log(INFO,
+		stg.Log(INFO, stg.Name,
 			"Pruned %d out of %d %s as their age exceeded the configured retention period of %d days.",
 			lenMatches,
 			lenCandidates,
@@ -45,10 +47,10 @@ func (stg *StorageBackend) DoPrune(lenMatches, lenCandidates int, description st
 			stg.RetentionDays,
 		)
 	} else if lenMatches != 0 && lenMatches == lenCandidates {
-		stg.Log(WARNING, "The current configuration would delete all %d existing %s.", lenMatches, description)
-		stg.Log(WARNING, "Refusing to do so, please check your configuration.")
+		stg.Log(WARNING, stg.Name, "The current configuration would delete all %d existing %s.", lenMatches, description)
+		stg.Log(WARNING, stg.Name, "Refusing to do so, please check your configuration.")
 	} else {
-		stg.Log(INFO, "None of %d existing %s were pruned.", lenCandidates, description)
+		stg.Log(INFO, stg.Name, "None of %d existing %s were pruned.", lenCandidates, description)
 	}
 	return nil
 }

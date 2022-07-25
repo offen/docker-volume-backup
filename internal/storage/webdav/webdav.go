@@ -2,7 +2,6 @@ package webdav
 
 import (
 	"errors"
-	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -24,7 +23,7 @@ type webDavStorage struct {
 
 // NewStorageBackend creates and initializes a new WebDav storage backend.
 func NewStorageBackend(url string, remotePath string, username string, password string, urlInsecure bool,
-	logFunc func(logType storage.LogType, msg string, params ...interface{}), s *types.Stats) (storage.Backend, error) {
+	logFunc storage.LogFuncDef, s *types.Stats) (storage.Backend, error) {
 
 	if username == "" || password == "" {
 		return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
@@ -62,15 +61,15 @@ func (stg *webDavStorage) Copy(file string) error {
 	bytes, err := os.ReadFile(file)
 	_, name := path.Split(file)
 	if err != nil {
-		return fmt.Errorf("copyBackup: error reading the file to be uploaded: %w", err)
+		return stg.Log(storage.ERROR, stg.Name, "Copy: Error reading the file to be uploaded! %w", err)
 	}
 	if err := stg.client.MkdirAll(stg.DestinationPath, 0644); err != nil {
-		return fmt.Errorf("copyBackup: error creating directory '%s' on WebDAV server: %w", stg.DestinationPath, err)
+		return stg.Log(storage.ERROR, stg.Name, "Copy: Error creating directory '%s' on WebDAV server! %w", stg.DestinationPath, err)
 	}
 	if err := stg.client.Write(filepath.Join(stg.DestinationPath, name), bytes, 0644); err != nil {
-		return fmt.Errorf("copyBackup: error uploading the file to WebDAV server: %w", err)
+		return stg.Log(storage.ERROR, stg.Name, "Copy: Error uploading the file to WebDAV server! %w", err)
 	}
-	stg.Log(storage.INFO, "Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", file, stg.url, stg.DestinationPath)
+	stg.Log(storage.INFO, stg.Name, "Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", file, stg.url, stg.DestinationPath)
 
 	return nil
 }
@@ -79,7 +78,7 @@ func (stg *webDavStorage) Copy(file string) error {
 func (stg *webDavStorage) Prune(deadline time.Time, pruningPrefix string) error {
 	candidates, err := stg.client.ReadDir(stg.DestinationPath)
 	if err != nil {
-		return fmt.Errorf("pruneBackups: error looking up candidates from remote storage: %w", err)
+		return stg.Log(storage.ERROR, stg.Name, "Prune: Error looking up candidates from remote storage! %w", err)
 	}
 	var matches []fs.FileInfo
 	var lenCandidates int
@@ -101,7 +100,7 @@ func (stg *webDavStorage) Prune(deadline time.Time, pruningPrefix string) error 
 	stg.DoPrune(len(matches), lenCandidates, "WebDAV backup(s)", func() error {
 		for _, match := range matches {
 			if err := stg.client.Remove(filepath.Join(stg.DestinationPath, match.Name())); err != nil {
-				return fmt.Errorf("pruneBackups: error removing file from WebDAV storage: %w", err)
+				return stg.Log(storage.ERROR, stg.Name, "Prune: Error removing file from WebDAV storage! %w", err)
 			}
 		}
 		return nil

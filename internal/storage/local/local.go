@@ -18,7 +18,9 @@ type localStorage struct {
 }
 
 // NewStorageBackend creates and initializes a new local storage backend.
-func NewStorageBackend(archivePath string, latestSymlink string, logFunc func(logType storage.LogType, msg string, params ...interface{}), s *types.Stats) storage.Backend {
+func NewStorageBackend(archivePath string, latestSymlink string, logFunc storage.LogFuncDef,
+	s *types.Stats) storage.Backend {
+
 	strgBackend := &storage.StorageBackend{
 		Backend:         &localStorage{},
 		Name:            "Local",
@@ -43,9 +45,9 @@ func (stg *localStorage) Copy(file string) error {
 	_, name := path.Split(file)
 
 	if err := utilites.CopyFile(file, path.Join(stg.DestinationPath, name)); err != nil {
-		return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
+		return stg.Log(storage.ERROR, stg.Name, "copyBackup: error copying file to local archive: %w", err)
 	}
-	stg.Log(storage.INFO, "Stored copy of backup `%s` in local archive `%s`.", file, stg.DestinationPath)
+	stg.Log(storage.INFO, stg.Name, "Stored copy of backup `%s` in local archive `%s`.", file, stg.DestinationPath)
 
 	if stg.latestSymlink != "" {
 		symlink := path.Join(stg.DestinationPath, stg.latestSymlink)
@@ -53,9 +55,9 @@ func (stg *localStorage) Copy(file string) error {
 			os.Remove(symlink)
 		}
 		if err := os.Symlink(name, symlink); err != nil {
-			return fmt.Errorf("copyBackup: error creating latest symlink: %w", err)
+			return stg.Log(storage.ERROR, stg.Name, "Copy: error creating latest symlink! %w", err)
 		}
-		stg.Log(storage.INFO, "Created/Updated symlink `%s` for latest backup.", stg.latestSymlink)
+		stg.Log(storage.INFO, stg.Name, "Created/Updated symlink `%s` for latest backup.", stg.latestSymlink)
 	}
 
 	return nil
@@ -69,8 +71,8 @@ func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) error {
 	)
 	globMatches, err := filepath.Glob(globPattern)
 	if err != nil {
-		return fmt.Errorf(
-			"pruneBackups: error looking up matching files using pattern %s: %w",
+		return stg.Log(storage.ERROR, stg.Name,
+			"Prune: Error looking up matching files using pattern %s! %w",
 			globPattern,
 			err,
 		)
@@ -80,8 +82,8 @@ func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) error {
 	for _, candidate := range globMatches {
 		fi, err := os.Lstat(candidate)
 		if err != nil {
-			return fmt.Errorf(
-				"pruneBackups: error calling Lstat on file %s: %w",
+			return stg.Log(storage.ERROR, stg.Name,
+				"Prune: Error calling Lstat on file %s! %w",
 				candidate,
 				err,
 			)
@@ -96,8 +98,8 @@ func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) error {
 	for _, candidate := range candidates {
 		fi, err := os.Stat(candidate)
 		if err != nil {
-			return fmt.Errorf(
-				"pruneBackups: error calling stat on file %s: %w",
+			return stg.Log(storage.ERROR, stg.Name,
+				"Prune: Error calling stat on file %s! %w",
 				candidate,
 				err,
 			)
@@ -120,8 +122,8 @@ func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) error {
 			}
 		}
 		if len(removeErrors) != 0 {
-			return fmt.Errorf(
-				"pruneBackups: %d error(s) deleting local files, starting with: %w",
+			return stg.Log(storage.ERROR, stg.Name,
+				"Prune: %d error(s) deleting local files, starting with: %w",
 				len(removeErrors),
 				utilites.Join(removeErrors...),
 			)

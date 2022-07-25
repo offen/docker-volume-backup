@@ -3,7 +3,6 @@ package s3
 import (
 	"context"
 	"errors"
-	"fmt"
 	"path"
 	"path/filepath"
 	"time"
@@ -24,7 +23,7 @@ type s3Storage struct {
 
 // NewStorageBackend creates and initializes a new S3/Minio storage backend.
 func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey string, iamRoleEndpoint string, endpointProto string, endpointInsecure bool,
-	remotePath string, bucket string, storageClass string, logFunc func(logType storage.LogType, msg string, params ...interface{}), s *types.Stats) (storage.Backend, error) {
+	remotePath string, bucket string, storageClass string, logFunc storage.LogFuncDef, s *types.Stats) (storage.Backend, error) {
 
 	var creds *credentials.Credentials
 	if accessKeyId != "" && secretAccessKey != "" {
@@ -51,7 +50,7 @@ func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey stri
 
 		transport, err := minio.DefaultTransport(true)
 		if err != nil {
-			return nil, fmt.Errorf("newScript: failed to create default minio transport")
+			return nil, logFunc(storage.ERROR, "S3", "NewScript: failed to create default minio transport")
 		}
 		transport.TLSClientConfig.InsecureSkipVerify = true
 		options.Transport = transport
@@ -59,7 +58,7 @@ func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey stri
 
 	mc, err := minio.New(endpoint, &options)
 	if err != nil {
-		return nil, fmt.Errorf("newScript: error setting up minio client: %w", err)
+		return nil, logFunc(storage.ERROR, "S3", "NewScript: error setting up minio client: %w", err)
 	}
 
 	strgBackend := &storage.StorageBackend{
@@ -87,9 +86,9 @@ func (stg *s3Storage) Copy(file string) error {
 		ContentType:  "application/tar+gzip",
 		StorageClass: stg.storageClass,
 	}); err != nil {
-		return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
+		return stg.Log(storage.ERROR, stg.Name, "Copy: Error uploading backup to remote storage! %w", err)
 	}
-	stg.Log(storage.INFO, "Uploaded a copy of backup `%s` to bucket `%s`.", file, stg.bucket)
+	stg.Log(storage.INFO, stg.Name, "Uploaded a copy of backup `%s` to bucket `%s`.", file, stg.bucket)
 
 	return nil
 }
@@ -107,8 +106,8 @@ func (stg *s3Storage) Prune(deadline time.Time, pruningPrefix string) error {
 	for candidate := range candidates {
 		lenCandidates++
 		if candidate.Err != nil {
-			return fmt.Errorf(
-				"pruneBackups: error looking up candidates from remote storage: %w",
+			return stg.Log(storage.ERROR, stg.Name,
+				"Prune: Error looking up candidates from remote storage! %w",
 				candidate.Err,
 			)
 		}

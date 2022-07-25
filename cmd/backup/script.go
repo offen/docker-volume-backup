@@ -103,14 +103,23 @@ func newScript() (*script, error) {
 		s.cli = cli
 	}
 
-	logFunc := func(logType storage.LogType, msg string, params ...interface{}) {
+	logFunc := func(logType storage.LogType, context string, msg string, params ...interface{}) error {
+		var allParams []interface{}
+		allParams = append(allParams, context)
+		allParams = append(allParams, params...)
+
 		switch logType {
 		case storage.INFO:
-			s.logger.Infof(msg, params)
+			s.logger.Infof("[%s] "+msg, allParams...)
+			return nil
 		case storage.WARNING:
-			s.logger.Warnf(msg, params)
+			s.logger.Warnf("[%s] "+msg, allParams...)
+			return nil
 		case storage.ERROR:
-			s.logger.Errorf(msg, params)
+			return fmt.Errorf("[%s] "+msg, allParams...)
+		default:
+			s.logger.Warnf("[%s] "+msg, allParams...)
+			return nil
 		}
 	}
 
