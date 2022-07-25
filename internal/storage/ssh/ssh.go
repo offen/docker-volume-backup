@@ -14,7 +14,6 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"github.com/offen/docker-volume-backup/internal/types"
 	"github.com/pkg/sftp"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -27,7 +26,7 @@ type sshStorage struct {
 
 // NewStorageBackend creates and initializes a new SSH storage backend.
 func NewStorageBackend(hostName string, port string, user string, password string, identityFile string, identityPassphrase string, remotePath string,
-	l *logrus.Logger, s *types.Stats) (storage.Backend, error) {
+	logFunc func(logType storage.LogType, msg string, params ...interface{}), s *types.Stats) (storage.Backend, error) {
 
 	var authMethods []ssh.AuthMethod
 
@@ -81,7 +80,7 @@ func NewStorageBackend(hostName string, port string, user string, password strin
 		Backend:         &sshStorage{},
 		Name:            "SSH",
 		DestinationPath: remotePath,
-		Logger:          l,
+		Log:             logFunc,
 		Stats:           s,
 	}
 	sshBackend := &sshStorage{
@@ -139,7 +138,7 @@ func (stg *sshStorage) Copy(file string) error {
 		}
 	}
 
-	stg.Logger.Infof("Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", file, stg.hostName, stg.DestinationPath)
+	stg.Log(storage.INFO, "Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", file, stg.hostName, stg.DestinationPath)
 
 	return nil
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"github.com/offen/docker-volume-backup/internal/types"
 	utilites "github.com/offen/docker-volume-backup/internal/utilities"
-	"github.com/sirupsen/logrus"
 )
 
 type localStorage struct {
@@ -19,12 +18,12 @@ type localStorage struct {
 }
 
 // NewStorageBackend creates and initializes a new local storage backend.
-func NewStorageBackend(archivePath string, latestSymlink string, l *logrus.Logger, s *types.Stats) storage.Backend {
+func NewStorageBackend(archivePath string, latestSymlink string, logFunc func(logType storage.LogType, msg string, params ...interface{}), s *types.Stats) storage.Backend {
 	strgBackend := &storage.StorageBackend{
 		Backend:         &localStorage{},
 		Name:            "Local",
 		DestinationPath: archivePath,
-		Logger:          l,
+		Log:             logFunc,
 		Stats:           s,
 	}
 	localBackend := &localStorage{
@@ -46,7 +45,7 @@ func (stg *localStorage) Copy(file string) error {
 	if err := utilites.CopyFile(file, path.Join(stg.DestinationPath, name)); err != nil {
 		return fmt.Errorf("copyBackup: error copying file to local archive: %w", err)
 	}
-	stg.Logger.Infof("Stored copy of backup `%s` in local archive `%s`.", file, stg.DestinationPath)
+	stg.Log(storage.INFO, "Stored copy of backup `%s` in local archive `%s`.", file, stg.DestinationPath)
 
 	if stg.latestSymlink != "" {
 		symlink := path.Join(stg.DestinationPath, stg.latestSymlink)
@@ -56,7 +55,7 @@ func (stg *localStorage) Copy(file string) error {
 		if err := os.Symlink(name, symlink); err != nil {
 			return fmt.Errorf("copyBackup: error creating latest symlink: %w", err)
 		}
-		stg.Logger.Infof("Created/Updated symlink `%s` for latest backup.", stg.latestSymlink)
+		stg.Log(storage.INFO, "Created/Updated symlink `%s` for latest backup.", stg.latestSymlink)
 	}
 
 	return nil

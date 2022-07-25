@@ -13,7 +13,6 @@ import (
 
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"github.com/offen/docker-volume-backup/internal/types"
-	"github.com/sirupsen/logrus"
 	"github.com/studio-b12/gowebdav"
 )
 
@@ -24,7 +23,9 @@ type webDavStorage struct {
 }
 
 // NewStorageBackend creates and initializes a new WebDav storage backend.
-func NewStorageBackend(url string, remotePath string, username string, password string, urlInsecure bool, l *logrus.Logger, s *types.Stats) (storage.Backend, error) {
+func NewStorageBackend(url string, remotePath string, username string, password string, urlInsecure bool,
+	logFunc func(logType storage.LogType, msg string, params ...interface{}), s *types.Stats) (storage.Backend, error) {
+
 	if username == "" || password == "" {
 		return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
 	} else {
@@ -44,7 +45,7 @@ func NewStorageBackend(url string, remotePath string, username string, password 
 			Backend:         &webDavStorage{},
 			Name:            "WebDav",
 			DestinationPath: remotePath,
-			Logger:          l,
+			Log:             logFunc,
 			Stats:           s,
 		}
 		webdavBackend := &webDavStorage{
@@ -69,7 +70,7 @@ func (stg *webDavStorage) Copy(file string) error {
 	if err := stg.client.Write(filepath.Join(stg.DestinationPath, name), bytes, 0644); err != nil {
 		return fmt.Errorf("copyBackup: error uploading the file to WebDAV server: %w", err)
 	}
-	stg.Logger.Infof("Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", file, stg.url, stg.DestinationPath)
+	stg.Log(storage.INFO, "Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", file, stg.url, stg.DestinationPath)
 
 	return nil
 }

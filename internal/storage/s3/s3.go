@@ -13,7 +13,6 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"github.com/offen/docker-volume-backup/internal/types"
 	utilites "github.com/offen/docker-volume-backup/internal/utilities"
-	"github.com/sirupsen/logrus"
 )
 
 type s3Storage struct {
@@ -25,7 +24,7 @@ type s3Storage struct {
 
 // NewStorageBackend creates and initializes a new S3/Minio storage backend.
 func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey string, iamRoleEndpoint string, endpointProto string, endpointInsecure bool,
-	remotePath string, bucket string, storageClass string, l *logrus.Logger, s *types.Stats) (storage.Backend, error) {
+	remotePath string, bucket string, storageClass string, logFunc func(logType storage.LogType, msg string, params ...interface{}), s *types.Stats) (storage.Backend, error) {
 
 	var creds *credentials.Credentials
 	if accessKeyId != "" && secretAccessKey != "" {
@@ -67,7 +66,7 @@ func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey stri
 		Backend:         &s3Storage{},
 		Name:            "S3",
 		DestinationPath: remotePath,
-		Logger:          l,
+		Log:             logFunc,
 		Stats:           s,
 	}
 	sshBackend := &s3Storage{
@@ -90,7 +89,7 @@ func (stg *s3Storage) Copy(file string) error {
 	}); err != nil {
 		return fmt.Errorf("copyBackup: error uploading backup to remote storage: %w", err)
 	}
-	stg.Logger.Infof("Uploaded a copy of backup `%s` to bucket `%s`.", file, stg.bucket)
+	stg.Log(storage.INFO, "Uploaded a copy of backup `%s` to bucket `%s`.", file, stg.bucket)
 
 	return nil
 }
