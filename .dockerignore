@@ -1,1 +1,8 @@
 test
+.cirecleci
+.github
+docs
+.editorconfig
+Dockerfile
+LICENSE
+README.md

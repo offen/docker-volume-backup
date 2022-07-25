@@ -4,10 +4,8 @@
 FROM golang:1.18-alpine as builder
 
 WORKDIR /app
-COPY go.mod go.sum ./
+COPY . .
 RUN go mod download
-COPY cmd/backup ./cmd/backup/
-COPY internal ./internal
 WORKDIR /app/cmd/backup
 RUN go build -o backup .
 
