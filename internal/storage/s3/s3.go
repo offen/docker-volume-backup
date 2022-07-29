@@ -23,7 +23,7 @@ type s3Storage struct {
 
 // NewStorageBackend creates and initializes a new S3/Minio storage backend.
 func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey string, iamRoleEndpoint string, endpointProto string, endpointInsecure bool,
-	remotePath string, bucket string, storageClass string, logFunc storage.LogFuncDef, s *types.Stats) (storage.Backend, error) {
+	remotePath string, bucket string, storageClass string, logFunc storage.LogFuncDef, stats *types.StorageStats) (storage.Backend, error) {
 
 	var creds *credentials.Credentials
 	if accessKeyId != "" && secretAccessKey != "" {
@@ -66,7 +66,7 @@ func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey stri
 		Name:            "S3",
 		DestinationPath: remotePath,
 		Log:             logFunc,
-		Stats:           s,
+		Stats:           stats,
 	}
 	sshBackend := &s3Storage{
 		StorageBackend: strgBackend,
@@ -116,7 +116,7 @@ func (stg *s3Storage) Prune(deadline time.Time, pruningPrefix string) error {
 		}
 	}
 
-	stg.Stats.Storages.S3 = types.StorageStats{
+	stg.Stats = &types.StorageStats{
 		Total:  uint(lenCandidates),
 		Pruned: uint(len(matches)),
 	}

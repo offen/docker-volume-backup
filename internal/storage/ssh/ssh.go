@@ -26,7 +26,7 @@ type sshStorage struct {
 
 // NewStorageBackend creates and initializes a new SSH storage backend.
 func NewStorageBackend(hostName string, port string, user string, password string, identityFile string, identityPassphrase string, remotePath string,
-	logFunc storage.LogFuncDef, s *types.Stats) (storage.Backend, error) {
+	logFunc storage.LogFuncDef, stats *types.StorageStats) (storage.Backend, error) {
 
 	var authMethods []ssh.AuthMethod
 
@@ -81,7 +81,7 @@ func NewStorageBackend(hostName string, port string, user string, password strin
 		Name:            "SSH",
 		DestinationPath: remotePath,
 		Log:             logFunc,
-		Stats:           s,
+		Stats:           stats,
 	}
 	sshBackend := &sshStorage{
 		StorageBackend: strgBackend,
@@ -160,7 +160,7 @@ func (stg *sshStorage) Prune(deadline time.Time, pruningPrefix string) error {
 		}
 	}
 
-	stg.Stats.Storages.SSH = types.StorageStats{
+	stg.Stats = &types.StorageStats{
 		Total:  uint(len(candidates)),
 		Pruned: uint(len(matches)),
 	}

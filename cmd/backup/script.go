@@ -51,7 +51,7 @@ type script struct {
 
 	encounteredLock bool
 
-	c *t.Config
+	c *Config
 }
 
 // newScript creates all resources needed for the script to perform actions against
@@ -61,7 +61,7 @@ type script struct {
 func newScript() (*script, error) {
 	stdOut, logBuffer := utilites.Buffer(os.Stdout)
 	s := &script{
-		c: &t.Config{},
+		c: &Config{},
 		logger: &logrus.Logger{
 			Out:       stdOut,
 			Formatter: new(logrus.TextFormatter),
@@ -125,7 +125,7 @@ func newScript() (*script, error) {
 
 	if s.c.AwsS3BucketName != "" {
 		if s3Backend, err := s3.NewStorageBackend(s.c.AwsEndpoint, s.c.AwsAccessKeyID, s.c.AwsSecretAccessKey, s.c.AwsIamRoleEndpoint,
-			s.c.AwsEndpointProto, s.c.AwsEndpointInsecure, s.c.AwsS3Path, s.c.AwsS3BucketName, s.c.AwsStorageClass, logFunc, s.stats); err != nil {
+			s.c.AwsEndpointProto, s.c.AwsEndpointInsecure, s.c.AwsS3Path, s.c.AwsS3BucketName, s.c.AwsStorageClass, logFunc, &s.stats.Storages.S3); err != nil {
 			return nil, err
 		} else {
 			s.storagePool = append(s.storagePool, s3Backend)
@@ -134,7 +134,7 @@ func newScript() (*script, error) {
 
 	if s.c.WebdavUrl != "" {
 		if webdavBackend, err := webdav.NewStorageBackend(s.c.WebdavUrl, s.c.WebdavPath, s.c.WebdavUsername, s.c.WebdavPassword,
-			s.c.WebdavUrlInsecure, logFunc, s.stats); err != nil {
+			s.c.WebdavUrlInsecure, logFunc, &s.stats.Storages.WebDAV); err != nil {
 			return nil, err
 		} else {
 			s.storagePool = append(s.storagePool, webdavBackend)
@@ -143,14 +143,14 @@ func newScript() (*script, error) {
 
 	if s.c.SSHHostName != "" {
 		if sshBackend, err := ssh.NewStorageBackend(s.c.SSHHostName, s.c.SSHPort, s.c.SSHUser, s.c.SSHPassword, s.c.SSHIdentityFile,
-			s.c.SSHIdentityPassphrase, s.c.SSHRemotePath, logFunc, s.stats); err != nil {
+			s.c.SSHIdentityPassphrase, s.c.SSHRemotePath, logFunc, &s.stats.Storages.SSH); err != nil {
 			return nil, err
 		} else {
 			s.storagePool = append(s.storagePool, sshBackend)
 		}
 	}
 
-	localBackend := local.NewStorageBackend(s.c.BackupArchive, s.c.BackupLatestSymlink, logFunc, s.stats)
+	localBackend := local.NewStorageBackend(s.c.BackupArchive, s.c.BackupLatestSymlink, logFunc, &s.stats.Storages.Local)
 	s.storagePool = append(s.storagePool, localBackend)
 
 	if s.c.EmailNotificationRecipient != "" {
@@ -490,6 +490,7 @@ func (s *script) pruneBackups() error {
 		if err := backend.Prune(deadline, s.c.BackupPruningPrefix); err != nil {
 			return err
 		}
+
 	}
 
 	return nil

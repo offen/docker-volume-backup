@@ -18,15 +18,14 @@ type localStorage struct {
 }
 
 // NewStorageBackend creates and initializes a new local storage backend.
-func NewStorageBackend(archivePath string, latestSymlink string, logFunc storage.LogFuncDef,
-	s *types.Stats) storage.Backend {
+func NewStorageBackend(archivePath string, latestSymlink string, logFunc storage.LogFuncDef, stats *types.StorageStats) storage.Backend {
 
 	strgBackend := &storage.StorageBackend{
 		Backend:         &localStorage{},
 		Name:            "Local",
 		DestinationPath: archivePath,
 		Log:             logFunc,
-		Stats:           s,
+		Stats:           stats,
 	}
 	localBackend := &localStorage{
 		StorageBackend: strgBackend,
@@ -109,7 +108,7 @@ func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) error {
 		}
 	}
 
-	stg.Stats.Storages.Local = types.StorageStats{
+	stg.Stats = &types.StorageStats{
 		Total:  uint(len(candidates)),
 		Pruned: uint(len(matches)),
 	}

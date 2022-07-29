@@ -22,7 +22,7 @@ var defaultNotifications string
 // NotificationData data to be passed to the notification templates
 type NotificationData struct {
 	Error  error
-	Config *t.Config
+	Config *Config
 	Stats  *t.Stats
 }
 

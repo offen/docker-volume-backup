@@ -19,7 +19,7 @@ type StorageBackend struct {
 	DestinationPath string
 	RetentionDays   int
 	Log             LogFuncDef
-	Stats           *t.Stats
+	Stats           *t.StorageStats
 }
 
 type LogType string

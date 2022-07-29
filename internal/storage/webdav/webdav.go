@@ -23,7 +23,7 @@ type webDavStorage struct {
 
 // NewStorageBackend creates and initializes a new WebDav storage backend.
 func NewStorageBackend(url string, remotePath string, username string, password string, urlInsecure bool,
-	logFunc storage.LogFuncDef, s *types.Stats) (storage.Backend, error) {
+	logFunc storage.LogFuncDef, stats *types.StorageStats) (storage.Backend, error) {
 
 	if username == "" || password == "" {
 		return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
@@ -45,7 +45,7 @@ func NewStorageBackend(url string, remotePath string, username string, password 
 			Name:            "WebDav",
 			DestinationPath: remotePath,
 			Log:             logFunc,
-			Stats:           s,
+			Stats:           stats,
 		}
 		webdavBackend := &webDavStorage{
 			StorageBackend: strgBackend,
@@ -92,7 +92,7 @@ func (stg *webDavStorage) Prune(deadline time.Time, pruningPrefix string) error 
 		}
 	}
 
-	stg.Stats.Storages.WebDAV = types.StorageStats{
+	stg.Stats = &types.StorageStats{
 		Total:  uint(lenCandidates),
 		Pruned: uint(len(matches)),
 	}
