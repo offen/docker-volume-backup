@@ -33,6 +33,7 @@ func NewStorageBackend(archivePath string, latestSymlink string, logFunc storage
 	return strgBackend
 }
 
+// GetName return the name of the storage backend through the interface
 func (stg *localStorage) GetName() string {
 	return stg.Name
 }

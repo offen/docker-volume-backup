@@ -76,6 +76,7 @@ func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey stri
 	return strgBackend, nil
 }
 
+// GetName return the name of the storage backend through the interface
 func (stg *s3Storage) GetName() string {
 	return stg.Name
 }

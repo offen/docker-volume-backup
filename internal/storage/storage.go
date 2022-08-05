@@ -4,14 +4,14 @@ import (
 	"time"
 )
 
-// Interface for defining functions which all storage providers support.
+// Backend is an interface for defining functions which all storage providers support.
 type Backend interface {
 	Copy(file string) error
 	Prune(deadline time.Time, pruningPrefix string) (*PruneStats, error)
 	GetName() string
 }
 
-// Generic type of storage. Everything here are common properties of all storage types.
+// StorageBackend is a generic type of storage. Everything here are common properties of all storage types.
 type StorageBackend struct {
 	Backend
 	Name            string
@@ -30,6 +30,7 @@ const (
 
 type LogFuncDef func(logType LogType, context string, msg string, params ...interface{}) error
 
+// PruneStats is a wrapper struct for returning stats after pruning
 type PruneStats struct {
 	Total  uint
 	Pruned uint

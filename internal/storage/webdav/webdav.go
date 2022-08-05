@@ -54,6 +54,7 @@ func NewStorageBackend(url string, remotePath string, username string, password 
 	}
 }
 
+// GetName return the name of the storage backend through the interface
 func (stg *webDavStorage) GetName() string {
 	return stg.Name
 }

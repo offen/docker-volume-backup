@@ -91,6 +91,7 @@ func NewStorageBackend(hostName string, port string, user string, password strin
 	return strgBackend, nil
 }
 
+// GetName return the name of the storage backend through the interface
 func (stg *sshStorage) GetName() string {
 	return stg.Name
 }
