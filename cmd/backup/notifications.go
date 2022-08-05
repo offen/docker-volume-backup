@@ -12,7 +12,6 @@ import (
 	"time"
 
 	sTypes "github.com/containrrr/shoutrrr/pkg/types"
-	t "github.com/offen/docker-volume-backup/internal/types"
 	utilites "github.com/offen/docker-volume-backup/internal/utilities"
 )
 
@@ -23,7 +22,7 @@ var defaultNotifications string
 type NotificationData struct {
 	Error  error
 	Config *Config
-	Stats  *t.Stats
+	Stats  *Stats
 }
 
 // notify sends a notification using the given title and body templates.

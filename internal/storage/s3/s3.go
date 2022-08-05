@@ -10,7 +10,6 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/offen/docker-volume-backup/internal/storage"
-	"github.com/offen/docker-volume-backup/internal/types"
 	utilites "github.com/offen/docker-volume-backup/internal/utilities"
 )
 
@@ -23,7 +22,7 @@ type s3Storage struct {
 
 // NewStorageBackend creates and initializes a new S3/Minio storage backend.
 func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey string, iamRoleEndpoint string, endpointProto string, endpointInsecure bool,
-	remotePath string, bucket string, storageClass string, logFunc storage.LogFuncDef, stats *types.StorageStats) (storage.Backend, error) {
+	remotePath string, bucket string, storageClass string, logFunc storage.LogFuncDef) (storage.Backend, error) {
 
 	var creds *credentials.Credentials
 	if accessKeyId != "" && secretAccessKey != "" {
@@ -66,7 +65,6 @@ func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey stri
 		Name:            "S3",
 		DestinationPath: remotePath,
 		Log:             logFunc,
-		Stats:           stats,
 	}
 	sshBackend := &s3Storage{
 		StorageBackend: strgBackend,
@@ -76,6 +74,10 @@ func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey stri
 	}
 	strgBackend.Backend = sshBackend
 	return strgBackend, nil
+}
+
+func (stg *s3Storage) GetName() string {
+	return stg.Name
 }
 
 // Copy copies the given file to the S3/Minio storage backend.
@@ -94,7 +96,7 @@ func (stg *s3Storage) Copy(file string) error {
 }
 
 // Prune rotates away backups according to the configuration and provided deadline for the S3/Minio storage backend.
-func (stg *s3Storage) Prune(deadline time.Time, pruningPrefix string) error {
+func (stg *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
 	candidates := stg.client.ListObjects(context.Background(), stg.bucket, minio.ListObjectsOptions{
 		WithMetadata: true,
 		Prefix:       filepath.Join(stg.DestinationPath, pruningPrefix),
@@ -106,7 +108,7 @@ func (stg *s3Storage) Prune(deadline time.Time, pruningPrefix string) error {
 	for candidate := range candidates {
 		lenCandidates++
 		if candidate.Err != nil {
-			return stg.Log(storage.ERROR, stg.Name,
+			return nil, stg.Log(storage.ERROR, stg.Name,
 				"Prune: Error looking up candidates from remote storage! %w",
 				candidate.Err,
 			)
@@ -116,7 +118,7 @@ func (stg *s3Storage) Prune(deadline time.Time, pruningPrefix string) error {
 		}
 	}
 
-	stg.Stats = &types.StorageStats{
+	stats := &storage.PruneStats{
 		Total:  uint(lenCandidates),
 		Pruned: uint(len(matches)),
 	}
@@ -142,5 +144,5 @@ func (stg *s3Storage) Prune(deadline time.Time, pruningPrefix string) error {
 		return nil
 	})
 
-	return nil
+	return stats, nil
 }

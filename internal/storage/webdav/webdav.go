@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/offen/docker-volume-backup/internal/storage"
-	"github.com/offen/docker-volume-backup/internal/types"
 	"github.com/studio-b12/gowebdav"
 )
 
@@ -23,7 +22,7 @@ type webDavStorage struct {
 
 // NewStorageBackend creates and initializes a new WebDav storage backend.
 func NewStorageBackend(url string, remotePath string, username string, password string, urlInsecure bool,
-	logFunc storage.LogFuncDef, stats *types.StorageStats) (storage.Backend, error) {
+	logFunc storage.LogFuncDef) (storage.Backend, error) {
 
 	if username == "" || password == "" {
 		return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
@@ -42,10 +41,9 @@ func NewStorageBackend(url string, remotePath string, username string, password 
 
 		strgBackend := &storage.StorageBackend{
 			Backend:         &webDavStorage{},
-			Name:            "WebDav",
 			DestinationPath: remotePath,
 			Log:             logFunc,
-			Stats:           stats,
+			Name:            "WebDav",
 		}
 		webdavBackend := &webDavStorage{
 			StorageBackend: strgBackend,
@@ -54,6 +52,10 @@ func NewStorageBackend(url string, remotePath string, username string, password 
 		strgBackend.Backend = webdavBackend
 		return strgBackend, nil
 	}
+}
+
+func (stg *webDavStorage) GetName() string {
+	return stg.Name
 }
 
 // Copy copies the given file to the WebDav storage backend.
@@ -75,10 +77,10 @@ func (stg *webDavStorage) Copy(file string) error {
 }
 
 // Prune rotates away backups according to the configuration and provided deadline for the WebDav storage backend.
-func (stg *webDavStorage) Prune(deadline time.Time, pruningPrefix string) error {
+func (stg *webDavStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
 	candidates, err := stg.client.ReadDir(stg.DestinationPath)
 	if err != nil {
-		return stg.Log(storage.ERROR, stg.Name, "Prune: Error looking up candidates from remote storage! %w", err)
+		return nil, stg.Log(storage.ERROR, stg.Name, "Prune: Error looking up candidates from remote storage! %w", err)
 	}
 	var matches []fs.FileInfo
 	var lenCandidates int
@@ -92,7 +94,7 @@ func (stg *webDavStorage) Prune(deadline time.Time, pruningPrefix string) error 
 		}
 	}
 
-	stg.Stats = &types.StorageStats{
+	stats := &storage.PruneStats{
 		Total:  uint(lenCandidates),
 		Pruned: uint(len(matches)),
 	}
@@ -106,5 +108,5 @@ func (stg *webDavStorage) Prune(deadline time.Time, pruningPrefix string) error 
 		return nil
 	})
 
-	return nil
+	return stats, nil
 }

@@ -2,14 +2,13 @@ package storage
 
 import (
 	"time"
-
-	t "github.com/offen/docker-volume-backup/internal/types"
 )
 
 // Interface for defining functions which all storage providers support.
 type Backend interface {
 	Copy(file string) error
-	Prune(deadline time.Time, pruningPrefix string) error
+	Prune(deadline time.Time, pruningPrefix string) (*PruneStats, error)
+	GetName() string
 }
 
 // Generic type of storage. Everything here are common properties of all storage types.
@@ -19,7 +18,6 @@ type StorageBackend struct {
 	DestinationPath string
 	RetentionDays   int
 	Log             LogFuncDef
-	Stats           *t.StorageStats
 }
 
 type LogType string
@@ -31,6 +29,11 @@ const (
 )
 
 type LogFuncDef func(logType LogType, context string, msg string, params ...interface{}) error
+
+type PruneStats struct {
+	Total  uint
+	Pruned uint
+}
 
 // DoPrune holds general control flow that applies to any kind of storage.
 // Callers can pass in a thunk that performs the actual deletion of files.

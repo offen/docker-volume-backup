@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/offen/docker-volume-backup/internal/storage"
-	"github.com/offen/docker-volume-backup/internal/types"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
@@ -26,7 +25,7 @@ type sshStorage struct {
 
 // NewStorageBackend creates and initializes a new SSH storage backend.
 func NewStorageBackend(hostName string, port string, user string, password string, identityFile string, identityPassphrase string, remotePath string,
-	logFunc storage.LogFuncDef, stats *types.StorageStats) (storage.Backend, error) {
+	logFunc storage.LogFuncDef) (storage.Backend, error) {
 
 	var authMethods []ssh.AuthMethod
 
@@ -81,7 +80,6 @@ func NewStorageBackend(hostName string, port string, user string, password strin
 		Name:            "SSH",
 		DestinationPath: remotePath,
 		Log:             logFunc,
-		Stats:           stats,
 	}
 	sshBackend := &sshStorage{
 		StorageBackend: strgBackend,
@@ -91,6 +89,10 @@ func NewStorageBackend(hostName string, port string, user string, password strin
 	}
 	strgBackend.Backend = sshBackend
 	return strgBackend, nil
+}
+
+func (stg *sshStorage) GetName() string {
+	return stg.Name
 }
 
 // Copy copies the given file to the SSH storage backend.
@@ -144,10 +146,10 @@ func (stg *sshStorage) Copy(file string) error {
 }
 
 // Prune rotates away backups according to the configuration and provided deadline for the SSH storage backend.
-func (stg *sshStorage) Prune(deadline time.Time, pruningPrefix string) error {
+func (stg *sshStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
 	candidates, err := stg.sftpClient.ReadDir(stg.DestinationPath)
 	if err != nil {
-		return stg.Log(storage.ERROR, stg.Name, "Prune: Error reading directory from SSH storage! %w", err)
+		return nil, stg.Log(storage.ERROR, stg.Name, "Prune: Error reading directory from SSH storage! %w", err)
 	}
 
 	var matches []string
@@ -160,7 +162,7 @@ func (stg *sshStorage) Prune(deadline time.Time, pruningPrefix string) error {
 		}
 	}
 
-	stg.Stats = &types.StorageStats{
+	stats := &storage.PruneStats{
 		Total:  uint(len(candidates)),
 		Pruned: uint(len(matches)),
 	}
@@ -174,5 +176,5 @@ func (stg *sshStorage) Prune(deadline time.Time, pruningPrefix string) error {
 		return nil
 	})
 
-	return nil
+	return stats, nil
 }

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/offen/docker-volume-backup/internal/storage"
-	"github.com/offen/docker-volume-backup/internal/types"
 	utilites "github.com/offen/docker-volume-backup/internal/utilities"
 )
 
@@ -18,14 +17,13 @@ type localStorage struct {
 }
 
 // NewStorageBackend creates and initializes a new local storage backend.
-func NewStorageBackend(archivePath string, latestSymlink string, logFunc storage.LogFuncDef, stats *types.StorageStats) storage.Backend {
+func NewStorageBackend(archivePath string, latestSymlink string, logFunc storage.LogFuncDef) storage.Backend {
 
 	strgBackend := &storage.StorageBackend{
 		Backend:         &localStorage{},
 		Name:            "Local",
 		DestinationPath: archivePath,
 		Log:             logFunc,
-		Stats:           stats,
 	}
 	localBackend := &localStorage{
 		StorageBackend: strgBackend,
@@ -33,6 +31,10 @@ func NewStorageBackend(archivePath string, latestSymlink string, logFunc storage
 	}
 	strgBackend.Backend = localBackend
 	return strgBackend
+}
+
+func (stg *localStorage) GetName() string {
+	return stg.Name
 }
 
 // Copy copies the given file to the local storage backend.
@@ -63,14 +65,14 @@ func (stg *localStorage) Copy(file string) error {
 }
 
 // Prune rotates away backups according to the configuration and provided deadline for the local storage backend.
-func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) error {
+func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
 	globPattern := path.Join(
 		stg.DestinationPath,
 		fmt.Sprintf("%s*", pruningPrefix),
 	)
 	globMatches, err := filepath.Glob(globPattern)
 	if err != nil {
-		return stg.Log(storage.ERROR, stg.Name,
+		return nil, stg.Log(storage.ERROR, stg.Name,
 			"Prune: Error looking up matching files using pattern %s! %w",
 			globPattern,
 			err,
@@ -81,7 +83,7 @@ func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) error {
 	for _, candidate := range globMatches {
 		fi, err := os.Lstat(candidate)
 		if err != nil {
-			return stg.Log(storage.ERROR, stg.Name,
+			return nil, stg.Log(storage.ERROR, stg.Name,
 				"Prune: Error calling Lstat on file %s! %w",
 				candidate,
 				err,
@@ -97,7 +99,7 @@ func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) error {
 	for _, candidate := range candidates {
 		fi, err := os.Stat(candidate)
 		if err != nil {
-			return stg.Log(storage.ERROR, stg.Name,
+			return nil, stg.Log(storage.ERROR, stg.Name,
 				"Prune: Error calling stat on file %s! %w",
 				candidate,
 				err,
@@ -108,7 +110,7 @@ func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) error {
 		}
 	}
 
-	stg.Stats = &types.StorageStats{
+	stats := &storage.PruneStats{
 		Total:  uint(len(candidates)),
 		Pruned: uint(len(matches)),
 	}
@@ -130,5 +132,5 @@ func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) error {
 		return nil
 	})
 
-	return nil
+	return stats, nil
 }

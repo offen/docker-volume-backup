@@ -19,7 +19,6 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage/s3"
 	"github.com/offen/docker-volume-backup/internal/storage/ssh"
 	"github.com/offen/docker-volume-backup/internal/storage/webdav"
-	t "github.com/offen/docker-volume-backup/internal/types"
 	utilites "github.com/offen/docker-volume-backup/internal/utilities"
 
 	"github.com/containrrr/shoutrrr"
@@ -47,7 +46,7 @@ type script struct {
 	hookLevel   hookLevel
 
 	file  string
-	stats *t.Stats
+	stats *Stats
 
 	encounteredLock bool
 
@@ -68,10 +67,10 @@ func newScript() (*script, error) {
 			Hooks:     make(logrus.LevelHooks),
 			Level:     logrus.InfoLevel,
 		},
-		stats: &t.Stats{
+		stats: &Stats{
 			StartTime: time.Now(),
 			LogOutput: logBuffer,
-			Storages:  t.StoragesStats{},
+			Storages:  map[string]StorageStats{},
 		},
 	}
 
@@ -125,7 +124,7 @@ func newScript() (*script, error) {
 
 	if s.c.AwsS3BucketName != "" {
 		if s3Backend, err := s3.NewStorageBackend(s.c.AwsEndpoint, s.c.AwsAccessKeyID, s.c.AwsSecretAccessKey, s.c.AwsIamRoleEndpoint,
-			s.c.AwsEndpointProto, s.c.AwsEndpointInsecure, s.c.AwsS3Path, s.c.AwsS3BucketName, s.c.AwsStorageClass, logFunc, &s.stats.Storages.S3); err != nil {
+			s.c.AwsEndpointProto, s.c.AwsEndpointInsecure, s.c.AwsS3Path, s.c.AwsS3BucketName, s.c.AwsStorageClass, logFunc); err != nil {
 			return nil, err
 		} else {
 			s.storagePool = append(s.storagePool, s3Backend)
@@ -134,7 +133,7 @@ func newScript() (*script, error) {
 
 	if s.c.WebdavUrl != "" {
 		if webdavBackend, err := webdav.NewStorageBackend(s.c.WebdavUrl, s.c.WebdavPath, s.c.WebdavUsername, s.c.WebdavPassword,
-			s.c.WebdavUrlInsecure, logFunc, &s.stats.Storages.WebDAV); err != nil {
+			s.c.WebdavUrlInsecure, logFunc); err != nil {
 			return nil, err
 		} else {
 			s.storagePool = append(s.storagePool, webdavBackend)
@@ -143,14 +142,14 @@ func newScript() (*script, error) {
 
 	if s.c.SSHHostName != "" {
 		if sshBackend, err := ssh.NewStorageBackend(s.c.SSHHostName, s.c.SSHPort, s.c.SSHUser, s.c.SSHPassword, s.c.SSHIdentityFile,
-			s.c.SSHIdentityPassphrase, s.c.SSHRemotePath, logFunc, &s.stats.Storages.SSH); err != nil {
+			s.c.SSHIdentityPassphrase, s.c.SSHRemotePath, logFunc); err != nil {
 			return nil, err
 		} else {
 			s.storagePool = append(s.storagePool, sshBackend)
 		}
 	}
 
-	localBackend := local.NewStorageBackend(s.c.BackupArchive, s.c.BackupLatestSymlink, logFunc, &s.stats.Storages.Local)
+	localBackend := local.NewStorageBackend(s.c.BackupArchive, s.c.BackupLatestSymlink, logFunc)
 	s.storagePool = append(s.storagePool, localBackend)
 
 	if s.c.EmailNotificationRecipient != "" {
@@ -280,7 +279,7 @@ func (s *script) stopContainers() (func() error, error) {
 		)
 	}
 
-	s.stats.Containers = t.ContainersStats{
+	s.stats.Containers = ContainersStats{
 		All:     uint(len(allContainers)),
 		ToStop:  uint(len(containersToStop)),
 		Stopped: uint(len(stoppedContainers)),
@@ -460,7 +459,7 @@ func (s *script) copyArchive() error {
 		return fmt.Errorf("copyBackup: unable to stat backup file: %w", err)
 	} else {
 		size := stat.Size()
-		s.stats.BackupFile = t.BackupFileStats{
+		s.stats.BackupFile = BackupFileStats{
 			Size:     uint64(size),
 			Name:     name,
 			FullPath: s.file,
@@ -487,10 +486,15 @@ func (s *script) pruneBackups() error {
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
 
 	for _, backend := range s.storagePool {
-		if err := backend.Prune(deadline, s.c.BackupPruningPrefix); err != nil {
+		if stats, err := backend.Prune(deadline, s.c.BackupPruningPrefix); err == nil {
+			s.stats.Storages[backend.GetName()] = StorageStats{
+				Total:  stats.Total,
+				Pruned: stats.Pruned,
+			}
+
+		} else {
 			return err
 		}
-
 	}
 
 	return nil
