@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sort"
 
-	utilites "github.com/offen/docker-volume-backup/internal/utilities"
+	"github.com/offen/docker-volume-backup/internal/utilities"
 )
 
 // hook contains a queued action that can be trigger them when the script

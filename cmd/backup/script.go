@@ -19,7 +19,7 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage/s3"
 	"github.com/offen/docker-volume-backup/internal/storage/ssh"
 	"github.com/offen/docker-volume-backup/internal/storage/webdav"
-	utilites "github.com/offen/docker-volume-backup/internal/utilities"
+	"github.com/offen/docker-volume-backup/internal/utilities"
 
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"

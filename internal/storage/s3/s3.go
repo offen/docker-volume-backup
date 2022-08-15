@@ -10,7 +10,7 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/offen/docker-volume-backup/internal/storage"
-	utilites "github.com/offen/docker-volume-backup/internal/utilities"
+	"github.com/offen/docker-volume-backup/internal/utilities"
 )
 
 type s3Storage struct {

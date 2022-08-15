@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/offen/docker-volume-backup/internal/storage"
-	utilites "github.com/offen/docker-volume-backup/internal/utilities"
+	"github.com/offen/docker-volume-backup/internal/utilities"
 )
 
 type localStorage struct {
