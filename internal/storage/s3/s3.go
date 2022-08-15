@@ -89,7 +89,8 @@ func (stg *s3Storage) Copy(file string) error {
 		ContentType:  "application/tar+gzip",
 		StorageClass: stg.storageClass,
 	}); err != nil {
-		return stg.Log(storage.ERROR, stg.Name, "Copy: Error uploading backup to remote storage! %w", err)
+		errResp := minio.ToErrorResponse(err)
+		return stg.Log(storage.ERROR, stg.Name, "Copy: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d", errResp.Message, errResp.Code, errResp.StatusCode)
 	}
 	stg.Log(storage.INFO, stg.Name, "Uploaded a copy of backup `%s` to bucket `%s`.", file, stg.bucket)
 
