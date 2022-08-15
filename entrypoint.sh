@@ -13,7 +13,7 @@ if [ ! -d "/etc/dockervolumebackup/conf.d" ]; then
 else
   echo "/etc/dockervolumebackup/conf.d was found, using configuration files from this directory."
 
-  crontab -r && touch /etc/crontabs/root
+  crontab -r && crontab /dev/null
   for file in /etc/dockervolumebackup/conf.d/*; do
     source $file
     BACKUP_CRON_EXPRESSION="${BACKUP_CRON_EXPRESSION:-@daily}"
