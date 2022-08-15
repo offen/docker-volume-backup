@@ -58,7 +58,7 @@ type script struct {
 // reading from env vars or other configuration sources is expected to happen
 // in this method.
 func newScript() (*script, error) {
-	stdOut, logBuffer := utilites.Buffer(os.Stdout)
+	stdOut, logBuffer := utilities.Buffer(os.Stdout)
 	s := &script{
 		c: &Config{},
 		logger: &logrus.Logger{
@@ -228,14 +228,14 @@ func newScript() (*script, error) {
 // restart everything that has been stopped.
 func (s *script) stopContainers() (func() error, error) {
 	if s.cli == nil {
-		return utilites.Noop, nil
+		return utilities.Noop, nil
 	}
 
 	allContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
 		Quiet: true,
 	})
 	if err != nil {
-		return utilites.Noop, fmt.Errorf("stopContainersAndRun: error querying for containers: %w", err)
+		return utilities.Noop, fmt.Errorf("stopContainersAndRun: error querying for containers: %w", err)
 	}
 
 	containerLabel := fmt.Sprintf(
@@ -251,11 +251,11 @@ func (s *script) stopContainers() (func() error, error) {
 	})
 
 	if err != nil {
-		return utilites.Noop, fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
+		return utilities.Noop, fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
 	}
 
 	if len(containersToStop) == 0 {
-		return utilites.Noop, nil
+		return utilities.Noop, nil
 	}
 
 	s.logger.Infof(
@@ -280,7 +280,7 @@ func (s *script) stopContainers() (func() error, error) {
 		stopError = fmt.Errorf(
 			"stopContainersAndRun: %d error(s) stopping containers: %w",
 			len(stopErrors),
-			utilites.Join(stopErrors...),
+			utilities.Join(stopErrors...),
 		)
 	}
 
@@ -331,7 +331,7 @@ func (s *script) stopContainers() (func() error, error) {
 			return fmt.Errorf(
 				"stopContainersAndRun: %d error(s) restarting containers and services: %w",
 				len(restartErrors),
-				utilites.Join(restartErrors...),
+				utilities.Join(restartErrors...),
 			)
 		}
 		s.logger.Infof(
@@ -357,7 +357,7 @@ func (s *script) createArchive() error {
 		backupSources = filepath.Join("/tmp", s.c.BackupSources)
 		// copy before compressing guard against a situation where backup folder's content are still growing.
 		s.registerHook(hookLevelPlumbing, func(error) error {
-			if err := utilites.Remove(backupSources); err != nil {
+			if err := utilities.Remove(backupSources); err != nil {
 				return fmt.Errorf("takeBackup: error removing snapshot: %w", err)
 			}
 			s.logger.Infof("Removed snapshot `%s`.", backupSources)
@@ -374,7 +374,7 @@ func (s *script) createArchive() error {
 
 	tarFile := s.file
 	s.registerHook(hookLevelPlumbing, func(error) error {
-		if err := utilites.Remove(tarFile); err != nil {
+		if err := utilities.Remove(tarFile); err != nil {
 			return fmt.Errorf("takeBackup: error removing tar file: %w", err)
 		}
 		s.logger.Infof("Removed tar file `%s`.", tarFile)
@@ -419,7 +419,7 @@ func (s *script) encryptArchive() error {
 
 	gpgFile := fmt.Sprintf("%s.gpg", s.file)
 	s.registerHook(hookLevelPlumbing, func(error) error {
-		if err := utilites.Remove(gpgFile); err != nil {
+		if err := utilities.Remove(gpgFile); err != nil {
 			return fmt.Errorf("encryptBackup: error removing gpg file: %w", err)
 		}
 		s.logger.Infof("Removed GPG file `%s`.", gpgFile)

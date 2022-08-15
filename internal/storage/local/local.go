@@ -40,7 +40,7 @@ func (b *localStorage) Copy(file string) error {
 
 	_, name := path.Split(file)
 
-	if err := utilites.CopyFile(file, path.Join(b.DestinationPath, name)); err != nil {
+	if err := utilities.CopyFile(file, path.Join(b.DestinationPath, name)); err != nil {
 		return b.Log(storage.ERROR, b.Name(), "Copy: Error copying file to local archive! %w", err)
 	}
 	b.Log(storage.INFO, b.Name(), "Stored copy of backup `%s` in local archive `%s`.", file, b.DestinationPath)
@@ -121,7 +121,7 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 			return b.Log(storage.ERROR, b.Name(),
 				"Prune: %d error(s) deleting local files, starting with: %w",
 				len(removeErrors),
-				utilites.Join(removeErrors...),
+				utilities.Join(removeErrors...),
 			)
 		}
 		return nil

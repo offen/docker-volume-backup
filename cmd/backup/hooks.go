@@ -52,7 +52,7 @@ func (s *script) runHooks(err error) error {
 		}
 	}
 	if len(actionErrors) != 0 {
-		return utilites.Join(actionErrors...)
+		return utilities.Join(actionErrors...)
 	}
 	return nil
 }

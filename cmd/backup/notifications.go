@@ -69,7 +69,7 @@ func (s *script) sendNotification(title, body string) error {
 		}
 	}
 	if len(errs) != 0 {
-		return fmt.Errorf("sendNotification: error sending message: %w", utilites.Join(errs...))
+		return fmt.Errorf("sendNotification: error sending message: %w", utilities.Join(errs...))
 	}
 	return nil
 }

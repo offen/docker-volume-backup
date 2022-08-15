@@ -136,7 +136,7 @@ func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.Pr
 			}
 		}
 		if len(removeErrors) != 0 {
-			return utilites.Join(removeErrors...)
+			return utilities.Join(removeErrors...)
 		}
 		return nil
 	})

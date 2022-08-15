@@ -32,7 +32,7 @@ func (s *script) lock(lockfile string) (func() error, error) {
 	for {
 		acquired, err := fileLock.TryLock()
 		if err != nil {
-			return utilites.Noop, fmt.Errorf("lock: error trying lock: %w", err)
+			return utilities.Noop, fmt.Errorf("lock: error trying lock: %w", err)
 		}
 		if acquired {
 			if s.encounteredLock {
@@ -53,7 +53,7 @@ func (s *script) lock(lockfile string) (func() error, error) {
 		case <-retry.C:
 			continue
 		case <-deadline.C:
-			return utilites.Noop, errors.New("lock: timed out waiting for lockfile to become available")
+			return utilities.Noop, errors.New("lock: timed out waiting for lockfile to become available")
 		}
 	}
 }
