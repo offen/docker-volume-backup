@@ -37,13 +37,13 @@ import (
 // script holds all the stateful information required to orchestrate a
 // single backup run.
 type script struct {
-	cli         *client.Client
-	storagePool []storage.Backend
-	logger      *logrus.Logger
-	sender      *router.ServiceRouter
-	template    *template.Template
-	hooks       []hook
-	hookLevel   hookLevel
+	cli       *client.Client
+	storages  []storage.Backend
+	logger    *logrus.Logger
+	sender    *router.ServiceRouter
+	template  *template.Template
+	hooks     []hook
+	hookLevel hookLevel
 
 	file  string
 	stats *Stats
@@ -127,7 +127,7 @@ func newScript() (*script, error) {
 			s.c.AwsEndpointProto, s.c.AwsEndpointInsecure, s.c.AwsS3Path, s.c.AwsS3BucketName, s.c.AwsStorageClass, logFunc); err != nil {
 			return nil, err
 		} else {
-			s.storagePool = append(s.storagePool, s3Backend)
+			s.storages = append(s.storages, s3Backend)
 		}
 	}
 
@@ -136,7 +136,7 @@ func newScript() (*script, error) {
 			s.c.WebdavUrlInsecure, logFunc); err != nil {
 			return nil, err
 		} else {
-			s.storagePool = append(s.storagePool, webdavBackend)
+			s.storages = append(s.storages, webdavBackend)
 		}
 	}
 
@@ -145,12 +145,12 @@ func newScript() (*script, error) {
 			s.c.SSHIdentityPassphrase, s.c.SSHRemotePath, logFunc); err != nil {
 			return nil, err
 		} else {
-			s.storagePool = append(s.storagePool, sshBackend)
+			s.storages = append(s.storages, sshBackend)
 		}
 	}
 
 	localBackend := local.NewStorageBackend(s.c.BackupArchive, s.c.BackupLatestSymlink, logFunc)
-	s.storagePool = append(s.storagePool, localBackend)
+	s.storages = append(s.storages, localBackend)
 
 	if s.c.EmailNotificationRecipient != "" {
 		emailURL := fmt.Sprintf(
@@ -466,7 +466,7 @@ func (s *script) copyArchive() error {
 		}
 	}
 
-	for _, backend := range s.storagePool {
+	for _, backend := range s.storages {
 		if err := backend.Copy(s.file); err != nil {
 			return err
 		}
@@ -485,7 +485,7 @@ func (s *script) pruneBackups() error {
 
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
 
-	for _, backend := range s.storagePool {
+	for _, backend := range s.storages {
 		if stats, err := backend.Prune(deadline, s.c.BackupPruningPrefix); err == nil {
 			s.stats.Storages[backend.Name()] = StorageStats{
 				Total:  stats.Total,
