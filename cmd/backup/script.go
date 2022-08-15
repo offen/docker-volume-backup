@@ -70,7 +70,12 @@ func newScript() (*script, error) {
 		stats: &Stats{
 			StartTime: time.Now(),
 			LogOutput: logBuffer,
-			Storages:  map[string]StorageStats{},
+			Storages: map[string]StorageStats{
+				"S3":     {},
+				"WebDav": {},
+				"SSH":    {},
+				"Local":  {},
+			},
 		},
 	}
 
