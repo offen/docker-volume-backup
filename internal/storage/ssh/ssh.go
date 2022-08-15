@@ -75,19 +75,15 @@ func NewStorageBackend(hostName string, port string, user string, password strin
 		return nil, logFunc(storage.ERROR, "SSH", "NewScript: error creating sftp client! %w", err)
 	}
 
-	strgBackend := &storage.StorageBackend{
-		Backend:         &sshStorage{},
-		DestinationPath: remotePath,
-		Log:             logFunc,
-	}
-	sshBackend := &sshStorage{
-		StorageBackend: strgBackend,
-		client:         sshClient,
-		sftpClient:     sftpClient,
-		hostName:       hostName,
-	}
-	strgBackend.Backend = sshBackend
-	return strgBackend, nil
+	return &sshStorage{
+		StorageBackend: &storage.StorageBackend{
+			DestinationPath: remotePath,
+			Log:             logFunc,
+		},
+		client:     sshClient,
+		sftpClient: sftpClient,
+		hostName:   hostName,
+	}, nil
 }
 
 // Name returns the name of the storage backend
@@ -167,7 +163,7 @@ func (b *sshStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.P
 		Pruned: uint(len(matches)),
 	}
 
-	b.DoPrune(len(matches), len(candidates), "SSH backup(s)", func() error {
+	b.DoPrune(b.Name(), len(matches), len(candidates), "SSH backup(s)", func() error {
 		for _, match := range matches {
 			if err := b.sftpClient.Remove(filepath.Join(b.DestinationPath, match)); err != nil {
 				return b.Log(storage.ERROR, b.Name(), "Prune: Error removing file from SSH storage! %w", err)

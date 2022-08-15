@@ -39,17 +39,13 @@ func NewStorageBackend(url string, remotePath string, username string, password 
 			webdavClient.SetTransport(webdavTransport)
 		}
 
-		strgBackend := &storage.StorageBackend{
-			Backend:         &webDavStorage{},
-			DestinationPath: remotePath,
-			Log:             logFunc,
-		}
-		webdavBackend := &webDavStorage{
-			StorageBackend: strgBackend,
-			client:         webdavClient,
-		}
-		strgBackend.Backend = webdavBackend
-		return strgBackend, nil
+		return &webDavStorage{
+			StorageBackend: &storage.StorageBackend{
+				DestinationPath: remotePath,
+				Log:             logFunc,
+			},
+			client: webdavClient,
+		}, nil
 	}
 }
 
@@ -99,7 +95,7 @@ func (b *webDavStorage) Prune(deadline time.Time, pruningPrefix string) (*storag
 		Pruned: uint(len(matches)),
 	}
 
-	b.DoPrune(len(matches), lenCandidates, "WebDAV backup(s)", func() error {
+	b.DoPrune(b.Name(), len(matches), lenCandidates, "WebDAV backup(s)", func() error {
 		for _, match := range matches {
 			if err := b.client.Remove(filepath.Join(b.DestinationPath, match.Name())); err != nil {
 				return b.Log(storage.ERROR, b.Name(), "Prune: Error removing file from WebDAV storage! %w", err)

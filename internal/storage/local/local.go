@@ -18,18 +18,13 @@ type localStorage struct {
 
 // NewStorageBackend creates and initializes a new local storage backend.
 func NewStorageBackend(archivePath string, latestSymlink string, logFunc storage.Log) storage.Backend {
-
-	strgBackend := &storage.StorageBackend{
-		Backend:         &localStorage{},
-		DestinationPath: archivePath,
-		Log:             logFunc,
+	return &localStorage{
+		StorageBackend: &storage.StorageBackend{
+			DestinationPath: archivePath,
+			Log:             logFunc,
+		},
+		latestSymlink: latestSymlink,
 	}
-	localBackend := &localStorage{
-		StorageBackend: strgBackend,
-		latestSymlink:  latestSymlink,
-	}
-	strgBackend.Backend = localBackend
-	return strgBackend
 }
 
 // Name return the name of the storage backend
@@ -115,7 +110,7 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 		Pruned: uint(len(matches)),
 	}
 
-	b.DoPrune(len(matches), len(candidates), "local backup(s)", func() error {
+	b.DoPrune(b.Name(), len(matches), len(candidates), "local backup(s)", func() error {
 		var removeErrors []error
 		for _, match := range matches {
 			if err := os.Remove(match); err != nil {

@@ -60,19 +60,15 @@ func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey stri
 		return nil, logFunc(storage.ERROR, "S3", "NewScript: error setting up minio client: %w", err)
 	}
 
-	strgBackend := &storage.StorageBackend{
-		Backend:         &s3Storage{},
-		DestinationPath: remotePath,
-		Log:             logFunc,
-	}
-	sshBackend := &s3Storage{
-		StorageBackend: strgBackend,
-		client:         mc,
-		bucket:         bucket,
-		storageClass:   storageClass,
-	}
-	strgBackend.Backend = sshBackend
-	return strgBackend, nil
+	return &s3Storage{
+		StorageBackend: &storage.StorageBackend{
+			DestinationPath: remotePath,
+			Log:             logFunc,
+		},
+		client:       mc,
+		bucket:       bucket,
+		storageClass: storageClass,
+	}, nil
 }
 
 // Name returns the name of the storage backend
@@ -124,7 +120,7 @@ func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.Pr
 		Pruned: uint(len(matches)),
 	}
 
-	b.DoPrune(len(matches), lenCandidates, "remote backup(s)", func() error {
+	b.DoPrune(b.Name(), len(matches), lenCandidates, "remote backup(s)", func() error {
 		objectsCh := make(chan minio.ObjectInfo)
 		go func() {
 			for _, match := range matches {
