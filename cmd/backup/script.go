@@ -487,7 +487,7 @@ func (s *script) pruneBackups() error {
 
 	for _, backend := range s.storagePool {
 		if stats, err := backend.Prune(deadline, s.c.BackupPruningPrefix); err == nil {
-			s.stats.Storages[backend.GetName()] = StorageStats{
+			s.stats.Storages[backend.Name()] = StorageStats{
 				Total:  stats.Total,
 				Pruned: stats.Pruned,
 			}

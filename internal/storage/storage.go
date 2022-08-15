@@ -8,13 +8,12 @@ import (
 type Backend interface {
 	Copy(file string) error
 	Prune(deadline time.Time, pruningPrefix string) (*PruneStats, error)
-	GetName() string
+	Name() string
 }
 
 // StorageBackend is a generic type of storage. Everything here are common properties of all storage types.
 type StorageBackend struct {
 	Backend
-	Name            string
 	DestinationPath string
 	RetentionDays   int
 	Log             LogFuncDef
@@ -43,7 +42,7 @@ func (stg *StorageBackend) DoPrune(lenMatches, lenCandidates int, description st
 		if err := doRemoveFiles(); err != nil {
 			return err
 		}
-		stg.Log(INFO, stg.Name,
+		stg.Log(INFO, stg.Name(),
 			"Pruned %d out of %d %s as their age exceeded the configured retention period of %d days.",
 			lenMatches,
 			lenCandidates,
@@ -51,10 +50,10 @@ func (stg *StorageBackend) DoPrune(lenMatches, lenCandidates int, description st
 			stg.RetentionDays,
 		)
 	} else if lenMatches != 0 && lenMatches == lenCandidates {
-		stg.Log(WARNING, stg.Name, "The current configuration would delete all %d existing %s.", lenMatches, description)
-		stg.Log(WARNING, stg.Name, "Refusing to do so, please check your configuration.")
+		stg.Log(WARNING, stg.Name(), "The current configuration would delete all %d existing %s.", lenMatches, description)
+		stg.Log(WARNING, stg.Name(), "Refusing to do so, please check your configuration.")
 	} else {
-		stg.Log(INFO, stg.Name, "None of %d existing %s were pruned.", lenCandidates, description)
+		stg.Log(INFO, stg.Name(), "None of %d existing %s were pruned.", lenCandidates, description)
 	}
 	return nil
 }

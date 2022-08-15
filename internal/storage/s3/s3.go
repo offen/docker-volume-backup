@@ -62,7 +62,6 @@ func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey stri
 
 	strgBackend := &storage.StorageBackend{
 		Backend:         &s3Storage{},
-		Name:            "S3",
 		DestinationPath: remotePath,
 		Log:             logFunc,
 	}
@@ -76,9 +75,9 @@ func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey stri
 	return strgBackend, nil
 }
 
-// GetName return the name of the storage backend through the interface
-func (stg *s3Storage) GetName() string {
-	return stg.Name
+// Name returns the name of the storage backend
+func (stg *s3Storage) Name() string {
+	return "S3"
 }
 
 // Copy copies the given file to the S3/Minio storage backend.
@@ -90,9 +89,9 @@ func (stg *s3Storage) Copy(file string) error {
 		StorageClass: stg.storageClass,
 	}); err != nil {
 		errResp := minio.ToErrorResponse(err)
-		return stg.Log(storage.ERROR, stg.Name, "Copy: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d", errResp.Message, errResp.Code, errResp.StatusCode)
+		return stg.Log(storage.ERROR, stg.Name(), "Copy: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d", errResp.Message, errResp.Code, errResp.StatusCode)
 	}
-	stg.Log(storage.INFO, stg.Name, "Uploaded a copy of backup `%s` to bucket `%s`.", file, stg.bucket)
+	stg.Log(storage.INFO, stg.Name(), "Uploaded a copy of backup `%s` to bucket `%s`.", file, stg.bucket)
 
 	return nil
 }
@@ -110,7 +109,7 @@ func (stg *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.
 	for candidate := range candidates {
 		lenCandidates++
 		if candidate.Err != nil {
-			return nil, stg.Log(storage.ERROR, stg.Name,
+			return nil, stg.Log(storage.ERROR, stg.Name(),
 				"Prune: Error looking up candidates from remote storage! %w",
 				candidate.Err,
 			)
