@@ -91,22 +91,22 @@ func NewStorageBackend(hostName string, port string, user string, password strin
 }
 
 // Name returns the name of the storage backend
-func (stg *sshStorage) Name() string {
+func (b *sshStorage) Name() string {
 	return "SSH"
 }
 
 // Copy copies the given file to the SSH storage backend.
-func (stg *sshStorage) Copy(file string) error {
+func (b *sshStorage) Copy(file string) error {
 	source, err := os.Open(file)
 	_, name := path.Split(file)
 	if err != nil {
-		return stg.Log(storage.ERROR, stg.Name(), "Copy: Error reading the file to be uploaded! %w", err)
+		return b.Log(storage.ERROR, b.Name(), "Copy: Error reading the file to be uploaded! %w", err)
 	}
 	defer source.Close()
 
-	destination, err := stg.sftpClient.Create(filepath.Join(stg.DestinationPath, name))
+	destination, err := b.sftpClient.Create(filepath.Join(b.DestinationPath, name))
 	if err != nil {
-		return stg.Log(storage.ERROR, stg.Name(), "Copy: Error creating file on SSH storage! %w", err)
+		return b.Log(storage.ERROR, b.Name(), "Copy: Error creating file on SSH storage! %w", err)
 	}
 	defer destination.Close()
 
@@ -116,40 +116,40 @@ func (stg *sshStorage) Copy(file string) error {
 		if err == io.EOF {
 			tot, err := destination.Write(chunk[:num])
 			if err != nil {
-				return stg.Log(storage.ERROR, stg.Name(), "Copy: Error uploading the file to SSH storage! %w", err)
+				return b.Log(storage.ERROR, b.Name(), "Copy: Error uploading the file to SSH storage! %w", err)
 			}
 
 			if tot != len(chunk[:num]) {
-				return stg.Log(storage.ERROR, stg.Name(), "sshClient: failed to write stream")
+				return b.Log(storage.ERROR, b.Name(), "sshClient: failed to write stream")
 			}
 
 			break
 		}
 
 		if err != nil {
-			return stg.Log(storage.ERROR, stg.Name(), "Copy: Error uploading the file to SSH storage! %w", err)
+			return b.Log(storage.ERROR, b.Name(), "Copy: Error uploading the file to SSH storage! %w", err)
 		}
 
 		tot, err := destination.Write(chunk[:num])
 		if err != nil {
-			return stg.Log(storage.ERROR, stg.Name(), "Copy: Error uploading the file to SSH storage! %w", err)
+			return b.Log(storage.ERROR, b.Name(), "Copy: Error uploading the file to SSH storage! %w", err)
 		}
 
 		if tot != len(chunk[:num]) {
-			return stg.Log(storage.ERROR, stg.Name(), "sshClient: failed to write stream")
+			return b.Log(storage.ERROR, b.Name(), "sshClient: failed to write stream")
 		}
 	}
 
-	stg.Log(storage.INFO, stg.Name(), "Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", file, stg.hostName, stg.DestinationPath)
+	b.Log(storage.INFO, b.Name(), "Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", file, b.hostName, b.DestinationPath)
 
 	return nil
 }
 
 // Prune rotates away backups according to the configuration and provided deadline for the SSH storage backend.
-func (stg *sshStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
-	candidates, err := stg.sftpClient.ReadDir(stg.DestinationPath)
+func (b *sshStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
+	candidates, err := b.sftpClient.ReadDir(b.DestinationPath)
 	if err != nil {
-		return nil, stg.Log(storage.ERROR, stg.Name(), "Prune: Error reading directory from SSH storage! %w", err)
+		return nil, b.Log(storage.ERROR, b.Name(), "Prune: Error reading directory from SSH storage! %w", err)
 	}
 
 	var matches []string
@@ -167,10 +167,10 @@ func (stg *sshStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 		Pruned: uint(len(matches)),
 	}
 
-	stg.DoPrune(len(matches), len(candidates), "SSH backup(s)", func() error {
+	b.DoPrune(len(matches), len(candidates), "SSH backup(s)", func() error {
 		for _, match := range matches {
-			if err := stg.sftpClient.Remove(filepath.Join(stg.DestinationPath, match)); err != nil {
-				return stg.Log(storage.ERROR, stg.Name(), "Prune: Error removing file from SSH storage! %w", err)
+			if err := b.sftpClient.Remove(filepath.Join(b.DestinationPath, match)); err != nil {
+				return b.Log(storage.ERROR, b.Name(), "Prune: Error removing file from SSH storage! %w", err)
 			}
 		}
 		return nil

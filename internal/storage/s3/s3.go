@@ -76,31 +76,31 @@ func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey stri
 }
 
 // Name returns the name of the storage backend
-func (stg *s3Storage) Name() string {
+func (v *s3Storage) Name() string {
 	return "S3"
 }
 
 // Copy copies the given file to the S3/Minio storage backend.
-func (stg *s3Storage) Copy(file string) error {
+func (b *s3Storage) Copy(file string) error {
 	_, name := path.Split(file)
 
-	if _, err := stg.client.FPutObject(context.Background(), stg.bucket, filepath.Join(stg.DestinationPath, name), file, minio.PutObjectOptions{
+	if _, err := b.client.FPutObject(context.Background(), b.bucket, filepath.Join(b.DestinationPath, name), file, minio.PutObjectOptions{
 		ContentType:  "application/tar+gzip",
-		StorageClass: stg.storageClass,
+		StorageClass: b.storageClass,
 	}); err != nil {
 		errResp := minio.ToErrorResponse(err)
-		return stg.Log(storage.ERROR, stg.Name(), "Copy: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d", errResp.Message, errResp.Code, errResp.StatusCode)
+		return b.Log(storage.ERROR, b.Name(), "Copy: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d", errResp.Message, errResp.Code, errResp.StatusCode)
 	}
-	stg.Log(storage.INFO, stg.Name(), "Uploaded a copy of backup `%s` to bucket `%s`.", file, stg.bucket)
+	b.Log(storage.INFO, b.Name(), "Uploaded a copy of backup `%s` to bucket `%s`.", file, b.bucket)
 
 	return nil
 }
 
 // Prune rotates away backups according to the configuration and provided deadline for the S3/Minio storage backend.
-func (stg *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
-	candidates := stg.client.ListObjects(context.Background(), stg.bucket, minio.ListObjectsOptions{
+func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
+	candidates := b.client.ListObjects(context.Background(), b.bucket, minio.ListObjectsOptions{
 		WithMetadata: true,
-		Prefix:       filepath.Join(stg.DestinationPath, pruningPrefix),
+		Prefix:       filepath.Join(b.DestinationPath, pruningPrefix),
 		Recursive:    true,
 	})
 
@@ -109,7 +109,7 @@ func (stg *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.
 	for candidate := range candidates {
 		lenCandidates++
 		if candidate.Err != nil {
-			return nil, stg.Log(storage.ERROR, stg.Name(),
+			return nil, b.Log(storage.ERROR, b.Name(),
 				"Prune: Error looking up candidates from remote storage! %w",
 				candidate.Err,
 			)
@@ -124,7 +124,7 @@ func (stg *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.
 		Pruned: uint(len(matches)),
 	}
 
-	stg.DoPrune(len(matches), lenCandidates, "remote backup(s)", func() error {
+	b.DoPrune(len(matches), lenCandidates, "remote backup(s)", func() error {
 		objectsCh := make(chan minio.ObjectInfo)
 		go func() {
 			for _, match := range matches {
@@ -132,7 +132,7 @@ func (stg *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.
 			}
 			close(objectsCh)
 		}()
-		errChan := stg.client.RemoveObjects(context.Background(), stg.bucket, objectsCh, minio.RemoveObjectsOptions{})
+		errChan := b.client.RemoveObjects(context.Background(), b.bucket, objectsCh, minio.RemoveObjectsOptions{})
 		var removeErrors []error
 		for result := range errChan {
 			if result.Err != nil {

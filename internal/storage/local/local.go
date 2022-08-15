@@ -33,46 +33,46 @@ func NewStorageBackend(archivePath string, latestSymlink string, logFunc storage
 }
 
 // Name return the name of the storage backend
-func (stg *localStorage) Name() string {
+func (b *localStorage) Name() string {
 	return "Local"
 }
 
 // Copy copies the given file to the local storage backend.
-func (stg *localStorage) Copy(file string) error {
-	if _, err := os.Stat(stg.DestinationPath); os.IsNotExist(err) {
+func (b *localStorage) Copy(file string) error {
+	if _, err := os.Stat(b.DestinationPath); os.IsNotExist(err) {
 		return nil
 	}
 
 	_, name := path.Split(file)
 
-	if err := utilites.CopyFile(file, path.Join(stg.DestinationPath, name)); err != nil {
-		return stg.Log(storage.ERROR, stg.Name(), "Copy: Error copying file to local archive! %w", err)
+	if err := utilites.CopyFile(file, path.Join(b.DestinationPath, name)); err != nil {
+		return b.Log(storage.ERROR, b.Name(), "Copy: Error copying file to local archive! %w", err)
 	}
-	stg.Log(storage.INFO, stg.Name(), "Stored copy of backup `%s` in local archive `%s`.", file, stg.DestinationPath)
+	b.Log(storage.INFO, b.Name(), "Stored copy of backup `%s` in local archive `%s`.", file, b.DestinationPath)
 
-	if stg.latestSymlink != "" {
-		symlink := path.Join(stg.DestinationPath, stg.latestSymlink)
+	if b.latestSymlink != "" {
+		symlink := path.Join(b.DestinationPath, b.latestSymlink)
 		if _, err := os.Lstat(symlink); err == nil {
 			os.Remove(symlink)
 		}
 		if err := os.Symlink(name, symlink); err != nil {
-			return stg.Log(storage.ERROR, stg.Name(), "Copy: error creating latest symlink! %w", err)
+			return b.Log(storage.ERROR, b.Name(), "Copy: error creating latest symlink! %w", err)
 		}
-		stg.Log(storage.INFO, stg.Name(), "Created/Updated symlink `%s` for latest backup.", stg.latestSymlink)
+		b.Log(storage.INFO, b.Name(), "Created/Updated symlink `%s` for latest backup.", b.latestSymlink)
 	}
 
 	return nil
 }
 
 // Prune rotates away backups according to the configuration and provided deadline for the local storage backend.
-func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
+func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
 	globPattern := path.Join(
-		stg.DestinationPath,
+		b.DestinationPath,
 		fmt.Sprintf("%s*", pruningPrefix),
 	)
 	globMatches, err := filepath.Glob(globPattern)
 	if err != nil {
-		return nil, stg.Log(storage.ERROR, stg.Name(),
+		return nil, b.Log(storage.ERROR, b.Name(),
 			"Prune: Error looking up matching files using pattern %s! %w",
 			globPattern,
 			err,
@@ -83,7 +83,7 @@ func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) (*stora
 	for _, candidate := range globMatches {
 		fi, err := os.Lstat(candidate)
 		if err != nil {
-			return nil, stg.Log(storage.ERROR, stg.Name(),
+			return nil, b.Log(storage.ERROR, b.Name(),
 				"Prune: Error calling Lstat on file %s! %w",
 				candidate,
 				err,
@@ -99,7 +99,7 @@ func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) (*stora
 	for _, candidate := range candidates {
 		fi, err := os.Stat(candidate)
 		if err != nil {
-			return nil, stg.Log(storage.ERROR, stg.Name(),
+			return nil, b.Log(storage.ERROR, b.Name(),
 				"Prune: Error calling stat on file %s! %w",
 				candidate,
 				err,
@@ -115,7 +115,7 @@ func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) (*stora
 		Pruned: uint(len(matches)),
 	}
 
-	stg.DoPrune(len(matches), len(candidates), "local backup(s)", func() error {
+	b.DoPrune(len(matches), len(candidates), "local backup(s)", func() error {
 		var removeErrors []error
 		for _, match := range matches {
 			if err := os.Remove(match); err != nil {
@@ -123,7 +123,7 @@ func (stg *localStorage) Prune(deadline time.Time, pruningPrefix string) (*stora
 			}
 		}
 		if len(removeErrors) != 0 {
-			return stg.Log(storage.ERROR, stg.Name(),
+			return b.Log(storage.ERROR, b.Name(),
 				"Prune: %d error(s) deleting local files, starting with: %w",
 				len(removeErrors),
 				utilites.Join(removeErrors...),
