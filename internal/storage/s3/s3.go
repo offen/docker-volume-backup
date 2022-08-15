@@ -22,7 +22,7 @@ type s3Storage struct {
 
 // NewStorageBackend creates and initializes a new S3/Minio storage backend.
 func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey string, iamRoleEndpoint string, endpointProto string, endpointInsecure bool,
-	remotePath string, bucket string, storageClass string, logFunc storage.LogFuncDef) (storage.Backend, error) {
+	remotePath string, bucket string, storageClass string, logFunc storage.Log) (storage.Backend, error) {
 
 	var creds *credentials.Credentials
 	if accessKeyId != "" && secretAccessKey != "" {

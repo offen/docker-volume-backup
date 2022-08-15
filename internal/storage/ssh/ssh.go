@@ -25,7 +25,7 @@ type sshStorage struct {
 
 // NewStorageBackend creates and initializes a new SSH storage backend.
 func NewStorageBackend(hostName string, port string, user string, password string, identityFile string, identityPassphrase string, remotePath string,
-	logFunc storage.LogFuncDef) (storage.Backend, error) {
+	logFunc storage.Log) (storage.Backend, error) {
 
 	var authMethods []ssh.AuthMethod
 

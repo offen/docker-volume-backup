@@ -17,7 +17,7 @@ type localStorage struct {
 }
 
 // NewStorageBackend creates and initializes a new local storage backend.
-func NewStorageBackend(archivePath string, latestSymlink string, logFunc storage.LogFuncDef) storage.Backend {
+func NewStorageBackend(archivePath string, latestSymlink string, logFunc storage.Log) storage.Backend {
 
 	strgBackend := &storage.StorageBackend{
 		Backend:         &localStorage{},

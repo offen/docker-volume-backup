@@ -16,7 +16,7 @@ type StorageBackend struct {
 	Backend
 	DestinationPath string
 	RetentionDays   int
-	Log             LogFuncDef
+	Log             Log
 }
 
 type LogType string
@@ -27,7 +27,7 @@ const (
 	ERROR   LogType = "ERROR"
 )
 
-type LogFuncDef func(logType LogType, context string, msg string, params ...interface{}) error
+type Log func(logType LogType, context string, msg string, params ...interface{}) error
 
 // PruneStats is a wrapper struct for returning stats after pruning
 type PruneStats struct {
