@@ -1180,3 +1180,8 @@ Local copies of backups can also be pruned once they reach a certain age.
 - Docker in Swarm mode is supported.
 - Notifications on finished backups are supported.
 - IAM authentication through instance profiles is supported.
+
+
+### Infrastructure model
+
+![Infrastructure model](.infragenie/infrastructure_model.png)
