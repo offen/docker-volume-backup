@@ -124,7 +124,7 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.AwsS3BucketName != "" {
-		opts := s3.Options{
+		s3Config := s3.Config{
 			Endpoint:         s.c.AwsEndpoint,
 			AccessKeyID:      s.c.AwsAccessKeyID,
 			SecretAccessKey:  s.c.AwsSecretAccessKey,
@@ -135,7 +135,7 @@ func newScript() (*script, error) {
 			BucketName:       s.c.AwsS3BucketName,
 			StorageClass:     s.c.AwsStorageClass,
 		}
-		if s3Backend, err := s3.NewStorageBackend(opts, logFunc); err != nil {
+		if s3Backend, err := s3.NewStorageBackend(s3Config, logFunc); err != nil {
 			return nil, err
 		} else {
 			s.storages = append(s.storages, s3Backend)
@@ -143,14 +143,14 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.WebdavUrl != "" {
-		webdavOpts := webdav.Options{
+		webDavConfig := webdav.Config{
 			URL:         s.c.WebdavUrl,
 			URLInsecure: s.c.WebdavUrlInsecure,
 			Username:    s.c.WebdavUsername,
 			Password:    s.c.WebdavPassword,
 			RemotePath:  s.c.WebdavPath,
 		}
-		if webdavBackend, err := webdav.NewStorageBackend(webdavOpts, logFunc); err != nil {
+		if webdavBackend, err := webdav.NewStorageBackend(webDavConfig, logFunc); err != nil {
 			return nil, err
 		} else {
 			s.storages = append(s.storages, webdavBackend)
@@ -158,7 +158,7 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.SSHHostName != "" {
-		sshOpts := ssh.Options{
+		sshConfig := ssh.Config{
 			HostName:           s.c.SSHHostName,
 			Port:               s.c.SSHPort,
 			User:               s.c.SSHUser,
@@ -167,7 +167,7 @@ func newScript() (*script, error) {
 			IdentityPassphrase: s.c.SSHIdentityPassphrase,
 			RemotePath:         s.c.SSHRemotePath,
 		}
-		if sshBackend, err := ssh.NewStorageBackend(sshOpts, logFunc); err != nil {
+		if sshBackend, err := ssh.NewStorageBackend(sshConfig, logFunc); err != nil {
 			return nil, err
 		} else {
 			s.storages = append(s.storages, sshBackend)
@@ -175,10 +175,11 @@ func newScript() (*script, error) {
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
-		localBackend := local.NewStorageBackend(local.Options{
+		localConfig := local.Config{
 			ArchivePath:   s.c.BackupArchive,
 			LatestSymlink: s.c.BackupLatestSymlink,
-		}, logFunc)
+		}
+		localBackend := local.NewStorageBackend(localConfig, logFunc)
 		s.storages = append(s.storages, localBackend)
 	}
 

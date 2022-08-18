@@ -26,8 +26,8 @@ type sshStorage struct {
 	hostName   string
 }
 
-// Options allows to configure a SSH backend.
-type Options struct {
+// Config allows to configure a SSH backend.
+type Config struct {
 	HostName           string
 	Port               string
 	User               string
@@ -38,7 +38,7 @@ type Options struct {
 }
 
 // NewStorageBackend creates and initializes a new SSH storage backend.
-func NewStorageBackend(opts Options, logFunc storage.Log) (storage.Backend, error) {
+func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
 	var authMethods []ssh.AuthMethod
 
 	if opts.Password != "" {

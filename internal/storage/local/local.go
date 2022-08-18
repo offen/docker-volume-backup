@@ -20,14 +20,14 @@ type localStorage struct {
 	latestSymlink string
 }
 
-// Options allows configuration of a local storage backend.
-type Options struct {
+// Config allows configuration of a local storage backend.
+type Config struct {
 	ArchivePath   string
 	LatestSymlink string
 }
 
 // NewStorageBackend creates and initializes a new local storage backend.
-func NewStorageBackend(opts Options, logFunc storage.Log) storage.Backend {
+func NewStorageBackend(opts Config, logFunc storage.Log) storage.Backend {
 	return &localStorage{
 		StorageBackend: &storage.StorageBackend{
 			DestinationPath: opts.ArchivePath,

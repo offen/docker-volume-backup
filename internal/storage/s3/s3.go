@@ -24,8 +24,8 @@ type s3Storage struct {
 	storageClass string
 }
 
-// Options contains values that define the configuration of a S3 backend.
-type Options struct {
+// Config contains values that define the configuration of a S3 backend.
+type Config struct {
 	Endpoint         string
 	AccessKeyID      string
 	SecretAccessKey  string
@@ -38,7 +38,7 @@ type Options struct {
 }
 
 // NewStorageBackend creates and initializes a new S3/Minio storage backend.
-func NewStorageBackend(opts Options, logFunc storage.Log) (storage.Backend, error) {
+func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
 
 	var creds *credentials.Credentials
 	if opts.AccessKeyID != "" && opts.SecretAccessKey != "" {

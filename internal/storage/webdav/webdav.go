@@ -24,8 +24,8 @@ type webDavStorage struct {
 	url    string
 }
 
-// Options allows to configure a WebDAV storage backend.
-type Options struct {
+// Config allows to configure a WebDAV storage backend.
+type Config struct {
 	URL         string
 	RemotePath  string
 	Username    string
@@ -34,7 +34,7 @@ type Options struct {
 }
 
 // NewStorageBackend creates and initializes a new WebDav storage backend.
-func NewStorageBackend(opts Options, logFunc storage.Log) (storage.Backend, error) {
+func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
 
 	if opts.Username == "" || opts.Password == "" {
 		return nil, errors.New("NewStorageBackend: WEBDAV_URL is defined, but no credentials were provided")
