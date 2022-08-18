@@ -148,7 +148,7 @@ func (b *sshStorage) Copy(file string) error {
 		}
 	}
 
-	b.Log(storage.INFO, b.Name(), "Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", file, b.hostName, b.DestinationPath)
+	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup `%s` to SSH storage '%s' at path '%s'.", file, b.hostName, b.DestinationPath)
 
 	return nil
 }

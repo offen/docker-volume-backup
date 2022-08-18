@@ -49,7 +49,7 @@ func (b *localStorage) Copy(file string) error {
 	if err := copyFile(file, path.Join(b.DestinationPath, name)); err != nil {
 		return fmt.Errorf("(*localStorage).Copy: Error copying file to local archive! %w", err)
 	}
-	b.Log(storage.INFO, b.Name(), "Stored copy of backup `%s` in local archive `%s`.", file, b.DestinationPath)
+	b.Log(storage.LogLevelInfo, b.Name(), "Stored copy of backup `%s` in local archive `%s`.", file, b.DestinationPath)
 
 	if b.latestSymlink != "" {
 		symlink := path.Join(b.DestinationPath, b.latestSymlink)
@@ -59,7 +59,7 @@ func (b *localStorage) Copy(file string) error {
 		if err := os.Symlink(name, symlink); err != nil {
 			return fmt.Errorf("(*localStorage).Copy: error creating latest symlink! %w", err)
 		}
-		b.Log(storage.INFO, b.Name(), "Created/Updated symlink `%s` for latest backup.", b.latestSymlink)
+		b.Log(storage.LogLevelInfo, b.Name(), "Created/Updated symlink `%s` for latest backup.", b.latestSymlink)
 	}
 
 	return nil

@@ -103,7 +103,7 @@ func (b *s3Storage) Copy(file string) error {
 		errResp := minio.ToErrorResponse(err)
 		return fmt.Errorf("(*s3Storage).Copy: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d", errResp.Message, errResp.Code, errResp.StatusCode)
 	}
-	b.Log(storage.INFO, b.Name(), "Uploaded a copy of backup `%s` to bucket `%s`.", file, b.bucket)
+	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup `%s` to bucket `%s`.", file, b.bucket)
 
 	return nil
 }

@@ -108,18 +108,14 @@ func newScript() (*script, error) {
 	}
 
 	logFunc := func(logType storage.LogLevel, context string, msg string, params ...interface{}) {
-		var allParams []interface{}
-		allParams = append(allParams, context)
-		allParams = append(allParams, params...)
-
 		switch logType {
-		case storage.WARNING:
-			s.logger.Warnf("[%s] "+msg, allParams...)
-		case storage.ERROR:
-			s.logger.Errorf("[%s] "+msg, allParams...)
-		case storage.INFO:
+		case storage.LogLevelWarning:
+			s.logger.Warnf("["+context+"] "+msg, params...)
+		case storage.LogLevelError:
+			s.logger.Errorf("["+context+"] "+msg, params...)
+		case storage.LogLevelInfo:
 		default:
-			s.logger.Infof("[%s] "+msg, allParams...)
+			s.logger.Infof("["+context+"] "+msg, params...)
 		}
 	}
 

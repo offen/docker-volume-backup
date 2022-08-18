@@ -79,7 +79,7 @@ func (b *webDavStorage) Copy(file string) error {
 	if err := b.client.Write(filepath.Join(b.DestinationPath, name), bytes, 0644); err != nil {
 		return fmt.Errorf("(*webDavStorage).Copy: Error uploading the file to WebDAV server! %w", err)
 	}
-	b.Log(storage.INFO, b.Name(), "Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", file, b.url, b.DestinationPath)
+	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", file, b.url, b.DestinationPath)
 
 	return nil
 }
