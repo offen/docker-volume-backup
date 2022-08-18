@@ -58,7 +58,7 @@ type script struct {
 // reading from env vars or other configuration sources is expected to happen
 // in this method.
 func newScript() (*script, error) {
-	stdOut, logBuffer := utilities.Buffer(os.Stdout)
+	stdOut, logBuffer := buffer(os.Stdout)
 	s := &script{
 		c: &Config{},
 		logger: &logrus.Logger{
@@ -72,7 +72,7 @@ func newScript() (*script, error) {
 			LogOutput: logBuffer,
 			Storages: map[string]StorageStats{
 				"S3":     {},
-				"WebDav": {},
+				"WebDAV": {},
 				"SSH":    {},
 				"Local":  {},
 			},
@@ -107,29 +107,35 @@ func newScript() (*script, error) {
 		s.cli = cli
 	}
 
-	logFunc := func(logType storage.LogType, context string, msg string, params ...interface{}) error {
+	logFunc := func(logType storage.LogLevel, context string, msg string, params ...interface{}) {
 		var allParams []interface{}
 		allParams = append(allParams, context)
 		allParams = append(allParams, params...)
 
 		switch logType {
-		case storage.INFO:
-			s.logger.Infof("[%s] "+msg, allParams...)
-			return nil
 		case storage.WARNING:
 			s.logger.Warnf("[%s] "+msg, allParams...)
-			return nil
 		case storage.ERROR:
-			return fmt.Errorf("[%s] "+msg, allParams...)
+			s.logger.Errorf("[%s] "+msg, allParams...)
+		case storage.INFO:
 		default:
-			s.logger.Warnf("[%s] "+msg, allParams...)
-			return nil
+			s.logger.Infof("[%s] "+msg, allParams...)
 		}
 	}
 
 	if s.c.AwsS3BucketName != "" {
-		if s3Backend, err := s3.NewStorageBackend(s.c.AwsEndpoint, s.c.AwsAccessKeyID, s.c.AwsSecretAccessKey, s.c.AwsIamRoleEndpoint,
-			s.c.AwsEndpointProto, s.c.AwsEndpointInsecure, s.c.AwsS3Path, s.c.AwsS3BucketName, s.c.AwsStorageClass, logFunc); err != nil {
+		s3Config := s3.Config{
+			Endpoint:         s.c.AwsEndpoint,
+			AccessKeyID:      s.c.AwsAccessKeyID,
+			SecretAccessKey:  s.c.AwsSecretAccessKey,
+			IamRoleEndpoint:  s.c.AwsIamRoleEndpoint,
+			EndpointProto:    s.c.AwsEndpointProto,
+			EndpointInsecure: s.c.AwsEndpointInsecure,
+			RemotePath:       s.c.AwsS3Path,
+			BucketName:       s.c.AwsS3BucketName,
+			StorageClass:     s.c.AwsStorageClass,
+		}
+		if s3Backend, err := s3.NewStorageBackend(s3Config, logFunc); err != nil {
 			return nil, err
 		} else {
 			s.storages = append(s.storages, s3Backend)
@@ -137,8 +143,14 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.WebdavUrl != "" {
-		if webdavBackend, err := webdav.NewStorageBackend(s.c.WebdavUrl, s.c.WebdavPath, s.c.WebdavUsername, s.c.WebdavPassword,
-			s.c.WebdavUrlInsecure, logFunc); err != nil {
+		webDavConfig := webdav.Config{
+			URL:         s.c.WebdavUrl,
+			URLInsecure: s.c.WebdavUrlInsecure,
+			Username:    s.c.WebdavUsername,
+			Password:    s.c.WebdavPassword,
+			RemotePath:  s.c.WebdavPath,
+		}
+		if webdavBackend, err := webdav.NewStorageBackend(webDavConfig, logFunc); err != nil {
 			return nil, err
 		} else {
 			s.storages = append(s.storages, webdavBackend)
@@ -146,16 +158,30 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.SSHHostName != "" {
-		if sshBackend, err := ssh.NewStorageBackend(s.c.SSHHostName, s.c.SSHPort, s.c.SSHUser, s.c.SSHPassword, s.c.SSHIdentityFile,
-			s.c.SSHIdentityPassphrase, s.c.SSHRemotePath, logFunc); err != nil {
+		sshConfig := ssh.Config{
+			HostName:           s.c.SSHHostName,
+			Port:               s.c.SSHPort,
+			User:               s.c.SSHUser,
+			Password:           s.c.SSHPassword,
+			IdentityFile:       s.c.SSHIdentityFile,
+			IdentityPassphrase: s.c.SSHIdentityPassphrase,
+			RemotePath:         s.c.SSHRemotePath,
+		}
+		if sshBackend, err := ssh.NewStorageBackend(sshConfig, logFunc); err != nil {
 			return nil, err
 		} else {
 			s.storages = append(s.storages, sshBackend)
 		}
 	}
 
-	localBackend := local.NewStorageBackend(s.c.BackupArchive, s.c.BackupLatestSymlink, logFunc)
-	s.storages = append(s.storages, localBackend)
+	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
+		localConfig := local.Config{
+			ArchivePath:   s.c.BackupArchive,
+			LatestSymlink: s.c.BackupLatestSymlink,
+		}
+		localBackend := local.NewStorageBackend(localConfig, logFunc)
+		s.storages = append(s.storages, localBackend)
+	}
 
 	if s.c.EmailNotificationRecipient != "" {
 		emailURL := fmt.Sprintf(
@@ -228,14 +254,14 @@ func newScript() (*script, error) {
 // restart everything that has been stopped.
 func (s *script) stopContainers() (func() error, error) {
 	if s.cli == nil {
-		return utilities.Noop, nil
+		return noop, nil
 	}
 
 	allContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
 		Quiet: true,
 	})
 	if err != nil {
-		return utilities.Noop, fmt.Errorf("stopContainersAndRun: error querying for containers: %w", err)
+		return noop, fmt.Errorf("stopContainersAndRun: error querying for containers: %w", err)
 	}
 
 	containerLabel := fmt.Sprintf(
@@ -251,11 +277,11 @@ func (s *script) stopContainers() (func() error, error) {
 	})
 
 	if err != nil {
-		return utilities.Noop, fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
+		return noop, fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
 	}
 
 	if len(containersToStop) == 0 {
-		return utilities.Noop, nil
+		return noop, nil
 	}
 
 	s.logger.Infof(
@@ -357,7 +383,7 @@ func (s *script) createArchive() error {
 		backupSources = filepath.Join("/tmp", s.c.BackupSources)
 		// copy before compressing guard against a situation where backup folder's content are still growing.
 		s.registerHook(hookLevelPlumbing, func(error) error {
-			if err := utilities.Remove(backupSources); err != nil {
+			if err := remove(backupSources); err != nil {
 				return fmt.Errorf("takeBackup: error removing snapshot: %w", err)
 			}
 			s.logger.Infof("Removed snapshot `%s`.", backupSources)
@@ -374,7 +400,7 @@ func (s *script) createArchive() error {
 
 	tarFile := s.file
 	s.registerHook(hookLevelPlumbing, func(error) error {
-		if err := utilities.Remove(tarFile); err != nil {
+		if err := remove(tarFile); err != nil {
 			return fmt.Errorf("takeBackup: error removing tar file: %w", err)
 		}
 		s.logger.Infof("Removed tar file `%s`.", tarFile)
@@ -419,7 +445,7 @@ func (s *script) encryptArchive() error {
 
 	gpgFile := fmt.Sprintf("%s.gpg", s.file)
 	s.registerHook(hookLevelPlumbing, func(error) error {
-		if err := utilities.Remove(gpgFile); err != nil {
+		if err := remove(gpgFile); err != nil {
 			return fmt.Errorf("encryptBackup: error removing gpg file: %w", err)
 		}
 		s.logger.Infof("Removed GPG file `%s`.", gpgFile)

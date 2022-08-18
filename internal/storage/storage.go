@@ -1,3 +1,6 @@
+// Copyright 2022 - Offen Authors <hioffen@posteo.de>
+// SPDX-License-Identifier: MPL-2.0
+
 package storage
 
 import (
@@ -18,15 +21,15 @@ type StorageBackend struct {
 	Log             Log
 }
 
-type LogType string
+type LogLevel string
 
 const (
-	INFO    LogType = "INFO"
-	WARNING LogType = "WARNING"
-	ERROR   LogType = "ERROR"
+	INFO    LogLevel = "INFO"
+	WARNING LogLevel = "WARNING"
+	ERROR   LogLevel = "ERROR"
 )
 
-type Log func(logType LogType, context string, msg string, params ...interface{}) error
+type Log func(logType LogLevel, context string, msg string, params ...interface{})
 
 // PruneStats is a wrapper struct for returning stats after pruning
 type PruneStats struct {
