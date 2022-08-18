@@ -1,3 +1,6 @@
+// Copyright 2022 - Offen Authors <hioffen@posteo.de>
+// SPDX-License-Identifier: MPL-2.0
+
 package storage
 
 import (
@@ -18,15 +21,15 @@ type StorageBackend struct {
 	Log             Log
 }
 
-type LogType string
+type LogLevel int
 
 const (
-	INFO    LogType = "INFO"
-	WARNING LogType = "WARNING"
-	ERROR   LogType = "ERROR"
+	LogLevelInfo LogLevel = iota
+	LogLevelWarning
+	LogLevelError
 )
 
-type Log func(logType LogType, context string, msg string, params ...interface{}) error
+type Log func(logType LogLevel, context string, msg string, params ...interface{})
 
 // PruneStats is a wrapper struct for returning stats after pruning
 type PruneStats struct {
@@ -41,7 +44,7 @@ func (b *StorageBackend) DoPrune(context string, lenMatches, lenCandidates int, 
 		if err := doRemoveFiles(); err != nil {
 			return err
 		}
-		b.Log(INFO, context,
+		b.Log(LogLevelInfo, context,
 			"Pruned %d out of %d %s as their age exceeded the configured retention period of %d days.",
 			lenMatches,
 			lenCandidates,
@@ -49,10 +52,10 @@ func (b *StorageBackend) DoPrune(context string, lenMatches, lenCandidates int, 
 			b.RetentionDays,
 		)
 	} else if lenMatches != 0 && lenMatches == lenCandidates {
-		b.Log(WARNING, context, "The current configuration would delete all %d existing %s.", lenMatches, description)
-		b.Log(WARNING, context, "Refusing to do so, please check your configuration.")
+		b.Log(LogLevelWarning, context, "The current configuration would delete all %d existing %s.", lenMatches, description)
+		b.Log(LogLevelWarning, context, "Refusing to do so, please check your configuration.")
 	} else {
-		b.Log(INFO, context, "None of %d existing %s were pruned.", lenCandidates, description)
+		b.Log(LogLevelInfo, context, "None of %d existing %s were pruned.", lenCandidates, description)
 	}
 	return nil
 }
