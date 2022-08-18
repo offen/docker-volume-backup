@@ -41,7 +41,7 @@ func (b *localStorage) Copy(file string) error {
 	_, name := path.Split(file)
 
 	if err := utilities.CopyFile(file, path.Join(b.DestinationPath, name)); err != nil {
-		return b.Log(storage.ERROR, b.Name(), "Copy: Error copying file to local archive! %w", err)
+		return fmt.Errorf("(*localStorage).Copy: Error copying file to local archive! %w", err)
 	}
 	b.Log(storage.INFO, b.Name(), "Stored copy of backup `%s` in local archive `%s`.", file, b.DestinationPath)
 
@@ -51,7 +51,7 @@ func (b *localStorage) Copy(file string) error {
 			os.Remove(symlink)
 		}
 		if err := os.Symlink(name, symlink); err != nil {
-			return b.Log(storage.ERROR, b.Name(), "Copy: error creating latest symlink! %w", err)
+			return fmt.Errorf("(*localStorage).Copy: error creating latest symlink! %w", err)
 		}
 		b.Log(storage.INFO, b.Name(), "Created/Updated symlink `%s` for latest backup.", b.latestSymlink)
 	}
@@ -67,8 +67,8 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 	)
 	globMatches, err := filepath.Glob(globPattern)
 	if err != nil {
-		return nil, b.Log(storage.ERROR, b.Name(),
-			"Prune: Error looking up matching files using pattern %s! %w",
+		return nil, fmt.Errorf(
+			"(*localStorage).Prune: Error looking up matching files using pattern %s: %w",
 			globPattern,
 			err,
 		)
@@ -78,8 +78,8 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 	for _, candidate := range globMatches {
 		fi, err := os.Lstat(candidate)
 		if err != nil {
-			return nil, b.Log(storage.ERROR, b.Name(),
-				"Prune: Error calling Lstat on file %s! %w",
+			return nil, fmt.Errorf(
+				"(*localStorage).Prune: Error calling Lstat on file %s: %w",
 				candidate,
 				err,
 			)
@@ -94,8 +94,8 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 	for _, candidate := range candidates {
 		fi, err := os.Stat(candidate)
 		if err != nil {
-			return nil, b.Log(storage.ERROR, b.Name(),
-				"Prune: Error calling stat on file %s! %w",
+			return nil, fmt.Errorf(
+				"(*localStorage).Prune: Error calling stat on file %s! %w",
 				candidate,
 				err,
 			)
@@ -110,7 +110,7 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 		Pruned: uint(len(matches)),
 	}
 
-	b.DoPrune(b.Name(), len(matches), len(candidates), "local backup(s)", func() error {
+	if err := b.DoPrune(b.Name(), len(matches), len(candidates), "local backup(s)", func() error {
 		var removeErrors []error
 		for _, match := range matches {
 			if err := os.Remove(match); err != nil {
@@ -118,14 +118,16 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 			}
 		}
 		if len(removeErrors) != 0 {
-			return b.Log(storage.ERROR, b.Name(),
-				"Prune: %d error(s) deleting local files, starting with: %w",
+			return fmt.Errorf(
+				"(*localStorage).Prune: %d error(s) deleting local files, starting with: %w",
 				len(removeErrors),
 				utilities.Join(removeErrors...),
 			)
 		}
 		return nil
-	})
+	}); err != nil {
+		return stats, err
+	}
 
 	return stats, nil
 }

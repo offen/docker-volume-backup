@@ -72,7 +72,7 @@ func newScript() (*script, error) {
 			LogOutput: logBuffer,
 			Storages: map[string]StorageStats{
 				"S3":     {},
-				"WebDav": {},
+				"WebDAV": {},
 				"SSH":    {},
 				"Local":  {},
 			},
@@ -107,23 +107,19 @@ func newScript() (*script, error) {
 		s.cli = cli
 	}
 
-	logFunc := func(logType storage.LogType, context string, msg string, params ...interface{}) error {
+	logFunc := func(logType storage.LogType, context string, msg string, params ...interface{}) {
 		var allParams []interface{}
 		allParams = append(allParams, context)
 		allParams = append(allParams, params...)
 
 		switch logType {
-		case storage.INFO:
-			s.logger.Infof("[%s] "+msg, allParams...)
-			return nil
 		case storage.WARNING:
 			s.logger.Warnf("[%s] "+msg, allParams...)
-			return nil
 		case storage.ERROR:
-			return fmt.Errorf("[%s] "+msg, allParams...)
+			s.logger.Errorf("[%s] "+msg, allParams...)
+		case storage.INFO:
 		default:
-			s.logger.Warnf("[%s] "+msg, allParams...)
-			return nil
+			s.logger.Infof("[%s] "+msg, allParams...)
 		}
 	}
 

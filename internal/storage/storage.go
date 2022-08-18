@@ -26,7 +26,7 @@ const (
 	ERROR   LogType = "ERROR"
 )
 
-type Log func(logType LogType, context string, msg string, params ...interface{}) error
+type Log func(logType LogType, context string, msg string, params ...interface{})
 
 // PruneStats is a wrapper struct for returning stats after pruning
 type PruneStats struct {

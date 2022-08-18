@@ -2,6 +2,7 @@ package webdav
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -25,14 +26,14 @@ func NewStorageBackend(url string, remotePath string, username string, password 
 	logFunc storage.Log) (storage.Backend, error) {
 
 	if username == "" || password == "" {
-		return nil, errors.New("newScript: WEBDAV_URL is defined, but no credentials were provided")
+		return nil, errors.New("NewStorageBackend: WEBDAV_URL is defined, but no credentials were provided")
 	} else {
 		webdavClient := gowebdav.NewClient(url, username, password)
 
 		if urlInsecure {
 			defaultTransport, ok := http.DefaultTransport.(*http.Transport)
 			if !ok {
-				return nil, errors.New("newScript: unexpected error when asserting type for http.DefaultTransport")
+				return nil, errors.New("NewStorageBackend: unexpected error when asserting type for http.DefaultTransport")
 			}
 			webdavTransport := defaultTransport.Clone()
 			webdavTransport.TLSClientConfig.InsecureSkipVerify = urlInsecure
@@ -51,7 +52,7 @@ func NewStorageBackend(url string, remotePath string, username string, password 
 
 // Name returns the name of the storage backend
 func (b *webDavStorage) Name() string {
-	return "WebDav"
+	return "WebDAV"
 }
 
 // Copy copies the given file to the WebDav storage backend.
@@ -59,13 +60,13 @@ func (b *webDavStorage) Copy(file string) error {
 	bytes, err := os.ReadFile(file)
 	_, name := path.Split(file)
 	if err != nil {
-		return b.Log(storage.ERROR, b.Name(), "Copy: Error reading the file to be uploaded! %w", err)
+		return fmt.Errorf("(*webDavStorage).Copy: Error reading the file to be uploaded! %w", err)
 	}
 	if err := b.client.MkdirAll(b.DestinationPath, 0644); err != nil {
-		return b.Log(storage.ERROR, b.Name(), "Copy: Error creating directory '%s' on WebDAV server! %w", b.DestinationPath, err)
+		return fmt.Errorf("(*webDavStorage).Copy: Error creating directory '%s' on WebDAV server! %w", b.DestinationPath, err)
 	}
 	if err := b.client.Write(filepath.Join(b.DestinationPath, name), bytes, 0644); err != nil {
-		return b.Log(storage.ERROR, b.Name(), "Copy: Error uploading the file to WebDAV server! %w", err)
+		return fmt.Errorf("(*webDavStorage).Copy: Error uploading the file to WebDAV server! %w", err)
 	}
 	b.Log(storage.INFO, b.Name(), "Uploaded a copy of backup `%s` to WebDAV-URL '%s' at path '%s'.", file, b.url, b.DestinationPath)
 
@@ -76,7 +77,7 @@ func (b *webDavStorage) Copy(file string) error {
 func (b *webDavStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
 	candidates, err := b.client.ReadDir(b.DestinationPath)
 	if err != nil {
-		return nil, b.Log(storage.ERROR, b.Name(), "Prune: Error looking up candidates from remote storage! %w", err)
+		return nil, fmt.Errorf("(*webDavStorage).Prune: Error looking up candidates from remote storage! %w", err)
 	}
 	var matches []fs.FileInfo
 	var lenCandidates int
@@ -95,14 +96,16 @@ func (b *webDavStorage) Prune(deadline time.Time, pruningPrefix string) (*storag
 		Pruned: uint(len(matches)),
 	}
 
-	b.DoPrune(b.Name(), len(matches), lenCandidates, "WebDAV backup(s)", func() error {
+	if err := b.DoPrune(b.Name(), len(matches), lenCandidates, "WebDAV backup(s)", func() error {
 		for _, match := range matches {
 			if err := b.client.Remove(filepath.Join(b.DestinationPath, match.Name())); err != nil {
-				return b.Log(storage.ERROR, b.Name(), "Prune: Error removing file from WebDAV storage! %w", err)
+				return fmt.Errorf("(*webDavStorage).Prune: Error removing file from WebDAV storage! %w", err)
 			}
 		}
 		return nil
-	})
+	}); err != nil {
+		return stats, err
+	}
 
 	return stats, nil
 }
