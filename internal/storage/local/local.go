@@ -2,6 +2,7 @@ package local
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -42,7 +43,7 @@ func (b *localStorage) Name() string {
 func (b *localStorage) Copy(file string) error {
 	_, name := path.Split(file)
 
-	if err := utilities.CopyFile(file, path.Join(b.DestinationPath, name)); err != nil {
+	if err := copyFile(file, path.Join(b.DestinationPath, name)); err != nil {
 		return fmt.Errorf("(*localStorage).Copy: Error copying file to local archive! %w", err)
 	}
 	b.Log(storage.INFO, b.Name(), "Stored copy of backup `%s` in local archive `%s`.", file, b.DestinationPath)
@@ -132,4 +133,25 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 	}
 
 	return stats, nil
+}
+
+// copy creates a copy of the file located at `dst` at `src`.
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		out.Close()
+		return err
+	}
+	return out.Close()
 }

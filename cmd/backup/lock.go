@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
-	"github.com/offen/docker-volume-backup/internal/utilities"
 )
 
 // lock opens a lockfile at the given location, keeping it locked until the
@@ -32,7 +31,7 @@ func (s *script) lock(lockfile string) (func() error, error) {
 	for {
 		acquired, err := fileLock.TryLock()
 		if err != nil {
-			return utilities.Noop, fmt.Errorf("lock: error trying lock: %w", err)
+			return noop, fmt.Errorf("lock: error trying lock: %w", err)
 		}
 		if acquired {
 			if s.encounteredLock {
@@ -53,7 +52,7 @@ func (s *script) lock(lockfile string) (func() error, error) {
 		case <-retry.C:
 			continue
 		case <-deadline.C:
-			return utilities.Noop, errors.New("lock: timed out waiting for lockfile to become available")
+			return noop, errors.New("lock: timed out waiting for lockfile to become available")
 		}
 	}
 }
