@@ -107,7 +107,7 @@ func newScript() (*script, error) {
 		s.cli = cli
 	}
 
-	logFunc := func(logType storage.LogType, context string, msg string, params ...interface{}) {
+	logFunc := func(logType storage.LogLevel, context string, msg string, params ...interface{}) {
 		var allParams []interface{}
 		allParams = append(allParams, context)
 		allParams = append(allParams, params...)
@@ -124,8 +124,18 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.AwsS3BucketName != "" {
-		if s3Backend, err := s3.NewStorageBackend(s.c.AwsEndpoint, s.c.AwsAccessKeyID, s.c.AwsSecretAccessKey, s.c.AwsIamRoleEndpoint,
-			s.c.AwsEndpointProto, s.c.AwsEndpointInsecure, s.c.AwsS3Path, s.c.AwsS3BucketName, s.c.AwsStorageClass, logFunc); err != nil {
+		opts := s3.Options{
+			Endpoint:         s.c.AwsEndpoint,
+			AccessKeyID:      s.c.AwsAccessKeyID,
+			SecretAccessKey:  s.c.AwsSecretAccessKey,
+			IamRoleEndpoint:  s.c.AwsIamRoleEndpoint,
+			EndpointProto:    s.c.AwsEndpointProto,
+			EndpointInsecure: s.c.AwsEndpointInsecure,
+			RemotePath:       s.c.AwsS3Path,
+			BucketName:       s.c.AwsS3BucketName,
+			StorageClass:     s.c.AwsStorageClass,
+		}
+		if s3Backend, err := s3.NewStorageBackend(opts, logFunc); err != nil {
 			return nil, err
 		} else {
 			s.storages = append(s.storages, s3Backend)
@@ -133,8 +143,14 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.WebdavUrl != "" {
-		if webdavBackend, err := webdav.NewStorageBackend(s.c.WebdavUrl, s.c.WebdavPath, s.c.WebdavUsername, s.c.WebdavPassword,
-			s.c.WebdavUrlInsecure, logFunc); err != nil {
+		webdavOpts := webdav.Options{
+			URL:         s.c.WebdavUrl,
+			URLInsecure: s.c.WebdavUrlInsecure,
+			Username:    s.c.WebdavUsername,
+			Password:    s.c.WebdavPassword,
+			RemotePath:  s.c.WebdavPath,
+		}
+		if webdavBackend, err := webdav.NewStorageBackend(webdavOpts, logFunc); err != nil {
 			return nil, err
 		} else {
 			s.storages = append(s.storages, webdavBackend)
@@ -142,16 +158,29 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.SSHHostName != "" {
-		if sshBackend, err := ssh.NewStorageBackend(s.c.SSHHostName, s.c.SSHPort, s.c.SSHUser, s.c.SSHPassword, s.c.SSHIdentityFile,
-			s.c.SSHIdentityPassphrase, s.c.SSHRemotePath, logFunc); err != nil {
+		sshOpts := ssh.Options{
+			HostName:           s.c.SSHHostName,
+			Port:               s.c.SSHPort,
+			User:               s.c.SSHUser,
+			Password:           s.c.SSHPassword,
+			IdentityFile:       s.c.SSHIdentityFile,
+			IdentityPassphrase: s.c.SSHIdentityPassphrase,
+			RemotePath:         s.c.SSHRemotePath,
+		}
+		if sshBackend, err := ssh.NewStorageBackend(sshOpts, logFunc); err != nil {
 			return nil, err
 		} else {
 			s.storages = append(s.storages, sshBackend)
 		}
 	}
 
-	localBackend := local.NewStorageBackend(s.c.BackupArchive, s.c.BackupLatestSymlink, logFunc)
-	s.storages = append(s.storages, localBackend)
+	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {
+		localBackend := local.NewStorageBackend(local.Options{
+			ArchivePath:   s.c.BackupArchive,
+			LatestSymlink: s.c.BackupLatestSymlink,
+		}, logFunc)
+		s.storages = append(s.storages, localBackend)
+	}
 
 	if s.c.EmailNotificationRecipient != "" {
 		emailURL := fmt.Sprintf(

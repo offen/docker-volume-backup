@@ -23,25 +23,34 @@ type sshStorage struct {
 	hostName   string
 }
 
-// NewStorageBackend creates and initializes a new SSH storage backend.
-func NewStorageBackend(hostName string, port string, user string, password string, identityFile string, identityPassphrase string, remotePath string,
-	logFunc storage.Log) (storage.Backend, error) {
+// Options allows to configure a SSH backend.
+type Options struct {
+	HostName           string
+	Port               string
+	User               string
+	Password           string
+	IdentityFile       string
+	IdentityPassphrase string
+	RemotePath         string
+}
 
+// NewStorageBackend creates and initializes a new SSH storage backend.
+func NewStorageBackend(opts Options, logFunc storage.Log) (storage.Backend, error) {
 	var authMethods []ssh.AuthMethod
 
-	if password != "" {
-		authMethods = append(authMethods, ssh.Password(password))
+	if opts.Password != "" {
+		authMethods = append(authMethods, ssh.Password(opts.Password))
 	}
 
-	if _, err := os.Stat(identityFile); err == nil {
-		key, err := ioutil.ReadFile(identityFile)
+	if _, err := os.Stat(opts.IdentityFile); err == nil {
+		key, err := ioutil.ReadFile(opts.IdentityFile)
 		if err != nil {
 			return nil, errors.New("NewStorageBackend: error reading the private key")
 		}
 
 		var signer ssh.Signer
-		if identityPassphrase != "" {
-			signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(identityPassphrase))
+		if opts.IdentityPassphrase != "" {
+			signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(opts.IdentityPassphrase))
 			if err != nil {
 				return nil, errors.New("NewStorageBackend: error parsing the encrypted private key")
 			}
@@ -56,11 +65,11 @@ func NewStorageBackend(hostName string, port string, user string, password strin
 	}
 
 	sshClientConfig := &ssh.ClientConfig{
-		User:            user,
+		User:            opts.User,
 		Auth:            authMethods,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
-	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", hostName, port), sshClientConfig)
+	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", opts.HostName, opts.Port), sshClientConfig)
 
 	if err != nil {
 		return nil, fmt.Errorf("NewStorageBackend: Error creating ssh client: %w", err)
@@ -77,12 +86,12 @@ func NewStorageBackend(hostName string, port string, user string, password strin
 
 	return &sshStorage{
 		StorageBackend: &storage.StorageBackend{
-			DestinationPath: remotePath,
+			DestinationPath: opts.RemotePath,
 			Log:             logFunc,
 		},
 		client:     sshClient,
 		sftpClient: sftpClient,
-		hostName:   hostName,
+		hostName:   opts.HostName,
 	}, nil
 }
 

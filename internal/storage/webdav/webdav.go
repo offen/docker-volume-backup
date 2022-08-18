@@ -21,28 +21,36 @@ type webDavStorage struct {
 	url    string
 }
 
-// NewStorageBackend creates and initializes a new WebDav storage backend.
-func NewStorageBackend(url string, remotePath string, username string, password string, urlInsecure bool,
-	logFunc storage.Log) (storage.Backend, error) {
+// Options allows to configure a WebDAV storage backend.
+type Options struct {
+	URL         string
+	RemotePath  string
+	Username    string
+	Password    string
+	URLInsecure bool
+}
 
-	if username == "" || password == "" {
+// NewStorageBackend creates and initializes a new WebDav storage backend.
+func NewStorageBackend(opts Options, logFunc storage.Log) (storage.Backend, error) {
+
+	if opts.Username == "" || opts.Password == "" {
 		return nil, errors.New("NewStorageBackend: WEBDAV_URL is defined, but no credentials were provided")
 	} else {
-		webdavClient := gowebdav.NewClient(url, username, password)
+		webdavClient := gowebdav.NewClient(opts.URL, opts.Username, opts.Password)
 
-		if urlInsecure {
+		if opts.URLInsecure {
 			defaultTransport, ok := http.DefaultTransport.(*http.Transport)
 			if !ok {
 				return nil, errors.New("NewStorageBackend: unexpected error when asserting type for http.DefaultTransport")
 			}
 			webdavTransport := defaultTransport.Clone()
-			webdavTransport.TLSClientConfig.InsecureSkipVerify = urlInsecure
+			webdavTransport.TLSClientConfig.InsecureSkipVerify = opts.URLInsecure
 			webdavClient.SetTransport(webdavTransport)
 		}
 
 		return &webDavStorage{
 			StorageBackend: &storage.StorageBackend{
-				DestinationPath: remotePath,
+				DestinationPath: opts.RemotePath,
 				Log:             logFunc,
 			},
 			client: webdavClient,

@@ -18,15 +18,15 @@ type StorageBackend struct {
 	Log             Log
 }
 
-type LogType string
+type LogLevel string
 
 const (
-	INFO    LogType = "INFO"
-	WARNING LogType = "WARNING"
-	ERROR   LogType = "ERROR"
+	INFO    LogLevel = "INFO"
+	WARNING LogLevel = "WARNING"
+	ERROR   LogLevel = "ERROR"
 )
 
-type Log func(logType LogType, context string, msg string, params ...interface{})
+type Log func(logType LogLevel, context string, msg string, params ...interface{})
 
 // PruneStats is a wrapper struct for returning stats after pruning
 type PruneStats struct {

@@ -16,14 +16,20 @@ type localStorage struct {
 	latestSymlink string
 }
 
+// Options allows configuration of a local storage backend.
+type Options struct {
+	ArchivePath   string
+	LatestSymlink string
+}
+
 // NewStorageBackend creates and initializes a new local storage backend.
-func NewStorageBackend(archivePath string, latestSymlink string, logFunc storage.Log) storage.Backend {
+func NewStorageBackend(opts Options, logFunc storage.Log) storage.Backend {
 	return &localStorage{
 		StorageBackend: &storage.StorageBackend{
-			DestinationPath: archivePath,
+			DestinationPath: opts.ArchivePath,
 			Log:             logFunc,
 		},
-		latestSymlink: latestSymlink,
+		latestSymlink: opts.LatestSymlink,
 	}
 }
 
@@ -34,10 +40,6 @@ func (b *localStorage) Name() string {
 
 // Copy copies the given file to the local storage backend.
 func (b *localStorage) Copy(file string) error {
-	if _, err := os.Stat(b.DestinationPath); os.IsNotExist(err) {
-		return nil
-	}
-
 	_, name := path.Split(file)
 
 	if err := utilities.CopyFile(file, path.Join(b.DestinationPath, name)); err != nil {
