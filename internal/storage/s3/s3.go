@@ -1,8 +1,12 @@
+// Copyright 2022 - Offen Authors <hioffen@posteo.de>
+// SPDX-License-Identifier: MPL-2.0
+
 package s3
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path"
 	"path/filepath"
 	"time"
@@ -20,54 +24,66 @@ type s3Storage struct {
 	storageClass string
 }
 
+// Config contains values that define the configuration of a S3 backend.
+type Config struct {
+	Endpoint         string
+	AccessKeyID      string
+	SecretAccessKey  string
+	IamRoleEndpoint  string
+	EndpointProto    string
+	EndpointInsecure bool
+	RemotePath       string
+	BucketName       string
+	StorageClass     string
+}
+
 // NewStorageBackend creates and initializes a new S3/Minio storage backend.
-func NewStorageBackend(endpoint string, accessKeyId string, secretAccessKey string, iamRoleEndpoint string, endpointProto string, endpointInsecure bool,
-	remotePath string, bucket string, storageClass string, logFunc storage.Log) (storage.Backend, error) {
+func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
 
 	var creds *credentials.Credentials
-	if accessKeyId != "" && secretAccessKey != "" {
+	if opts.AccessKeyID != "" && opts.SecretAccessKey != "" {
 		creds = credentials.NewStaticV4(
-			accessKeyId,
-			secretAccessKey,
+			opts.AccessKeyID,
+			opts.SecretAccessKey,
 			"",
 		)
-	} else if iamRoleEndpoint != "" {
-		creds = credentials.NewIAM(iamRoleEndpoint)
+	} else if opts.IamRoleEndpoint != "" {
+		creds = credentials.NewIAM(opts.IamRoleEndpoint)
 	} else {
-		return nil, errors.New("newScript: AWS_S3_BUCKET_NAME is defined, but no credentials were provided")
+		return nil, errors.New("NewStorageBackend: AWS_S3_BUCKET_NAME is defined, but no credentials were provided")
 	}
 
 	options := minio.Options{
 		Creds:  creds,
-		Secure: endpointProto == "https",
+		Secure: opts.EndpointProto == "https",
 	}
 
-	if endpointInsecure {
+	if opts.EndpointInsecure {
 		if !options.Secure {
-			return nil, errors.New("newScript: AWS_ENDPOINT_INSECURE = true is only meaningful for https")
+			return nil, errors.New("NewStorageBackend: AWS_ENDPOINT_INSECURE = true is only meaningful for https")
 		}
 
 		transport, err := minio.DefaultTransport(true)
 		if err != nil {
-			return nil, logFunc(storage.ERROR, "S3", "NewScript: failed to create default minio transport")
+			return nil, fmt.Errorf("NewStorageBackend: failed to create default minio transport")
 		}
 		transport.TLSClientConfig.InsecureSkipVerify = true
 		options.Transport = transport
 	}
 
-	mc, err := minio.New(endpoint, &options)
+	mc, err := minio.New(opts.Endpoint, &options)
 	if err != nil {
-		return nil, logFunc(storage.ERROR, "S3", "NewScript: error setting up minio client: %w", err)
+		return nil, fmt.Errorf("NewStorageBackend: error setting up minio client: %w", err)
 	}
 
 	return &s3Storage{
 		StorageBackend: &storage.StorageBackend{
-			DestinationPath: remotePath,
+			DestinationPath: opts.RemotePath,
 			Log:             logFunc,
 		},
 		client:       mc,
-		bucket:       bucket,
-		storageClass: storageClass,
+		bucket:       opts.BucketName,
+		storageClass: opts.StorageClass,
 	}, nil
 }
 
@@ -85,9 +101,9 @@ func (b *s3Storage) Copy(file string) error {
 		StorageClass: b.storageClass,
 	}); err != nil {
 		errResp := minio.ToErrorResponse(err)
-		return b.Log(storage.ERROR, b.Name(), "Copy: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d", errResp.Message, errResp.Code, errResp.StatusCode)
+		return fmt.Errorf("(*s3Storage).Copy: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d", errResp.Message, errResp.Code, errResp.StatusCode)
 	}
-	b.Log(storage.INFO, b.Name(), "Uploaded a copy of backup `%s` to bucket `%s`.", file, b.bucket)
+	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup `%s` to bucket `%s`.", file, b.bucket)
 
 	return nil
 }
@@ -105,8 +121,8 @@ func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.Pr
 	for candidate := range candidates {
 		lenCandidates++
 		if candidate.Err != nil {
-			return nil, b.Log(storage.ERROR, b.Name(),
-				"Prune: Error looking up candidates from remote storage! %w",
+			return nil, fmt.Errorf(
+				"(*s3Storage).Prune: Error looking up candidates from remote storage! %w",
 				candidate.Err,
 			)
 		}
@@ -120,7 +136,7 @@ func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.Pr
 		Pruned: uint(len(matches)),
 	}
 
-	b.DoPrune(b.Name(), len(matches), lenCandidates, "remote backup(s)", func() error {
+	if err := b.DoPrune(b.Name(), len(matches), lenCandidates, "remote backup(s)", func() error {
 		objectsCh := make(chan minio.ObjectInfo)
 		go func() {
 			for _, match := range matches {
@@ -139,7 +155,9 @@ func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.Pr
 			return utilities.Join(removeErrors...)
 		}
 		return nil
-	})
+	}); err != nil {
+		return stats, err
+	}
 
 	return stats, nil
 }

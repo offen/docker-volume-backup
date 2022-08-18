@@ -1,7 +1,11 @@
+// Copyright 2022 - Offen Authors <hioffen@posteo.de>
+// SPDX-License-Identifier: MPL-2.0
+
 package local
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -16,14 +20,20 @@ type localStorage struct {
 	latestSymlink string
 }
 
+// Config allows configuration of a local storage backend.
+type Config struct {
+	ArchivePath   string
+	LatestSymlink string
+}
+
 // NewStorageBackend creates and initializes a new local storage backend.
-func NewStorageBackend(archivePath string, latestSymlink string, logFunc storage.Log) storage.Backend {
+func NewStorageBackend(opts Config, logFunc storage.Log) storage.Backend {
 	return &localStorage{
 		StorageBackend: &storage.StorageBackend{
-			DestinationPath: archivePath,
+			DestinationPath: opts.ArchivePath,
 			Log:             logFunc,
 		},
-		latestSymlink: latestSymlink,
+		latestSymlink: opts.LatestSymlink,
 	}
 }
 
@@ -34,16 +44,12 @@ func (b *localStorage) Name() string {
 
 // Copy copies the given file to the local storage backend.
 func (b *localStorage) Copy(file string) error {
-	if _, err := os.Stat(b.DestinationPath); os.IsNotExist(err) {
-		return nil
-	}
-
 	_, name := path.Split(file)
 
-	if err := utilities.CopyFile(file, path.Join(b.DestinationPath, name)); err != nil {
-		return b.Log(storage.ERROR, b.Name(), "Copy: Error copying file to local archive! %w", err)
+	if err := copyFile(file, path.Join(b.DestinationPath, name)); err != nil {
+		return fmt.Errorf("(*localStorage).Copy: Error copying file to local archive! %w", err)
 	}
-	b.Log(storage.INFO, b.Name(), "Stored copy of backup `%s` in local archive `%s`.", file, b.DestinationPath)
+	b.Log(storage.LogLevelInfo, b.Name(), "Stored copy of backup `%s` in local archive `%s`.", file, b.DestinationPath)
 
 	if b.latestSymlink != "" {
 		symlink := path.Join(b.DestinationPath, b.latestSymlink)
@@ -51,9 +57,9 @@ func (b *localStorage) Copy(file string) error {
 			os.Remove(symlink)
 		}
 		if err := os.Symlink(name, symlink); err != nil {
-			return b.Log(storage.ERROR, b.Name(), "Copy: error creating latest symlink! %w", err)
+			return fmt.Errorf("(*localStorage).Copy: error creating latest symlink! %w", err)
 		}
-		b.Log(storage.INFO, b.Name(), "Created/Updated symlink `%s` for latest backup.", b.latestSymlink)
+		b.Log(storage.LogLevelInfo, b.Name(), "Created/Updated symlink `%s` for latest backup.", b.latestSymlink)
 	}
 
 	return nil
@@ -67,8 +73,8 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 	)
 	globMatches, err := filepath.Glob(globPattern)
 	if err != nil {
-		return nil, b.Log(storage.ERROR, b.Name(),
-			"Prune: Error looking up matching files using pattern %s! %w",
+		return nil, fmt.Errorf(
+			"(*localStorage).Prune: Error looking up matching files using pattern %s: %w",
 			globPattern,
 			err,
 		)
@@ -78,8 +84,8 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 	for _, candidate := range globMatches {
 		fi, err := os.Lstat(candidate)
 		if err != nil {
-			return nil, b.Log(storage.ERROR, b.Name(),
-				"Prune: Error calling Lstat on file %s! %w",
+			return nil, fmt.Errorf(
+				"(*localStorage).Prune: Error calling Lstat on file %s: %w",
 				candidate,
 				err,
 			)
@@ -94,8 +100,8 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 	for _, candidate := range candidates {
 		fi, err := os.Stat(candidate)
 		if err != nil {
-			return nil, b.Log(storage.ERROR, b.Name(),
-				"Prune: Error calling stat on file %s! %w",
+			return nil, fmt.Errorf(
+				"(*localStorage).Prune: Error calling stat on file %s! %w",
 				candidate,
 				err,
 			)
@@ -110,7 +116,7 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 		Pruned: uint(len(matches)),
 	}
 
-	b.DoPrune(b.Name(), len(matches), len(candidates), "local backup(s)", func() error {
+	if err := b.DoPrune(b.Name(), len(matches), len(candidates), "local backup(s)", func() error {
 		var removeErrors []error
 		for _, match := range matches {
 			if err := os.Remove(match); err != nil {
@@ -118,14 +124,37 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 			}
 		}
 		if len(removeErrors) != 0 {
-			return b.Log(storage.ERROR, b.Name(),
-				"Prune: %d error(s) deleting local files, starting with: %w",
+			return fmt.Errorf(
+				"(*localStorage).Prune: %d error(s) deleting local files, starting with: %w",
 				len(removeErrors),
 				utilities.Join(removeErrors...),
 			)
 		}
 		return nil
-	})
+	}); err != nil {
+		return stats, err
+	}
 
 	return stats, nil
+}
+
+// copy creates a copy of the file located at `dst` at `src`.
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		out.Close()
+		return err
+	}
+	return out.Close()
 }
