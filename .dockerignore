@@ -1,1 +1,19 @@
-test
+# Ignore everything
+*
+
+# Exceptions:
+# Note: Wildcards for directories like * or ** don't work (yet) with exclamation marks!
+
+!cmd/backup/*.go
+!cmd/backup/*.tmpl
+
+!internal/storage/*.go
+!internal/storage/local/*.go
+!internal/storage/s3/*.go
+!internal/storage/ssh/*.go
+!internal/storage/webdav/*.go
+!internal/utilities/*.go
+
+!Dockerfile
+!entrypoint.sh
+!go.*

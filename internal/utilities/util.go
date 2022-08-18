@@ -1,7 +1,7 @@
 // Copyright 2022 - Offen Authors <hioffen@posteo.de>
 // SPDX-License-Identifier: MPL-2.0
 
-package main
+package utilities
 
 import (
 	"bytes"
@@ -12,10 +12,10 @@ import (
 	"strings"
 )
 
-var noop = func() error { return nil }
+var Noop = func() error { return nil }
 
 // copy creates a copy of the file located at `dst` at `src`.
-func copyFile(src, dst string) error {
+func CopyFile(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
@@ -36,7 +36,7 @@ func copyFile(src, dst string) error {
 }
 
 // join takes a list of errors and joins them into a single error
-func join(errs ...error) error {
+func Join(errs ...error) error {
 	if len(errs) == 1 {
 		return errs[0]
 	}
@@ -51,7 +51,7 @@ func join(errs ...error) error {
 }
 
 // remove removes the given file or directory from disk.
-func remove(location string) error {
+func Remove(location string) error {
 	fi, err := os.Lstat(location)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -72,7 +72,7 @@ func remove(location string) error {
 
 // buffer takes an io.Writer and returns a wrapped version of the
 // writer that writes to both the original target as well as the returned buffer
-func buffer(w io.Writer) (io.Writer, *bytes.Buffer) {
+func Buffer(w io.Writer) (io.Writer, *bytes.Buffer) {
 	buffering := &bufferingWriter{buf: bytes.Buffer{}, writer: w}
 	return buffering, &buffering.buf
 }

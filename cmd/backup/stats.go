@@ -30,14 +30,6 @@ type StorageStats struct {
 	PruneErrors uint
 }
 
-// StoragesStats stats about each possible archival location (Local, WebDAV, SSH, S3)
-type StoragesStats struct {
-	Local  StorageStats
-	WebDAV StorageStats
-	SSH    StorageStats
-	S3     StorageStats
-}
-
 // Stats global stats regarding script execution
 type Stats struct {
 	StartTime  time.Time
@@ -47,5 +39,5 @@ type Stats struct {
 	LogOutput  *bytes.Buffer
 	Containers ContainersStats
 	BackupFile BackupFileStats
-	Storages   StoragesStats
+	Storages   map[string]StorageStats
 }
