@@ -986,7 +986,7 @@ services:
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /path/to/private_key:/root/.ssh/id
+      - /path/to/private_key:/root/.ssh/id_rsa
 
 volumes:
   data:
