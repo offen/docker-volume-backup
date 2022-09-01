@@ -35,7 +35,6 @@ type Config struct {
 
 // NewStorageBackend creates and initializes a new WebDav storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
-
 	if opts.Username == "" || opts.Password == "" {
 		return nil, errors.New("NewStorageBackend: WEBDAV_URL is defined, but no credentials were provided")
 	} else {
