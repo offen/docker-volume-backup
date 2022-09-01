@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"sync"
 	"time"
 )
 
@@ -32,6 +33,7 @@ type StorageStats struct {
 
 // Stats global stats regarding script execution
 type Stats struct {
+	sync.Mutex
 	StartTime  time.Time
 	EndTime    time.Time
 	TookTime   time.Duration

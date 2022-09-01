@@ -32,6 +32,7 @@ import (
 	"github.com/otiai10/copy"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/openpgp"
+	"golang.org/x/sync/errgroup"
 )
 
 // script holds all the stateful information required to orchestrate a
@@ -493,10 +494,15 @@ func (s *script) copyArchive() error {
 		}
 	}
 
+	eg := errgroup.Group{}
 	for _, backend := range s.storages {
-		if err := backend.Copy(s.file); err != nil {
-			return err
-		}
+		b := backend
+		eg.Go(func() error {
+			return b.Copy(s.file)
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return fmt.Errorf("copyArchive: error copying archive: %w", err)
 	}
 
 	return nil
@@ -512,16 +518,26 @@ func (s *script) pruneBackups() error {
 
 	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
 
+	eg := errgroup.Group{}
 	for _, backend := range s.storages {
-		if stats, err := backend.Prune(deadline, s.c.BackupPruningPrefix); err == nil {
-			s.stats.Storages[backend.Name()] = StorageStats{
+		b := backend
+		eg.Go(func() error {
+			stats, err := b.Prune(deadline, s.c.BackupPruningPrefix)
+			if err != nil {
+				return err
+			}
+			s.stats.Lock()
+			s.stats.Storages[b.Name()] = StorageStats{
 				Total:  stats.Total,
 				Pruned: stats.Pruned,
 			}
+			s.stats.Unlock()
+			return nil
+		})
+	}
 
-		} else {
-			return err
-		}
+	if err := eg.Wait(); err != nil {
+		return fmt.Errorf("pruneBackups: error pruning backups: %w", err)
 	}
 
 	return nil
