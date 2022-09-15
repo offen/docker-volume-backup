@@ -31,7 +31,7 @@ func (s *script) lock(lockfile string) (func() error, error) {
 	for {
 		acquired, err := fileLock.TryLock()
 		if err != nil {
-			return noop, fmt.Errorf("lock: error trying lock: %w", err)
+			return noop, fmt.Errorf("lock: error trying to lock: %w", err)
 		}
 		if acquired {
 			if s.encounteredLock {

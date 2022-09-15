@@ -258,7 +258,7 @@ func (s *script) stopContainers() (func() error, error) {
 		Quiet: true,
 	})
 	if err != nil {
-		return noop, fmt.Errorf("stopContainersAndRun: error querying for containers: %w", err)
+		return noop, fmt.Errorf("stopContainers: error querying for containers: %w", err)
 	}
 
 	containerLabel := fmt.Sprintf(
@@ -274,7 +274,7 @@ func (s *script) stopContainers() (func() error, error) {
 	})
 
 	if err != nil {
-		return noop, fmt.Errorf("stopContainersAndRun: error querying for containers to stop: %w", err)
+		return noop, fmt.Errorf("stopContainers: error querying for containers to stop: %w", err)
 	}
 
 	if len(containersToStop) == 0 {
@@ -301,7 +301,7 @@ func (s *script) stopContainers() (func() error, error) {
 	var stopError error
 	if len(stopErrors) != 0 {
 		stopError = fmt.Errorf(
-			"stopContainersAndRun: %d error(s) stopping containers: %w",
+			"stopContainers: %d error(s) stopping containers: %w",
 			len(stopErrors),
 			utilities.Join(stopErrors...),
 		)
@@ -338,7 +338,7 @@ func (s *script) stopContainers() (func() error, error) {
 					}
 				}
 				if serviceMatch.ID == "" {
-					return fmt.Errorf("stopContainersAndRun: couldn't find service with name %s", serviceName)
+					return fmt.Errorf("stopContainers: couldn't find service with name %s", serviceName)
 				}
 				serviceMatch.Spec.TaskTemplate.ForceUpdate = 1
 				if _, err := s.cli.ServiceUpdate(
@@ -352,7 +352,7 @@ func (s *script) stopContainers() (func() error, error) {
 
 		if len(restartErrors) != 0 {
 			return fmt.Errorf(
-				"stopContainersAndRun: %d error(s) restarting containers and services: %w",
+				"stopContainers: %d error(s) restarting containers and services: %w",
 				len(restartErrors),
 				utilities.Join(restartErrors...),
 			)
@@ -381,7 +381,7 @@ func (s *script) createArchive() error {
 		// copy before compressing guard against a situation where backup folder's content are still growing.
 		s.registerHook(hookLevelPlumbing, func(error) error {
 			if err := remove(backupSources); err != nil {
-				return fmt.Errorf("takeBackup: error removing snapshot: %w", err)
+				return fmt.Errorf("createArchive: error removing snapshot: %w", err)
 			}
 			s.logger.Infof("Removed snapshot `%s`.", backupSources)
 			return nil

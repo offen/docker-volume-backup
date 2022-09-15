@@ -36,16 +36,16 @@ func (s *script) notify(titleTemplate string, bodyTemplate string, err error) er
 
 	titleBuf := &bytes.Buffer{}
 	if err := s.template.ExecuteTemplate(titleBuf, titleTemplate, params); err != nil {
-		return fmt.Errorf("notifyFailure: error executing %s template: %w", titleTemplate, err)
+		return fmt.Errorf("notify: error executing %s template: %w", titleTemplate, err)
 	}
 
 	bodyBuf := &bytes.Buffer{}
 	if err := s.template.ExecuteTemplate(bodyBuf, bodyTemplate, params); err != nil {
-		return fmt.Errorf("notifyFailure: error executing %s template: %w", bodyTemplate, err)
+		return fmt.Errorf("notify: error executing %s template: %w", bodyTemplate, err)
 	}
 
 	if err := s.sendNotification(titleBuf.String(), bodyBuf.String()); err != nil {
-		return fmt.Errorf("notifyFailure: error notifying: %w", err)
+		return fmt.Errorf("notify: error notifying: %w", err)
 	}
 	return nil
 }

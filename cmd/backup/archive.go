@@ -63,7 +63,7 @@ func compress(paths []string, outFilePath, subPath string) error {
 
 	for _, p := range paths {
 		if err := writeTarGz(p, tarWriter, prefix); err != nil {
-			return fmt.Errorf("compress error writing %s to archive: %w", p, err)
+			return fmt.Errorf("compress: error writing %s to archive: %w", p, err)
 		}
 	}
 
