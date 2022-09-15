@@ -65,7 +65,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 
 		transport, err := minio.DefaultTransport(true)
 		if err != nil {
-			return nil, fmt.Errorf("NewStorageBackend: failed to create default minio transport")
+			return nil, fmt.Errorf("NewStorageBackend: failed to create default minio transport: %w", err)
 		}
 		transport.TLSClientConfig.InsecureSkipVerify = true
 		options.Transport = transport

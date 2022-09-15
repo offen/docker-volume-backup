@@ -47,7 +47,7 @@ func (b *localStorage) Copy(file string) error {
 	_, name := path.Split(file)
 
 	if err := copyFile(file, path.Join(b.DestinationPath, name)); err != nil {
-		return fmt.Errorf("(*localStorage).Copy: Error copying file to local archive! %w", err)
+		return fmt.Errorf("(*localStorage).Copy: Error copying file to local archive: %w", err)
 	}
 	b.Log(storage.LogLevelInfo, b.Name(), "Stored copy of backup `%s` in local archive `%s`.", file, b.DestinationPath)
 
@@ -57,7 +57,7 @@ func (b *localStorage) Copy(file string) error {
 			os.Remove(symlink)
 		}
 		if err := os.Symlink(name, symlink); err != nil {
-			return fmt.Errorf("(*localStorage).Copy: error creating latest symlink! %w", err)
+			return fmt.Errorf("(*localStorage).Copy: error creating latest symlink: %w", err)
 		}
 		b.Log(storage.LogLevelInfo, b.Name(), "Created/Updated symlink `%s` for latest backup.", b.latestSymlink)
 	}
@@ -101,7 +101,7 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 		fi, err := os.Stat(candidate)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"(*localStorage).Prune: Error calling stat on file %s! %w",
+				"(*localStorage).Prune: Error calling stat on file %s: %w",
 				candidate,
 				err,
 			)
