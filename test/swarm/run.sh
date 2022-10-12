@@ -30,3 +30,6 @@ expect_running_containers "5"
 
 docker stack rm test_stack
 docker swarm leave --force
+
+docker volume rm backup_data
+docker volume rm test_stack_pg_data

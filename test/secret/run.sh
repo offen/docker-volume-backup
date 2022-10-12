@@ -37,3 +37,6 @@ docker secret rm minio_root_password
 docker secret rm minio_root_user
 
 docker swarm leave --force
+
+docker volume rm backup_data
+docker volume rm test_stack_pg_data
