@@ -8,6 +8,9 @@ current_test=$(basename $(pwd))
 
 docker swarm init
 
+printf "test" | docker secret create minio_root_user -
+printf "GMusLtUmILge2by+z890kQ" | docker secret create minio_root_password -
+
 docker stack deploy --compose-file=docker-compose.yml test_stack
 
 while [ -z $(docker ps -q -f name=backup) ]; do
@@ -29,6 +32,10 @@ sleep 5
 expect_running_containers "5"
 
 docker stack rm test_stack
+
+docker secret rm minio_root_password
+docker secret rm minio_root_user
+
 docker swarm leave --force
 
 sleep 10

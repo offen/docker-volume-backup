@@ -4,6 +4,7 @@
 package main
 
 import (
+	"os"
 	"fmt"
 	"regexp"
 	"time"
@@ -19,7 +20,9 @@ type Config struct {
 	AwsEndpointInsecure        bool          `split_words:"true"`
 	AwsStorageClass            string        `split_words:"true"`
 	AwsAccessKeyID             string        `envconfig:"AWS_ACCESS_KEY_ID"`
+	AwsAccessKeyIDFile         string        `envconfig:"AWS_ACCESS_KEY_ID_FILE"`
 	AwsSecretAccessKey         string        `split_words:"true"`
+	AwsSecretAccessKeyFile     string        `split_words:"true"`
 	AwsIamRoleEndpoint         string        `split_words:"true"`
 	BackupSources              string        `split_words:"true" default:"/backup"`
 	BackupFilename             string        `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.tar.gz"`
@@ -56,6 +59,17 @@ type Config struct {
 	ExecLabel                  string        `split_words:"true"`
 	ExecForwardOutput          bool          `split_words:"true"`
 	LockTimeout                time.Duration `split_words:"true" default:"60m"`
+}
+
+func (c *Config) resolveSecret(envVar string, secretPath string) (string, error) {
+	if secretPath != "" {
+		data, err := os.ReadFile(secretPath)
+		if err != nil {
+			return "", fmt.Errorf("resolveSecret: error reading secret path: %w", err)
+		}
+		return string(data), nil
+	}
+	return envVar, nil
 }
 
 type RegexpDecoder struct {

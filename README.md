@@ -196,6 +196,14 @@ You can populate below template according to your requirements and use it as you
 # AWS_ACCESS_KEY_ID="<xxx>"
 # AWS_SECRET_ACCESS_KEY="<xxx>"
 
+# It is possible to provide the keys in files, allowing to hide the sensitive data.
+# These values have a higher priority than the ones above, meaning if both are set
+# the values from the files will be used.
+# This option is most useful with Docker [secrets](https://docs.docker.com/engine/swarm/secrets/).
+
+# AWS_ACCESS_KEY_ID_FILE="/path/to/file"
+# AWS_SECRET_ACCESS_KEY_FILE="/path/to/file"
+
 # Instead of providing static credentials, you can also use IAM instance profiles
 # or similar to provide authentication. Some possible configuration options on AWS:
 # - EC2: http://169.254.169.254
@@ -945,6 +953,38 @@ services:
 
 volumes:
   data:
+```
+
+
+### Backing up to MinIO (using Docker secrets)
+
+```yml
+version: '3'
+
+services:
+  # ... define other services using the `data` volume here
+  backup:
+    image: offen/docker-volume-backup:v2
+    environment:
+      AWS_ENDPOINT: minio.example.com
+      AWS_S3_BUCKET_NAME: backup-bucket
+      AWS_ACCESS_KEY_ID_FILE: /run/secrets/minio_access_key
+      AWS_SECRET_ACCESS_KEY_FILE: /run/secrets/minio_secret_key
+    volumes:
+      - data:/backup/my-app-backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    secrets:
+      - minio_access_key
+      - minio_secret_key
+
+volumes:
+  data:
+
+secrets:
+  minio_access_key:
+    # ... define how secret is accessed
+  minio_secret_key:
+    # ... define how secret is accessed
 ```
 
 ### Backing up to WebDAV
