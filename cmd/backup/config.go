@@ -67,7 +67,7 @@ func (c *Config) resolveSecret(envVar string, secretPath string) (string, error)
 		if err != nil {
 			return "", fmt.Errorf("resolveSecret: error reading secret path: %w", err)
 		}
-		return string (data), nil
+		return string(data), nil
 	}
 	return envVar, nil
 }
