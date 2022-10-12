@@ -61,10 +61,13 @@ type Config struct {
 	LockTimeout                time.Duration `split_words:"true" default:"60m"`
 }
 
-func (c *Config) ResolveSecret(envVar string, secretPath string) (string, error) {
+func (c *Config) resolveSecret(envVar string, secretPath string) (string, error) {
 	if secretPath != "" {
 		data, err := os.ReadFile(secretPath)
-		return string(data), err
+		if err != nil {
+			return "", fmt.Errorf("resolveSecret: error reading secret path: %w", err)
+		}
+		return string (data), nil
 	}
 	return envVar, nil
 }
