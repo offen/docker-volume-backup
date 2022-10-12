@@ -41,4 +41,4 @@ docker swarm leave --force
 sleep 10
 
 docker volume rm backup_data
-docker volume rm test_stack_pg_data
+docker volume rm pg_data

@@ -4,8 +4,8 @@
 package main
 
 import (
-	"os"
 	"fmt"
+	"os"
 	"regexp"
 	"time"
 )
@@ -62,14 +62,14 @@ type Config struct {
 }
 
 func (c *Config) resolveSecret(envVar string, secretPath string) (string, error) {
-	if secretPath != "" {
-		data, err := os.ReadFile(secretPath)
-		if err != nil {
-			return "", fmt.Errorf("resolveSecret: error reading secret path: %w", err)
-		}
-		return string(data), nil
+	if secretPath == "" {
+		return envVar, nil
 	}
-	return envVar, nil
+	data, err := os.ReadFile(secretPath)
+	if err != nil {
+		return "", fmt.Errorf("resolveSecret: error reading secret path: %w", err)
+	}
+	return string(data), nil
 }
 
 type RegexpDecoder struct {
