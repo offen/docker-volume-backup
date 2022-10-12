@@ -35,7 +35,8 @@ jobs:
       - checkout
       - setup_remote_docker:
           version: 20.10.6
-      - docker/install-docker-credential-helper
+      - docker/install-docker-credential-helper:
+          release-tag: v0.6.4
       - docker/configure-docker-credentials-store
       - run:
           name: Push to Docker Hub
@@ -71,4 +72,4 @@ workflows:
               only: /^v.*/
 
 orbs:
-  docker: circleci/docker@1.0.1
+  docker: circleci/docker@2.1.4
