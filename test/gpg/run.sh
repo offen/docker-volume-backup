@@ -17,7 +17,7 @@ expect_running_containers "2"
 
 tmp_dir=$(mktemp -d)
 
-echo 1234secret | gpg -d --pinentry-mode loopback --yes --passphrase-fd 0 ./local/test.tar.gz.gpg > ./local/decrypted.tar.gz
+echo "1234#\$ecret" | gpg -d --pinentry-mode loopback --yes --passphrase-fd 0 ./local/test.tar.gz.gpg > ./local/decrypted.tar.gz
 tar -xf ./local/decrypted.tar.gz -C $tmp_dir
 ls -lah $tmp_dir
 if [ ! -f $tmp_dir/backup/app_data/offen.db ]; then
