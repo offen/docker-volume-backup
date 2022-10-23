@@ -113,9 +113,8 @@ func (b *s3Storage) Copy(file string) error {
 // Prune rotates away backups according to the configuration and provided deadline for the S3/Minio storage backend.
 func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
 	candidates := b.client.ListObjects(context.Background(), b.bucket, minio.ListObjectsOptions{
-		WithMetadata: true,
-		Prefix:       filepath.Join(b.DestinationPath, pruningPrefix),
-		Recursive:    true,
+		Prefix:    filepath.Join(b.DestinationPath, pruningPrefix),
+		Recursive: true,
 	})
 
 	var matches []minio.ObjectInfo
