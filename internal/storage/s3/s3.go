@@ -5,6 +5,7 @@ package s3
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"path"
@@ -35,11 +36,11 @@ type Config struct {
 	RemotePath       string
 	BucketName       string
 	StorageClass     string
+	CACert           *x509.Certificate
 }
 
 // NewStorageBackend creates and initializes a new S3/Minio storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
-
 	var creds *credentials.Credentials
 	if opts.AccessKeyID != "" && opts.SecretAccessKey != "" {
 		creds = credentials.NewStaticV4(
@@ -58,18 +59,23 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		Secure: opts.EndpointProto == "https",
 	}
 
+	transport, err := minio.DefaultTransport(true)
+	if err != nil {
+		return nil, fmt.Errorf("NewStorageBackend: failed to create default minio transport: %w", err)
+	}
+
 	if opts.EndpointInsecure {
 		if !options.Secure {
 			return nil, errors.New("NewStorageBackend: AWS_ENDPOINT_INSECURE = true is only meaningful for https")
 		}
-
-		transport, err := minio.DefaultTransport(true)
-		if err != nil {
-			return nil, fmt.Errorf("NewStorageBackend: failed to create default minio transport: %w", err)
-		}
 		transport.TLSClientConfig.InsecureSkipVerify = true
-		options.Transport = transport
+	} else if opts.CACert != nil {
+		if transport.TLSClientConfig.RootCAs == nil {
+			transport.TLSClientConfig.RootCAs = x509.NewCertPool()
+		}
+		transport.TLSClientConfig.RootCAs.AddCert(opts.CACert)
 	}
+	options.Transport = transport
 
 	mc, err := minio.New(opts.Endpoint, &options)
 	if err != nil {

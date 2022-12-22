@@ -37,6 +37,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Backing up to AWS S3](#backing-up-to-aws-s3)
   - [Backing up to Filebase](#backing-up-to-filebase)
   - [Backing up to MinIO](#backing-up-to-minio)
+  - [Backing up to MinIO \(using Docker secrets\)](#backing-up-to-minio-using-docker-secrets)
   - [Backing up to WebDAV](#backing-up-to-webdav)
   - [Backing up to SSH](#backing-up-to-ssh)
   - [Backing up locally](#backing-up-locally)
@@ -230,6 +231,13 @@ You can populate below template according to your requirements and use it as you
 # used when AWS_ENDPOINT_PROTO is set to `https`.
 
 # AWS_ENDPOINT_INSECURE="true"
+
+# If you wish to use self signed certificates your S3 server, you can pass
+# the location of a PEM encoded CA certificate and it will be used for
+# validating your certificates.
+# Alternatively, pass a PEM encoded string containing the certificate.
+
+# AWS_ENDPOINT_CA_CERT="/path/to/cert.pem"
 
 # Setting this variable will change the S3 storage class header.
 # Defaults to "STANDARD", you can set this value according to your needs.
