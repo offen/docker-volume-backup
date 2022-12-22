@@ -4,7 +4,10 @@
 package main
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"regexp"
 	"time"
@@ -18,6 +21,7 @@ type Config struct {
 	AwsEndpoint                string        `split_words:"true" default:"s3.amazonaws.com"`
 	AwsEndpointProto           string        `split_words:"true" default:"https"`
 	AwsEndpointInsecure        bool          `split_words:"true"`
+	AwsEndpointCACert          CertDecoder   `envconfig:"AWS_ENDPOINT_CA_CERT"`
 	AwsStorageClass            string        `split_words:"true"`
 	AwsAccessKeyID             string        `envconfig:"AWS_ACCESS_KEY_ID"`
 	AwsAccessKeyIDFile         string        `envconfig:"AWS_ACCESS_KEY_ID_FILE"`
@@ -70,6 +74,27 @@ func (c *Config) resolveSecret(envVar string, secretPath string) (string, error)
 		return "", fmt.Errorf("resolveSecret: error reading secret path: %w", err)
 	}
 	return string(data), nil
+}
+
+type CertDecoder struct {
+	Cert *x509.Certificate
+}
+
+func (c *CertDecoder) Decode(v string) error {
+	if v == "" {
+		return nil
+	}
+	content, err := ioutil.ReadFile(v)
+	if err != nil {
+		content = []byte(v)
+	}
+	block, _ := pem.Decode(content)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("config: error parsing certificate: %w", err)
+	}
+	*c = CertDecoder{Cert: cert}
+	return nil
 }
 
 type RegexpDecoder struct {
