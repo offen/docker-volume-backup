@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/offen/docker-volume-backup/internal/storage"
+	"github.com/offen/docker-volume-backup/internal/storage/azure"
 	"github.com/offen/docker-volume-backup/internal/storage/local"
 	"github.com/offen/docker-volume-backup/internal/storage/s3"
 	"github.com/offen/docker-volume-backup/internal/storage/ssh"
@@ -76,6 +77,7 @@ func newScript() (*script, error) {
 				"WebDAV": {},
 				"SSH":    {},
 				"Local":  {},
+				"Azure":  {},
 			},
 		},
 	}
@@ -187,6 +189,19 @@ func newScript() (*script, error) {
 		}
 		localBackend := local.NewStorageBackend(localConfig, logFunc)
 		s.storages = append(s.storages, localBackend)
+	}
+
+	if s.c.AzureStorageAccountName != "" {
+		azureConfig := azure.Config{
+			ContainerName:     s.c.AzureStorageContainerName,
+			AccountName:       s.c.AzureStorageAccountName,
+			PrimaryAccountKey: s.c.AzureStoragePrimaryAccountKey,
+		}
+		azureBackend, err := azure.NewStorageBackend(azureConfig, logFunc)
+		if err != nil {
+			return nil, err
+		}
+		s.storages = append(s.storages, azureBackend)
 	}
 
 	if s.c.EmailNotificationRecipient != "" {
