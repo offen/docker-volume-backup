@@ -196,6 +196,7 @@ func newScript() (*script, error) {
 			ContainerName:     s.c.AzureStorageContainerName,
 			AccountName:       s.c.AzureStorageAccountName,
 			PrimaryAccountKey: s.c.AzureStoragePrimaryAccountKey,
+			Endpoint:          s.c.AzureStorageEndpoint,
 		}
 		azureBackend, err := azure.NewStorageBackend(azureConfig, logFunc)
 		if err != nil {

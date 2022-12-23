@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
@@ -55,9 +56,10 @@ func (b *azureBlobStorage) Copy(file string) error {
 	if err != nil {
 		return fmt.Errorf("(*azureBlobStorage).Copy: error opening file %s: %w", file, err)
 	}
+
 	_, err = b.client.UploadStream(context.TODO(),
 		b.containerName,
-		file,
+		path.Base(file),
 		fileReader,
 		nil,
 	)
@@ -69,5 +71,5 @@ func (b *azureBlobStorage) Copy(file string) error {
 
 // Prune rotates away backups according to the configuration and provided deadline for the S3/Minio storage backend.
 func (b *azureBlobStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
-	return nil, nil
+	return &storage.PruneStats{}, nil
 }

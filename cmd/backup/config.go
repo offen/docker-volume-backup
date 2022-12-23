@@ -66,7 +66,7 @@ type Config struct {
 	AzureStorageAccountName       string        `split_words:"true"`
 	AzureStoragePrimaryAccountKey string        `split_words:"true"`
 	AzureStorageContainerName     string        `split_words:"true"`
-	AzureStorageEndpoint          string        `split_words:"true" default:""https://%s.blob.core.windows.net/""`
+	AzureStorageEndpoint          string        `split_words:"true" default:"https://%s.blob.core.windows.net/"`
 }
 
 func (c *Config) resolveSecret(envVar string, secretPath string) (string, error) {
