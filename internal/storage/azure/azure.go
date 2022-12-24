@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"sync"
 	"text/template"
 	"time"
@@ -31,6 +31,7 @@ type Config struct {
 	ContainerName     string
 	PrimaryAccountKey string
 	Endpoint          string
+	RemotePath        string
 }
 
 // NewStorageBackend creates and initializes a new Azure Blob Storage backend.
@@ -57,7 +58,8 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		client:        client,
 		containerName: opts.ContainerName,
 		StorageBackend: &storage.StorageBackend{
-			Log: logFunc,
+			DestinationPath: opts.RemotePath,
+			Log:             logFunc,
 		},
 	}
 	return &storage, nil
@@ -74,11 +76,10 @@ func (b *azureBlobStorage) Copy(file string) error {
 	if err != nil {
 		return fmt.Errorf("(*azureBlobStorage).Copy: error opening file %s: %w", file, err)
 	}
-
 	_, err = b.client.UploadStream(
 		context.Background(),
 		b.containerName,
-		path.Base(file),
+		filepath.Join(b.DestinationPath, filepath.Base(file)),
 		fileReader,
 		nil,
 	)
@@ -91,8 +92,9 @@ func (b *azureBlobStorage) Copy(file string) error {
 // Prune rotates away backups according to the configuration and provided
 // deadline for the Azure Blob storage backend.
 func (b *azureBlobStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
+	lookupPrefix := filepath.Join(b.DestinationPath, pruningPrefix)
 	pager := b.client.NewListBlobsFlatPager(b.containerName, &container.ListBlobsFlatOptions{
-		Prefix: &pruningPrefix,
+		Prefix: &lookupPrefix,
 	})
 	var matches []string
 	var totalCount uint

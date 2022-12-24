@@ -66,6 +66,7 @@ type Config struct {
 	AzureStorageAccountName       string        `split_words:"true"`
 	AzureStoragePrimaryAccountKey string        `split_words:"true"`
 	AzureStorageContainerName     string        `split_words:"true"`
+	AzureStoragePath              string        `split_words:"true"`
 	AzureStorageEndpoint          string        `split_words:"true" default:"https://{{ .AccountName }}.blob.core.windows.net/"`
 }
 
