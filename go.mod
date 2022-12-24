@@ -3,6 +3,7 @@ module github.com/offen/docker-volume-backup
 go 1.19
 
 require (
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.6.1
 	github.com/containrrr/shoutrrr v0.5.2
 	github.com/cosiner/argv v0.1.0
 	github.com/docker/docker v20.10.11+incompatible
@@ -21,7 +22,6 @@ require (
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.4 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.0.1 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.6.1 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/containerd/containerd v1.6.6 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
