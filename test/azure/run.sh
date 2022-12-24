@@ -18,7 +18,7 @@ sleep 5
 expect_running_containers "3"
 
 docker-compose run --rm az_cli \
-  az storage blob download -f /dump/test.tar.gz -c test-container -n test.tar.gz
+  az storage blob download -f /dump/test.tar.gz -c test-container -n path/to/backup/test.tar.gz
 tar -xvf ./local/test.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db
 
 pass "Found relevant files in untared remote backups."
@@ -32,7 +32,7 @@ sleep 5
 docker-compose exec backup backup
 
 docker-compose run --rm az_cli \
-  az storage blob download -f /dump/test.tar.gz -c test-container -n test.tar.gz
+  az storage blob download -f /dump/test.tar.gz -c test-container -n path/to/backup/test.tar.gz
 test -f ./local/test.tar.gz
 
 pass "Remote backups have not been deleted."
