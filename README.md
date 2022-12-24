@@ -7,7 +7,7 @@
 Backup Docker volumes locally or to any S3 compatible storage.
 
 The [offen/docker-volume-backup](https://hub.docker.com/r/offen/docker-volume-backup) Docker image can be used as a lightweight (below 15MB) sidecar container to an existing Docker setup.
-It handles __recurring or one-off backups of Docker volumes__ to a __local directory__, __any S3, WebDAV or SSH compatible storage (or any combination) and rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__ and __sending notifications for failed backup runs__.
+It handles __recurring or one-off backups of Docker volumes__ to a __local directory__, __any S3, WebDAV, Azure Blob Storage or SSH compatible storage (or any combination) and rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__ and __sending notifications for failed backup runs__.
 
 <!-- MarkdownTOC -->
 
@@ -40,6 +40,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Backing up to MinIO \(using Docker secrets\)](#backing-up-to-minio-using-docker-secrets)
   - [Backing up to WebDAV](#backing-up-to-webdav)
   - [Backing up to SSH](#backing-up-to-ssh)
+  - [Backing up to Azure Blob Storage](#backing-up-to-azure-blob-storage)
   - [Backing up locally](#backing-up-locally)
   - [Backing up to AWS S3 as well as locally](#backing-up-to-aws-s3-as-well-as-locally)
   - [Running on a custom cron schedule](#running-on-a-custom-cron-schedule)
@@ -302,6 +303,23 @@ You can populate below template according to your requirements and use it as you
 # The passphrase for the identity file
 
 # SSH_IDENTITY_PASSPHRASE="pass"
+
+# The credential's account name when using Azure Blob Storage.
+
+# AZURE_STORAGE_ACCOUNT_NAME="account-name"
+
+# The credential's primary account key when using Azure Blob Storage.
+
+# AZURE_STORAGE_PRIMARY_ACCOUNT_KEY="<xxx>"
+
+# The container name when using Azure Blob Storage.
+
+# AZURE_STORAGE_CONTAINER_NAME="container-name"
+
+# The service endpoint when using Azure Blob Storage. This is a template that
+# will be passed the account name as shown in the value below.
+
+# AZURE_STORAGE_ENDPOINT="https://{{ .AccountName }}.blob.core.windows.net/"
 
 # In addition to storing backups remotely, you can also keep local copies.
 # Pass a container-local path to store your backups if needed. You also need to
@@ -1035,6 +1053,27 @@ services:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /path/to/private_key:/root/.ssh/id_rsa
+
+volumes:
+  data:
+```
+
+### Backing up to Azure Blob Storage
+
+```yml
+version: '3'
+
+services:
+  # ... define other services using the `data` volume here
+  backup:
+    image: offen/docker-volume-backup:v2
+    environment:
+      AZURE_STORAGE_CONTAINER_NAME: backup-container
+      AZURE_STORAGE_ACCOUNT_NAME: account-name
+      AZURE_STORAGE_PRIMARY_ACCOUNT_NAME: Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==
+    volumes:
+      - data:/backup/my-app-backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
 volumes:
   data:
