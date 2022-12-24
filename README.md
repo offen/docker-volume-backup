@@ -317,7 +317,7 @@ You can populate below template according to your requirements and use it as you
 # AZURE_STORAGE_CONTAINER_NAME="container-name"
 
 # The service endpoint when using Azure Blob Storage. This is a template that
-# will be passed the account name as shown in the value below.
+# will be passed the account name as shown in the default value below.
 
 # AZURE_STORAGE_ENDPOINT="https://{{ .AccountName }}.blob.core.windows.net/"
 
