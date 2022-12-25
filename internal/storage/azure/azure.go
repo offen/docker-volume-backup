@@ -13,6 +13,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 	"github.com/offen/docker-volume-backup/internal/storage"
@@ -36,24 +37,37 @@ type Config struct {
 
 // NewStorageBackend creates and initializes a new Azure Blob Storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
-	cred, err := azblob.NewSharedKeyCredential(opts.AccountName, opts.PrimaryAccountKey)
-	if err != nil {
-		return nil, fmt.Errorf("NewStorageBackend: error creating shared Azure credential: %w", err)
-	}
-
 	endpointTemplate, err := template.New("endpoint").Parse(opts.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("NewStorageBackend: error parsing endpoint template: %w", err)
 	}
-
 	var ep bytes.Buffer
 	if err := endpointTemplate.Execute(&ep, opts); err != nil {
 		return nil, fmt.Errorf("NewStorageBackend: error executing endpoint template: %w", err)
 	}
-	client, err := azblob.NewClientWithSharedKeyCredential(ep.String(), cred, nil)
-	if err != nil {
-		return nil, fmt.Errorf("NewStorageBackend: error creating Azure client: %w", err)
+
+	var client *azblob.Client
+	if opts.PrimaryAccountKey != "" {
+		cred, err := azblob.NewSharedKeyCredential(opts.AccountName, opts.PrimaryAccountKey)
+		if err != nil {
+			return nil, fmt.Errorf("NewStorageBackend: error creating shared key Azure credential: %w", err)
+		}
+
+		client, err = azblob.NewClientWithSharedKeyCredential(ep.String(), cred, nil)
+		if err != nil {
+			return nil, fmt.Errorf("NewStorageBackend: error creating Azure client: %w", err)
+		}
+	} else {
+		cred, err := azidentity.NewManagedIdentityCredential(nil)
+		if err != nil {
+			return nil, fmt.Errorf("NewStorageBackend: error creating managed identity credential: %w", err)
+		}
+		client, err = azblob.NewClient(ep.String(), cred, nil)
+		if err != nil {
+			return nil, fmt.Errorf("NewStorageBackend: error creating Azure client: %w", err)
+		}
 	}
+
 	storage := azureBlobStorage{
 		client:        client,
 		containerName: opts.ContainerName,
