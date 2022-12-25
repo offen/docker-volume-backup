@@ -308,7 +308,8 @@ You can populate below template according to your requirements and use it as you
 
 # AZURE_STORAGE_ACCOUNT_NAME="account-name"
 
-# The credential's primary account key when using Azure Blob Storage.
+# The credential's primary account key when using Azure Blob Storage. If this
+# is not given, the command tries to fall back to using a managed identity.
 
 # AZURE_STORAGE_PRIMARY_ACCOUNT_KEY="<xxx>"
 
@@ -1070,7 +1071,7 @@ services:
     environment:
       AZURE_STORAGE_CONTAINER_NAME: backup-container
       AZURE_STORAGE_ACCOUNT_NAME: account-name
-      AZURE_STORAGE_PRIMARY_ACCOUNT_NAME: Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==
+      AZURE_STORAGE_PRIMARY_ACCOUNT_KEY: Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
