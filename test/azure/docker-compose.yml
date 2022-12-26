@@ -4,7 +4,7 @@ services:
   storage:
     image: mcr.microsoft.com/azure-storage/azurite
     volumes:
-      - ./foo:/data
+      - azurite_backup_data:/data
     command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --location /data
     healthcheck:
         test: nc 127.0.0.1 10000 -z
