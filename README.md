@@ -33,6 +33,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Run multiple backup schedules in the same container](#run-multiple-backup-schedules-in-the-same-container)
   - [Define different retention schedules](#define-different-retention-schedules)
   - [Use special characters in notification URLs](#use-special-characters-in-notification-urls)
+  - [Handle file uploads using third party tools](#handle-file-uploads-using-third-party-tools)
 - [Recipes](#recipes)
   - [Backing up to AWS S3](#backing-up-to-aws-s3)
   - [Backing up to Filebase](#backing-up-to-filebase)
@@ -893,6 +894,45 @@ where service is any of the [supported services][shoutrrr-docs], e.g. for SMTP:
 ```
 docker run --rm -ti containrrr/shoutrrr generate smtp
 ```
+
+### Handle file uploads using third party tools
+
+If you want to use a non-supported storage backend, or want to use a third party (e.g. rsync, rclone) tool for file uploads, you can build a Docker image containing the required binaries off this one, and call through to these in lifecycle hooks.
+
+For example, if you wanted to use `rsync`, define your Docker image like this:
+
+```Dockerfile
+ARG version=canary
+FROM offen/docker-volume-backup:$version
+
+RUN apk add rsync
+```
+
+Using this image, you can now omit configuring any of the supported storage backends, and instead define your own mechanism in a `docker-volume-backup.copy-post` label:
+
+```yml
+version: '3'
+
+services:
+  backup:
+    image: your-custom-image
+    restart: always
+    environment:
+      BACKUP_FILENAME: "daily-backup-%Y-%m-%dT%H-%M-%S.tar.gz"
+      BACKUP_CRON_EXPRESSION: "0 2 * * *"
+    labels:
+      - docker-volume-backup.copy-post=/bin/sh -c 'rsync $$COMMAND_RUNTIME_ARCHIVE_FILEPATH /destination'
+    volumes:
+      - app_data:/backup/app_data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # other services defined here ...
+volumes:
+  app_data:
+```
+
+
+Commands will be invoked with the filepath of the tar archive passed as `COMMAND_RUNTIME_BACKUP_FILEPATH`.
 
 ## Recipes
 

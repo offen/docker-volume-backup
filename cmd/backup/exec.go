@@ -24,7 +24,7 @@ import (
 func (s *script) exec(containerRef string, command string) ([]byte, []byte, error) {
 	args, _ := argv.Argv(command, nil, nil)
 	commandEnv := []string{
-		fmt.Sprintf("COMMAND_RUNTIME_BACKUP_FILEPATH=%s", s.file),
+		fmt.Sprintf("COMMAND_RUNTIME_ARCHIVE_FILEPATH=%s", s.file),
 	}
 	execID, err := s.cli.ContainerExecCreate(context.Background(), containerRef, types.ExecConfig{
 		Cmd:          args[0],
