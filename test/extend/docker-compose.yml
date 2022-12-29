@@ -5,10 +5,11 @@ services:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
     restart: always
     labels:
-      - docker-volume-backup.copy-post=/bin/sh -c 'rsync /tmp/test.tar.gz /local'
+      - docker-volume-backup.copy-post=/bin/sh -c 'rsync $$COMMAND_RUNTIME_BACKUP_FILEPATH /local'
     environment:
       BACKUP_FILENAME: test.tar.gz
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      EXEC_FORWARD_OUTPUT: "true"
     volumes:
       - ./local:/local
       - app_data:/backup/app_data:ro
