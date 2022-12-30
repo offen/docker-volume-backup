@@ -21,9 +21,7 @@ sleep 5
 
 expect_running_containers "2"
 
-tmp_dir=$(mktemp -d)
-tar -xvf ./local/test.tar.gz -C $tmp_dir
-if [ ! -f "$tmp_dir/backup/app_data/offen.db" ]; then
+if [ ! -f "./local/app_data/offen.db" ]; then
   fail "Could not find expected file in untared archive."
 fi
 
