@@ -902,8 +902,7 @@ If you want to use a non-supported storage backend, or want to use a third party
 For example, if you wanted to use `rsync`, define your Docker image like this:
 
 ```Dockerfile
-ARG version=canary
-FROM offen/docker-volume-backup:$version
+FROM offen/docker-volume-backup:v2
 
 RUN apk add rsync
 ```
