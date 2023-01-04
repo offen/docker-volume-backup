@@ -305,7 +305,8 @@ You can populate below template according to your requirements and use it as you
 
 # SSH_IDENTITY_PASSPHRASE="pass"
 
-# The credential's account name when using Azure Blob Storage.
+# The credential's account name when using Azure Blob Storage. This has to be
+# set when using Azure Blob Storage.
 
 # AZURE_STORAGE_ACCOUNT_NAME="account-name"
 
@@ -319,7 +320,7 @@ You can populate below template according to your requirements and use it as you
 # AZURE_STORAGE_CONTAINER_NAME="container-name"
 
 # The service endpoint when using Azure Blob Storage. This is a template that
-# will be passed the account name as shown in the default value below.
+# can be passed the account name as shown in the default value below.
 
 # AZURE_STORAGE_ENDPOINT="https://{{ .AccountName }}.blob.core.windows.net/"
 

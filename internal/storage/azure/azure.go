@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"text/template"
 	"time"
@@ -45,6 +46,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 	if err := endpointTemplate.Execute(&ep, opts); err != nil {
 		return nil, fmt.Errorf("NewStorageBackend: error executing endpoint template: %w", err)
 	}
+	normalizedEndpoint := fmt.Sprintf("%s/", strings.TrimSuffix(ep.String(), "/"))
 
 	var client *azblob.Client
 	if opts.PrimaryAccountKey != "" {
@@ -53,7 +55,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 			return nil, fmt.Errorf("NewStorageBackend: error creating shared key Azure credential: %w", err)
 		}
 
-		client, err = azblob.NewClientWithSharedKeyCredential(ep.String(), cred, nil)
+		client, err = azblob.NewClientWithSharedKeyCredential(normalizedEndpoint, cred, nil)
 		if err != nil {
 			return nil, fmt.Errorf("NewStorageBackend: error creating Azure client: %w", err)
 		}
@@ -62,7 +64,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		if err != nil {
 			return nil, fmt.Errorf("NewStorageBackend: error creating managed identity credential: %w", err)
 		}
-		client, err = azblob.NewClient(ep.String(), cred, nil)
+		client, err = azblob.NewClient(normalizedEndpoint, cred, nil)
 		if err != nil {
 			return nil, fmt.Errorf("NewStorageBackend: error creating Azure client: %w", err)
 		}
