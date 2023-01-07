@@ -8,13 +8,13 @@ current_test=$(basename $(pwd))
 
 mkdir -p local
 
-docker-compose up -d
+docker compose up -d
 sleep 5
 
 GOTIFY_TOKEN=$(curl -sSLX POST -H 'Content-Type: application/json' -d '{"name":"test"}' http://admin:custom@localhost:8080/application | jq -r '.token')
 info "Set up Gotify application using token $GOTIFY_TOKEN"
 
-docker-compose exec backup backup
+docker compose exec backup backup
 
 NUM_MESSAGES=$(curl -sSL http://admin:custom@localhost:8080/message | jq -r '.messages | length')
 if [ "$NUM_MESSAGES" != 0 ]; then
@@ -22,11 +22,11 @@ if [ "$NUM_MESSAGES" != 0 ]; then
 fi
 pass "No notifications were sent when not configured."
 
-docker-compose down
+docker compose down
 
-NOTIFICATION_URLS="gotify://gotify/${GOTIFY_TOKEN}?disableTLS=true" docker-compose up -d
+NOTIFICATION_URLS="gotify://gotify/${GOTIFY_TOKEN}?disableTLS=true" docker compose up -d
 
-docker-compose exec backup backup
+docker compose exec backup backup
 
 NUM_MESSAGES=$(curl -sSL http://admin:custom@localhost:8080/message | jq -r '.messages | length')
 if [ "$NUM_MESSAGES" != 1 ]; then
@@ -47,4 +47,4 @@ if [ "$MESSAGE_BODY" != "Backing up /tmp/test.tar.gz succeeded." ]; then
 fi
 pass "Custom notification body was used."
 
-docker-compose down --volumes
+docker compose down --volumes

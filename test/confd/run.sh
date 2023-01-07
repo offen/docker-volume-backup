@@ -8,12 +8,12 @@ current_test=$(basename $(pwd))
 
 mkdir -p local
 
-docker-compose up -d
+docker compose up -d
 
 # sleep until a backup is guaranteed to have happened on the 1 minute schedule
 sleep 100
 
-docker-compose down --volumes
+docker compose down --volumes
 
 if [ ! -f ./local/conf.tar.gz ]; then
   fail "Config from file was not used."

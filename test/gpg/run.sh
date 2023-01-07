@@ -8,10 +8,10 @@ current_test=$(basename $(pwd))
 
 mkdir -p local
 
-docker-compose up -d
+docker compose up -d
 sleep 5
 
-docker-compose exec backup backup
+docker compose exec backup backup
 
 expect_running_containers "2"
 
@@ -30,4 +30,4 @@ if [ ! -L ./local/test-latest.tar.gz.gpg ]; then
   fail "Could not find local symlink to latest encrypted backup."
 fi
 
-docker-compose down --volumes
+docker compose down --volumes
