@@ -24,10 +24,10 @@ openssl x509 -req -passin pass:test \
 
 openssl x509 -in minio.crt -noout -text
 
-docker-compose up -d
+docker compose up -d
 sleep 5
 
-docker-compose exec backup backup
+docker compose exec backup backup
 
 sleep 5
 
@@ -40,4 +40,4 @@ docker run --rm -it \
 
 pass "Found relevant files in untared remote backups."
 
-docker-compose down --volumes
+docker compose down --volumes

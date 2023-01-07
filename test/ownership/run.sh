@@ -9,10 +9,10 @@ current_test=$(basename $(pwd))
 
 mkdir -p local
 
-docker-compose up -d
+docker compose up -d
 sleep 5
 
-docker-compose exec backup backup
+docker compose exec backup backup
 
 tmp_dir=$(mktemp -d)
 sudo tar --same-owner -xvf ./local/backup.tar.gz -C $tmp_dir
@@ -27,4 +27,4 @@ for file in $(sudo find $tmp_dir/backup/postgres); do
 done
 pass "All files and directories in backup preserved their ownership."
 
-docker-compose down --volumes
+docker compose down --volumes

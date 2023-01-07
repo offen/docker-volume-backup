@@ -12,10 +12,10 @@ export TEST_VERSION="${TEST_VERSION:-canary}-with-rsync"
 
 docker build . -t offen/docker-volume-backup:$TEST_VERSION
 
-docker-compose up -d
+docker compose up -d
 sleep 5
 
-docker-compose exec backup backup
+docker compose exec backup backup
 
 sleep 5
 
@@ -25,4 +25,4 @@ if [ ! -f "./local/app_data/offen.db" ]; then
   fail "Could not find expected file in untared archive."
 fi
 
-docker-compose down --volumes
+docker compose down --volumes

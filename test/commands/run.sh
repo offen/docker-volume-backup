@@ -6,10 +6,10 @@ cd $(dirname $0)
 . ../util.sh
 current_test=$(basename $(pwd))
 
-docker-compose up -d
+docker compose up -d
 sleep 30 # mariadb likes to take a bit before responding
 
-docker-compose exec backup backup
+docker compose exec backup backup
 sudo cp -r $(docker volume inspect --format='{{ .Mountpoint }}' commands_archive) ./local
 
 tar -xvf ./local/test.tar.gz
@@ -28,7 +28,7 @@ if [ -f ./backup/data/post.txt ]; then
 fi
 pass "Did not find unexpected file."
 
-docker-compose down --volumes
+docker compose down --volumes
 sudo rm -rf ./local
 
 
