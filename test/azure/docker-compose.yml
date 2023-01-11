@@ -1,0 +1,58 @@
+version: '3'
+
+services:
+  storage:
+    image: mcr.microsoft.com/azure-storage/azurite
+    volumes:
+      - azurite_backup_data:/data
+    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --location /data
+    healthcheck:
+        test: nc 127.0.0.1 10000 -z
+        interval: 1s
+        retries: 30
+
+  az_cli:
+    image: mcr.microsoft.com/azure-cli
+    volumes:
+      - ./local:/dump
+    command:
+      - /bin/sh
+      - -c
+      - |
+          az storage container create --name test-container
+    depends_on:
+      storage:
+        condition: service_healthy
+    environment:
+      AZURE_STORAGE_CONNECTION_STRING: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://storage:10000/devstoreaccount1;
+
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    hostname: hostnametoken
+    restart: always
+    environment:
+      AZURE_STORAGE_ACCOUNT_NAME: devstoreaccount1
+      AZURE_STORAGE_PRIMARY_ACCOUNT_KEY: Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==
+      AZURE_STORAGE_CONTAINER_NAME: test-container
+      AZURE_STORAGE_ENDPOINT: http://storage:10000/{{ .AccountName }}/
+      AZURE_STORAGE_PATH: 'path/to/backup'
+      BACKUP_FILENAME: test.tar.gz
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_PRUNING_LEEWAY: 5s
+      BACKUP_PRUNING_PREFIX: test
+    volumes:
+      - app_data:/backup/app_data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  offen:
+    image: offen/offen:latest
+    labels:
+      - docker-volume-backup.stop-during-backup=true
+    volumes:
+      - app_data:/var/opt/offen
+
+volumes:
+  azurite_backup_data:
+    name: azurite_backup_data
+  app_data:
