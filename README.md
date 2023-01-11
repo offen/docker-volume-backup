@@ -4,7 +4,7 @@
 
 # docker-volume-backup
 
-Backup Docker volumes locally or to any S3, WebDAV or SSH compatible storage.
+Backup Docker volumes locally or to any S3, WebDAV, Azure Blob Storage or SSH compatible storage.
 
 The [offen/docker-volume-backup](https://hub.docker.com/r/offen/docker-volume-backup) Docker image can be used as a lightweight (below 15MB) sidecar container to an existing Docker setup.
 It handles __recurring or one-off backups of Docker volumes__ to a __local directory__, __any S3, WebDAV, Azure Blob Storage or SSH compatible storage (or any combination) and rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__ and __sending notifications for failed backup runs__.
