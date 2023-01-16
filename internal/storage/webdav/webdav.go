@@ -67,15 +67,17 @@ func (b *webDavStorage) Name() string {
 
 // Copy copies the given file to the WebDav storage backend.
 func (b *webDavStorage) Copy(file string) error {
-	bytes, err := os.ReadFile(file)
 	_, name := path.Split(file)
-	if err != nil {
-		return fmt.Errorf("(*webDavStorage).Copy: Error reading the file to be uploaded: %w", err)
-	}
 	if err := b.client.MkdirAll(b.DestinationPath, 0644); err != nil {
 		return fmt.Errorf("(*webDavStorage).Copy: Error creating directory '%s' on WebDAV server: %w", b.DestinationPath, err)
 	}
-	if err := b.client.Write(filepath.Join(b.DestinationPath, name), bytes, 0644); err != nil {
+
+	r, err := os.Open(file)
+	if err != nil {
+		return fmt.Errorf("(*webDavStorage).Copy: Error opening the file to be uploaded: %w", err)
+	}
+
+	if err := b.client.WriteStream(filepath.Join(b.DestinationPath, name), r, 0644); err != nil {
 		return fmt.Errorf("(*webDavStorage).Copy: Error uploading the file to WebDAV server: %w", err)
 	}
 	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup '%s' to WebDAV URL '%s' at path '%s'.", file, b.url, b.DestinationPath)
