@@ -15,7 +15,6 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/offen/docker-volume-backup/internal/storage"
-	"github.com/offen/docker-volume-backup/internal/utilities"
 )
 
 type s3Storage struct {
@@ -159,7 +158,7 @@ func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.Pr
 			}
 		}
 		if len(removeErrors) != 0 {
-			return utilities.Join(removeErrors...)
+			return errors.Join(removeErrors...)
 		}
 		return nil
 	}); err != nil {

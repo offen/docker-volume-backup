@@ -4,10 +4,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"sort"
-
-	"github.com/offen/docker-volume-backup/internal/utilities"
 )
 
 // hook contains a queued action that can be trigger them when the script
@@ -52,7 +51,7 @@ func (s *script) runHooks(err error) error {
 		}
 	}
 	if len(actionErrors) != 0 {
-		return utilities.Join(actionErrors...)
+		return errors.Join(actionErrors...)
 	}
 	return nil
 }

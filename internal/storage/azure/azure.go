@@ -6,6 +6,7 @@ package azure
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,7 +19,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 	"github.com/offen/docker-volume-backup/internal/storage"
-	"github.com/offen/docker-volume-backup/internal/utilities"
 )
 
 type azureBlobStorage struct {
@@ -135,21 +135,21 @@ func (b *azureBlobStorage) Prune(deadline time.Time, pruningPrefix string) (*sto
 	if err := b.DoPrune(b.Name(), len(matches), int(totalCount), "Azure Blob Storage backup(s)", func() error {
 		wg := sync.WaitGroup{}
 		wg.Add(len(matches))
-		var errors []error
+		var errs []error
 
 		for _, match := range matches {
 			name := match
 			go func() {
 				_, err := b.client.DeleteBlob(context.Background(), b.containerName, name, nil)
 				if err != nil {
-					errors = append(errors, err)
+					errs = append(errs, err)
 				}
 				wg.Done()
 			}()
 		}
 		wg.Wait()
-		if len(errors) != 0 {
-			return utilities.Join(errors...)
+		if len(errs) != 0 {
+			return errors.Join(errs...)
 		}
 		return nil
 	}); err != nil {

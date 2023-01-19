@@ -4,6 +4,7 @@
 package local
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,7 +13,6 @@ import (
 	"time"
 
 	"github.com/offen/docker-volume-backup/internal/storage"
-	"github.com/offen/docker-volume-backup/internal/utilities"
 )
 
 type localStorage struct {
@@ -127,7 +127,7 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 			return fmt.Errorf(
 				"(*localStorage).Prune: %d error(s) deleting local files, starting with: %w",
 				len(removeErrors),
-				utilities.Join(removeErrors...),
+				errors.Join(removeErrors...),
 			)
 		}
 		return nil
