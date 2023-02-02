@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -20,7 +21,6 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage/s3"
 	"github.com/offen/docker-volume-backup/internal/storage/ssh"
 	"github.com/offen/docker-volume-backup/internal/storage/webdav"
-	"github.com/offen/docker-volume-backup/internal/utilities"
 
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
@@ -329,7 +329,7 @@ func (s *script) stopContainers() (func() error, error) {
 		stopError = fmt.Errorf(
 			"stopContainers: %d error(s) stopping containers: %w",
 			len(stopErrors),
-			utilities.Join(stopErrors...),
+			errors.Join(stopErrors...),
 		)
 	}
 
@@ -380,7 +380,7 @@ func (s *script) stopContainers() (func() error, error) {
 			return fmt.Errorf(
 				"stopContainers: %d error(s) restarting containers and services: %w",
 				len(restartErrors),
-				utilities.Join(restartErrors...),
+				errors.Join(restartErrors...),
 			)
 		}
 		s.logger.Infof(
