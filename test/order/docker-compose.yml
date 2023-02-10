@@ -1,0 +1,28 @@
+version: "3"
+
+services:
+  rsync:
+    image: eeacms/rsync
+    tty: true
+    restart: unless-stopped
+    labels:
+      - docker-volume-backup.exec-label=order
+      - docker-volume-backup.archive-pre=sh -c "rsync -aAX --ignore-missing-args --delete-missing-args /data/ /bu/"
+      - docker-volume-backup.archive-post=sh -c "rm -rf /bu/*"
+    volumes:
+      - ./fixture:/data:ro
+      - bu:/bu
+
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    restart: always
+    environment:
+      BACKUP_FILENAME: backup.tar.gz
+      BACKUP_EXEC_LABEL: order
+    volumes:
+      - bu:/backup/order:ro
+      - ./local:/archive
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  bu:
