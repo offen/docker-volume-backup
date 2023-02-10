@@ -11,7 +11,8 @@ services:
       MARIADB_DATABASE: backup
     labels:
       # this is testing the deprecated label on purpose
-      - docker-volume-backup.exec-pre=/bin/sh -c 'mysqldump -ptest --all-databases > /tmp/volume/dump.sql'
+      - docker-volume-backup.archive-pre=/bin/sh -c 'mysqldump -ptest --all-databases > /tmp/volume/dump.sql'
+      - docker-volume-backup.archive-post=/bin/sh -c 'rm /tmp/volume/dump.sql'
       - docker-volume-backup.copy-post=/bin/sh -c 'echo "post" > /tmp/volume/post.txt'
       - docker-volume-backup.exec-label=test
     volumes:
