@@ -30,6 +30,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Replace deprecated `BACKUP_FROM_SNAPSHOT` usage](#replace-deprecated-backup_from_snapshot-usage)
   - [Replace deprecated `exec-pre` and `exec-post` labels](#replace-deprecated-exec-pre-and-exec-post-labels)
   - [Using a custom Docker host](#using-a-custom-docker-host)
+  - [Use with rootless Docker](#use-with-rootless-docker)
   - [Run multiple backup schedules in the same container](#run-multiple-backup-schedules-in-the-same-container)
   - [Define different retention schedules](#define-different-retention-schedules)
   - [Use special characters in notification URLs](#use-special-characters-in-notification-urls)
@@ -782,7 +783,7 @@ services:
       - docker-volume-backup.archive-post=rm -rf /tmp/backup/my-app
 
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
       BACKUP_SOURCES: /tmp/backup
     volumes:
@@ -819,6 +820,23 @@ DOCKER_HOST=tcp://docker_socket_proxy:2375
 ```
 
 In case you are using a socket proxy, it must support `GET` and `POST` requests to the `/containers` endpoint. If you are using Docker Swarm, it must also support the `/services` endpoint. If you are using pre/post backup commands, it must also support the `/exec` endpoint.
+
+### Use with rootless Docker
+
+It's also possible to use this image with a [rootless Docker installation][rootless-docker].
+Instead of mounting `/var/run/docker.sock`, mount the user-specific socket into the container:
+
+```yml
+services:
+  backup:
+    image: offen/docker-volume-backup:v2
+    # ... configuration omitted
+    volumes:
+      - backup:/backup:ro
+      - /run/user/1000/docker.sock:/var/run/docker.sock:ro
+```
+
+[rootless-docker]: https://docs.docker.com/engine/security/rootless/
 
 ### Run multiple backup schedules in the same container
 
