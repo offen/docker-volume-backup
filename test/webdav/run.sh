@@ -15,7 +15,7 @@ sleep 5
 
 expect_running_containers "3"
 
-docker run --rm -it \
+docker run --rm \
   -v webdav_backup_data:/webdav_data \
   alpine \
   ash -c 'tar -xvf /webdav_data/data/my/new/path/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db'
@@ -30,7 +30,7 @@ sleep 5
 
 docker compose exec backup backup
 
-docker run --rm -it \
+docker run --rm \
   -v webdav_backup_data:/webdav_data \
   alpine \
   ash -c '[ $(find /webdav_data/data/my/new/path/ -type f | wc -l) = "1" ]'

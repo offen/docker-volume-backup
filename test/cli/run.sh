@@ -48,7 +48,7 @@ docker run --rm \
   --entrypoint backup \
   offen/docker-volume-backup:${TEST_VERSION:-canary}
 
-docker run --rm -it \
+docker run --rm \
   -v backup_data:/data alpine \
   ash -c 'tar -xvf /data/backup/test.tar.gz && test -f /backup/app_data/offen.db && test -d /backup/empty_data'
 
