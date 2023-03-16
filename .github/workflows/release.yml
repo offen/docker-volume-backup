@@ -1,8 +1,8 @@
-name: Release Docker image
+name: Release Docker Image
 
 on:
   push:
-    tags: .*
+    tags: ^v.*
 
 jobs:
   push_to_registries:
@@ -28,19 +28,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
+      - name: Extract Docker tags
         id: meta
-        uses: docker/metadata-action@v4
-        with:
-          flavor: |
-            latest=false
-          tags: |
-            type=semver,pattern={{raw}}
-            type=semver,pattern=v{{major}},enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
-          images: |
-            offen/docker-volume-backup
-            ghcr.io/${{ github.repository }}
+        run: |
+          version_tag="${{github.ref_name}}"
+          tags=($version_tag)
+          if [[ "$version_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # prerelease tags like `v2.0.0-alpha.1` should not be released as `latest` nor `v2`
+            tags+=("latest")
+            tags+=($(echo "$version_tag" | cut -d. -f1))
+          fi
+          releases=""
+          for tag in "${tags[@]}"; do
+            releases="${releases:+$releases,}offen/docker-volume-backup:$tag,ghcr.io/offen/docker-volume-backup:$tag"
+          done
+          echo "releases=$releases" >> "$GITHUB_OUTPUT"
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v4
@@ -48,4 +50,4 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta.outputs.releases }}
