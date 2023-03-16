@@ -8,9 +8,10 @@ current_test=$(basename $(pwd))
 
 mkdir -p local
 
+export BASE_VERSION="${TEST_VERSION:-canary}"
 export TEST_VERSION="${TEST_VERSION:-canary}-with-rsync"
 
-docker build . -t offen/docker-volume-backup:$TEST_VERSION
+docker build . -t offen/docker-volume-backup:$TEST_VERSION --build-arg version=$BASE_VERSION
 
 docker compose up -d
 sleep 5
