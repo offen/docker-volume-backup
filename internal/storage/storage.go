@@ -29,7 +29,7 @@ const (
 	LogLevelError
 )
 
-type Log func(logType LogLevel, context string, msg string, params ...interface{})
+type Log func(logType LogLevel, context string, msg string, params ...any)
 
 // PruneStats is a wrapper struct for returning stats after pruning
 type PruneStats struct {

@@ -110,7 +110,7 @@ func newScript() (*script, error) {
 		s.cli = cli
 	}
 
-	logFunc := func(logType storage.LogLevel, context string, msg string, params ...interface{}) {
+	logFunc := func(logType storage.LogLevel, context string, msg string, params ...any) {
 		switch logType {
 		case storage.LogLevelWarning:
 			s.logger.Warnf("["+context+"] "+msg, params...)
