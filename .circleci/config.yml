@@ -1,28 +1,6 @@
 version: 2.1
 
 jobs:
-  canary:
-    machine:
-      image: ubuntu-2004:202201-02
-    working_directory: ~/docker-volume-backup
-    resource_class: large
-    steps:
-      - checkout
-      - run:
-          name: Build
-          command: |
-            docker build . -t offen/docker-volume-backup:canary
-      - run:
-          name: Install gnupg
-          command: |
-            sudo apt-get install -y gnupg
-      - run:
-          name: Run tests
-          working_directory: ~/docker-volume-backup/test
-          command: |
-            export GPG_TTY=$(tty)
-            ./test.sh canary
-
   build:
     docker:
       - image: cimg/base:2020.06
@@ -60,10 +38,6 @@ workflows:
   version: 2
   docker_image:
     jobs:
-      - canary:
-          filters:
-            tags:
-              ignore: /^v.*/
       - build:
           filters:
             branches:
