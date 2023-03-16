@@ -17,7 +17,7 @@ sleep 5
 
 expect_running_containers "3"
 
-docker-compose run --rm az_cli \
+docker-compose run --rm -T az_cli \
   az storage blob download -f /dump/test.tar.gz -c test-container -n path/to/backup/test.tar.gz
 tar -xvf ./local/test.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db
 
