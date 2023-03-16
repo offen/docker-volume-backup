@@ -12,6 +12,8 @@ jobs:
         run: docker build . -t offen/docker-volume-backup:test
       - name: Run Tests
         working-directory: ./test
+        env:
+          COMPOSE_INTERACTIVE_NO_CLI: '1'
         run: |
           export GPG_TTY=$(tty)
           ./test.sh test
