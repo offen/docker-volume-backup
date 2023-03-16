@@ -1,0 +1,17 @@
+name: Run Integration Tests
+
+on:
+  - push
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build Docker Image
+        run: docker build . -t offen/docker-volume-backup:test
+      - name: Run Tests
+        working-directory: ./test
+        run: |
+          export GPG_TTY=$(tty)
+          ./test.sh test
