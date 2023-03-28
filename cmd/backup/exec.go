@@ -21,7 +21,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func (s *script) exec(containerRef string, command string) ([]byte, []byte, error) {
+func (s *script) exec(containerRef string, command string, user string) ([]byte, []byte, error) {
 	args, _ := argv.Argv(command, nil, nil)
 	commandEnv := []string{
 		fmt.Sprintf("COMMAND_RUNTIME_ARCHIVE_FILEPATH=%s", s.file),
@@ -31,6 +31,7 @@ func (s *script) exec(containerRef string, command string) ([]byte, []byte, erro
 		AttachStdin:  true,
 		AttachStderr: true,
 		Env:          commandEnv,
+		User:         user,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("exec: error creating container exec: %w", err)
@@ -159,8 +160,11 @@ func (s *script) runLabeledCommands(label string) error {
 				cmd, _ = c.Labels["docker-volume-backup.exec-post"]
 			}
 
+			userLabelName := fmt.Sprintf("%s.user", label)
+			user := c.Labels[userLabelName]
+
 			s.logger.Infof("Running %s command %s for container %s", label, cmd, strings.TrimPrefix(c.Names[0], "/"))
-			stdout, stderr, err := s.exec(c.ID, cmd)
+			stdout, stderr, err := s.exec(c.ID, cmd, user)
 			if s.c.ExecForwardOutput {
 				os.Stderr.Write(stderr)
 				os.Stdout.Write(stdout)
