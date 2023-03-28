@@ -1,0 +1,37 @@
+version: '2.4'
+
+services:
+  gitea:
+    image: gitea/gitea:1.17.3
+    deploy:
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - ./conf:/data/gitea/conf
+      - app_data:/tmp
+    labels:
+      - docker-volume-backup.archive-pre.user=git
+      - docker-volume-backup.archive-pre=/bin/bash -c 'cd /tmp; /usr/local/bin/gitea dump -c /data/gitea/conf/app.ini -R -f dump.zip'
+    ports:
+      - "3000:3000"
+
+  backup:
+    # image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    # image: generaltao725/docker-volume-backup
+    image: offen/docker-volume-backup:v2.25.1
+    deploy:
+      restart_policy:
+        condition: on-failure
+    environment:
+      BACKUP_FILENAME: test.tar.gz
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      # BACKUP_CRON_EXPRESSION: "*/1 * * * *"
+      EXEC_FORWARD_OUTPUT: "true"
+    volumes:
+      - archive:/archive
+      - app_data:/backup/data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  app_data:
+  archive:
