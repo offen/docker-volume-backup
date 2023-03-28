@@ -16,9 +16,9 @@ services:
       - "3000:3000"
 
   backup:
-    # image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
     # image: generaltao725/docker-volume-backup
-    image: offen/docker-volume-backup:v2.25.1
+    # image: offen/docker-volume-backup:v2.25.1
     deploy:
       restart_policy:
         condition: on-failure
