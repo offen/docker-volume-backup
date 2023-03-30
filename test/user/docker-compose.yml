@@ -6,8 +6,10 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
+    environment:
+     - GITEA__SECURITY__INSTALL_LOCK=true
+     - GITEA__DEFAULT__RUN_USER=git
     volumes:
-      - ./conf:/data/gitea/conf
       - app_data:/tmp
     labels:
       - docker-volume-backup.archive-pre.user=git
