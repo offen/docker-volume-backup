@@ -644,6 +644,8 @@ volumes:
 The backup procedure is guaranteed to wait for all `pre` or `post` commands to finish before proceeding.
 However there are no guarantees about the order in which they are run, which could also happen concurrently.
 
+By defould backup happens by root user. It is possible to specify a custom user in container labels with the format `docker-volume-backup.[step]-[pre|post]-[user]`. The option will allow you to run a specific step command by specified user. Make sure the user exists and present in `passwd` inside the target container.
+
 ### Encrypting your backup using GPG
 
 The image supports encrypting backups using GPG out of the box.
