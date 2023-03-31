@@ -12,16 +12,13 @@ services:
 
 
   backup:
-    # image: offen/docker-volume-backup:${TEST_VERSION:-canary}
-    image: generaltao725/docker-volume-backup
-    # image: offen/docker-volume-backup:v2.25.1
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
     deploy:
       restart_policy:
         condition: on-failure
     environment:
       BACKUP_FILENAME: test.tar.gz
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
-      # BACKUP_CRON_EXPRESSION: "*/1 * * * *"
       EXEC_FORWARD_OUTPUT: "true"
     volumes:
       - archive:/archive
