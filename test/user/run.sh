@@ -12,7 +12,6 @@ user_name=testuser
 docker exec user-alpine-1 adduser --disabled-password "$user_name"
 
 docker compose exec backup backup
-sudo cp -r $(docker volume inspect --format='{{ .Mountpoint }}' user_archive) ./local
 
 tar -xvf ./local/test.tar.gz
 if [ ! -f ./backup/data/whoami.txt ]; then

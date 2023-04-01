@@ -8,7 +8,7 @@ services:
       - app_data:/tmp
     labels:
       - docker-volume-backup.archive-pre.user=testuser
-      - docker-volume-backup.archive-pre=/bin/sh -c 'whoami'
+      - docker-volume-backup.archive-pre=/bin/sh -c 'whoami > /tmp/whoami.txt'
 
 
   backup:
@@ -21,7 +21,7 @@ services:
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
       EXEC_FORWARD_OUTPUT: "true"
     volumes:
-      - archive:/archive
+      - ./local:/archive
       - app_data:/backup/data:ro
       - /var/run/docker.sock:/var/run/docker.sock
 
