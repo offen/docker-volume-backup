@@ -6,11 +6,12 @@ cd $(dirname $0)
 . ../util.sh
 current_test=$(basename $(pwd))
 
+mkdir -p ./local
+
 docker compose up -d
 sleep 30 # mariadb likes to take a bit before responding
 
 docker compose exec backup backup
-sudo cp -r $(docker volume inspect --format='{{ .Mountpoint }}' commands_archive) ./local
 
 tar -xvf ./local/test.tar.gz
 if [ ! -f ./backup/data/dump.sql ]; then
@@ -34,6 +35,7 @@ sudo rm -rf ./local
 
 info "Running commands test in swarm mode next."
 
+mkdir -p ./local
 docker swarm init
 
 docker stack deploy --compose-file=docker-compose.yml test_stack
@@ -46,8 +48,6 @@ done
 sleep 20
 
 docker exec $(docker ps -q -f name=backup) backup
-
-sudo cp -r $(docker volume inspect --format='{{ .Mountpoint }}' test_stack_archive) ./local
 
 tar -xvf ./local/test.tar.gz
 if [ ! -f ./backup/data/dump.sql ]; then

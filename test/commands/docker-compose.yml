@@ -42,10 +42,9 @@ services:
       EXEC_LABEL: test
       EXEC_FORWARD_OUTPUT: "true"
     volumes:
-      - archive:/archive
+      - ./local:/archive
       - app_data:/backup/data:ro
       - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   app_data:
-  archive:
