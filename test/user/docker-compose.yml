@@ -1,0 +1,30 @@
+version: '2.4'
+
+services:
+  alpine:
+    image: alpine:3.17.3
+    tty: true 
+    volumes:
+      - app_data:/tmp
+    labels:
+      - docker-volume-backup.archive-pre.user=testuser
+      - docker-volume-backup.archive-pre=/bin/sh -c 'whoami > /tmp/whoami.txt'
+
+
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    deploy:
+      restart_policy:
+        condition: on-failure
+    environment:
+      BACKUP_FILENAME: test.tar.gz
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      EXEC_FORWARD_OUTPUT: "true"
+    volumes:
+      - ./local:/archive
+      - app_data:/backup/data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  app_data:
+  archive:
