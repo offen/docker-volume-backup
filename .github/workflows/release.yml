@@ -2,7 +2,7 @@ name: Release Docker Image
 
 on:
   push:
-    tags: ^v.*
+    tags: v**
 
 jobs:
   push_to_registries:
