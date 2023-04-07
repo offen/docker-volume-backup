@@ -14,6 +14,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
 - [Quickstart](#quickstart)
   - [Recurring backups in a compose setup](#recurring-backups-in-a-compose-setup)
   - [One-off backups using Docker CLI](#one-off-backups-using-docker-cli)
+  - [Available image registries](#available-image-registries)
 - [Configuration reference](#configuration-reference)
 - [How to](#how-to)
   - [Stop containers during backup](#stop-containers-during-backup)
@@ -120,6 +121,18 @@ docker run --rm \
 ```
 
 Alternatively, pass a `--env-file` in order to use a full config as described below.
+
+### Available image registries
+
+This Docker image is published to both Docker Hub and the GitHub container registry.
+Depending on your preferences and needs, you can reference both `offen/docker-volume-backup` as well as `ghcr.io/offen/docker-volume-backup`:
+
+```
+docker pull offen/docker-volume-backup:v2
+docker pull ghcr.io/offen/docker-volume-backup:v2
+```
+
+Documentation references Docker Hub, but all examples will work using ghcr.io just as well.
 
 ## Configuration reference
 
