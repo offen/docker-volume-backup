@@ -366,7 +366,7 @@ func (s *script) stopContainers() (func() error, error) {
 				if serviceMatch.ID == "" {
 					return fmt.Errorf("stopContainers: couldn't find service with name %s", serviceName)
 				}
-				serviceMatch.Spec.TaskTemplate.ForceUpdate = 1
+				serviceMatch.Spec.TaskTemplate.ForceUpdate += 1
 				if _, err := s.cli.ServiceUpdate(
 					context.Background(), serviceMatch.ID,
 					serviceMatch.Version, serviceMatch.Spec, types.ServiceUpdateOptions{},
