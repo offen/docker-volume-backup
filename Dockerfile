@@ -16,8 +16,6 @@ WORKDIR /root
 RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /app/cmd/backup/backup /usr/bin/backup
-
-COPY ./entrypoint.sh /root/
-RUN chmod +x entrypoint.sh
+COPY --chmod=755 ./entrypoint.sh /root/
 
 ENTRYPOINT ["/root/entrypoint.sh"]
