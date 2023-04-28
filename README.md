@@ -657,7 +657,22 @@ volumes:
 The backup procedure is guaranteed to wait for all `pre` or `post` commands to finish before proceeding.
 However there are no guarantees about the order in which they are run, which could also happen concurrently.
 
-By default the backup command is executed by the root user. It is possible to specify a custom user in container labels with the format `docker-volume-backup.[step]-[pre|post]-[user]`. The option will allow you to run a specific step command by specified user. Make sure the user exists and present in `passwd` inside the target container.
+By default the backup command is executed by the root user. It is possible to specify a custom user that is used to run commands in dedicated labels with the format `docker-volume-backup.[step]-[pre|post].user`:
+
+```yml
+version: '3'
+
+services:
+  gitea:
+    image: gitea/gitea
+    volumes:
+      - backup_data:/tmp
+    labels:
+      - docker-volume-backup.archive-pre.user=git
+      - docker-volume-backup.archive-pre=/bin/bash -c 'cd /tmp; /usr/local/bin/gitea dump -c /data/gitea/conf/app.ini -R -f dump.zip'
+```
+
+Make sure the user exists and is present in `passwd` inside the target container.
 
 ### Encrypting your backup using GPG
 
