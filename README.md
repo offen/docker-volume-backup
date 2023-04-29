@@ -424,7 +424,7 @@ You can populate below template according to your requirements and use it as you
 
 # Notifications (email, Slack, etc.) can be sent out when a backup run finishes.
 # Configuration is provided as a comma-separated list of URLs as consumed
-# by `shoutrrr`: https://containrrr.dev/shoutrrr/v0.7/services/overview/
+# by `shoutrrr`: https://containrrr.dev/shoutrrr/0.7/services/overview/
 # The content of such notifications can be customized. Dedicated documentation
 # on how to do this can be found in the README. When providing multiple URLs or
 # an URL that contains a comma, the values can be URL encoded to avoid ambiguities.
@@ -568,7 +568,7 @@ services:
 Notification backends other than email are also supported.
 Refer to the documentation of [shoutrrr][shoutrrr-docs] to find out about options and configuration.
 
-[shoutrrr-docs]: https://containrrr.dev/shoutrrr/v0.7/services/overview/
+[shoutrrr-docs]: https://containrrr.dev/shoutrrr/0.7/services/overview/
 
 ### Customize notifications
 
