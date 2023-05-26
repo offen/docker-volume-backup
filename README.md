@@ -657,7 +657,8 @@ volumes:
 The backup procedure is guaranteed to wait for all `pre` or `post` commands to finish before proceeding.
 However there are no guarantees about the order in which they are run, which could also happen concurrently.
 
-By default the backup command is executed by the root user. It is possible to specify a custom user that is used to run commands in dedicated labels with the format `docker-volume-backup.[step]-[pre|post].user`:
+By default the backup command is executed by the user provided by the container's image.
+It is possible to specify a custom user that is used to run commands in dedicated labels with the format `docker-volume-backup.[step]-[pre|post].user`:
 
 ```yml
 version: '3'
