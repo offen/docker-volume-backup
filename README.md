@@ -266,7 +266,7 @@ You can populate below template according to your requirements and use it as you
 # While Minio uses a hard coded value to 10.000. As a workaround, try to set a higher value.
 # Defaults to "16" (MB) if unset (from minio), you can set this value according to your needs.
 
-# AWS_DEFAULT_PART_SIZE=
+# AWS_PART_SIZE=
 
 # You can also backup files to any WebDAV server:
 
