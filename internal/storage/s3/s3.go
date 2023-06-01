@@ -18,16 +18,12 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage"
 )
 
-type s3StorageInternal struct {
-	defaultPartSize int64
-}
-
 type s3Storage struct {
 	*storage.StorageBackend
 	client       *minio.Client
 	bucket       string
 	storageClass string
-	internal     s3StorageInternal
+	partSize     int64
 }
 
 // Config contains values that define the configuration of a S3 backend.
@@ -41,7 +37,7 @@ type Config struct {
 	RemotePath       string
 	BucketName       string
 	StorageClass     string
-	DefaultPartSize  int64
+	PartSize         int64
 	CACert           *x509.Certificate
 }
 
@@ -96,9 +92,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		client:       mc,
 		bucket:       opts.BucketName,
 		storageClass: opts.StorageClass,
-		internal: s3StorageInternal{
-			defaultPartSize: opts.DefaultPartSize,
-		},
+		partSize:     opts.PartSize,
 	}, nil
 }
 
@@ -110,22 +104,26 @@ func (v *s3Storage) Name() string {
 // Copy copies the given file to the S3/Minio storage backend.
 func (b *s3Storage) Copy(file string) error {
 	_, name := path.Split(file)
-	srcFileInfo, err := os.Stat(file)
-
-	if err != nil {
-		return fmt.Errorf("(*s3Storage).Copy: error reading the local file: %w", err)
-	}
-
-	_, partSize, _, err := minio.OptimalPartInfo(srcFileInfo.Size(), uint64(b.internal.defaultPartSize*1024*1024))
-	if err != nil {
-		return fmt.Errorf("(*s3Storage).Copy: error computing the optimal s3 part size: %w", err)
-	}
-
-	if _, err := b.client.FPutObject(context.Background(), b.bucket, filepath.Join(b.DestinationPath, name), file, minio.PutObjectOptions{
+	putObjectOptions := minio.PutObjectOptions{
 		ContentType:  "application/tar+gzip",
 		StorageClass: b.storageClass,
-		PartSize:     uint64(partSize),
-	}); err != nil {
+	}
+
+	if b.partSize < 0 {
+		srcFileInfo, err := os.Stat(file)
+		if err != nil {
+			return fmt.Errorf("(*s3Storage).Copy: error reading the local file: %w", err)
+		}
+
+		_, partSize, _, err := minio.OptimalPartInfo(srcFileInfo.Size(), uint64(b.partSize*1024*1024))
+		if err != nil {
+			return fmt.Errorf("(*s3Storage).Copy: error computing the optimal s3 part size: %w", err)
+		}
+
+		putObjectOptions.PartSize = uint64(partSize)
+	}
+
+	if _, err := b.client.FPutObject(context.Background(), b.bucket, filepath.Join(b.DestinationPath, name), file, putObjectOptions); err != nil {
 		if errResp := minio.ToErrorResponse(err); errResp.Message != "" {
 			return fmt.Errorf("(*s3Storage).Copy: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d", errResp.Message, errResp.Code, errResp.StatusCode)
 		}

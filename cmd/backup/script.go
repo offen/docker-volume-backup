@@ -142,7 +142,7 @@ func newScript() (*script, error) {
 			BucketName:       s.c.AwsS3BucketName,
 			StorageClass:     s.c.AwsStorageClass,
 			CACert:           s.c.AwsEndpointCACert.Cert,
-			DefaultPartSize:  s.c.AwsDefaultPartSize,
+			PartSize:         s.c.AwsPartSize,
 		}
 		if s3Backend, err := s3.NewStorageBackend(s3Config, logFunc); err != nil {
 			return nil, err
