@@ -28,6 +28,7 @@ type Config struct {
 	AwsSecretAccessKey            string        `split_words:"true"`
 	AwsSecretAccessKeyFile        string        `split_words:"true"`
 	AwsIamRoleEndpoint            string        `split_words:"true"`
+	AwsPartSize                   int64         `split_words:"true"`
 	BackupSources                 string        `split_words:"true" default:"/backup"`
 	BackupFilename                string        `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.tar.gz"`
 	BackupFilenameExpand          bool          `split_words:"true"`

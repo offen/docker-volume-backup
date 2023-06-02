@@ -260,6 +260,15 @@ You can populate below template according to your requirements and use it as you
 
 # AWS_STORAGE_CLASS="GLACIER"
 
+# Setting this variable will change the S3 default part size for the copy step.
+# This value is useful when you want to upload large files.
+# NB : While using Scaleway as S3 provider, be aware that the parts counter is set to 1.000.
+# While Minio uses a hard coded value to 10.000. As a workaround, try to set a higher value.
+# Defaults to "16" (MB) if unset (from minio), you can set this value according to your needs.
+# The unit is in MB and an integer.
+
+# AWS_PART_SIZE=16
+
 # You can also backup files to any WebDAV server:
 
 # The URL of the remote WebDAV server
