@@ -109,7 +109,7 @@ func (b *s3Storage) Copy(file string) error {
 		StorageClass: b.storageClass,
 	}
 
-	if b.partSize < 0 {
+	if b.partSize > 0 {
 		srcFileInfo, err := os.Stat(file)
 		if err != nil {
 			return fmt.Errorf("(*s3Storage).Copy: error reading the local file: %w", err)
@@ -129,6 +129,7 @@ func (b *s3Storage) Copy(file string) error {
 		}
 		return fmt.Errorf("(*s3Storage).Copy: error uploading backup to remote storage: %w", err)
 	}
+
 	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup `%s` to bucket `%s`.", file, b.bucket)
 
 	return nil
