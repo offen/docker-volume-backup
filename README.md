@@ -928,7 +928,7 @@ BACKUP_SOURCES=/backup/app2_data
 
 If you want to manage backup retention on different schedules, the most straight forward approach is to define a dedicated configuration for retention rule using a different prefix in the `BACKUP_FILENAME` parameter and then run them on different cron schedules.
 
-For example, if you wanted to keep daily backups for 7 days, weekly backups for a month, and retain monthly backups forever, you could create three configuration files and mount them into `/etc/dockervolumebackup.d`:
+For example, if you wanted to keep daily backups for 7 days, weekly backups for a month, and retain monthly backups forever, you could create three configuration files and mount them into `/etc/dockervolumebackup/conf.d`:
 
 ```ini
 # 01daily.conf
