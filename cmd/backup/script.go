@@ -25,6 +25,7 @@ import (
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
 	"github.com/docker/docker/api/types"
+	ctr "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
@@ -281,9 +282,7 @@ func (s *script) stopContainers() (func() error, error) {
 		return noop, nil
 	}
 
-	allContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
-		Quiet: true,
-	})
+	allContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err != nil {
 		return noop, fmt.Errorf("stopContainers: error querying for containers: %w", err)
 	}
@@ -293,7 +292,6 @@ func (s *script) stopContainers() (func() error, error) {
 		s.c.BackupStopContainerLabel,
 	)
 	containersToStop, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
-		Quiet: true,
 		Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "label",
 			Value: containerLabel,
@@ -318,7 +316,7 @@ func (s *script) stopContainers() (func() error, error) {
 	var stoppedContainers []types.Container
 	var stopErrors []error
 	for _, container := range containersToStop {
-		if err := s.cli.ContainerStop(context.Background(), container.ID, nil); err != nil {
+		if err := s.cli.ContainerStop(context.Background(), container.ID, ctr.StopOptions{}); err != nil {
 			stopErrors = append(stopErrors, err)
 		} else {
 			stoppedContainers = append(stoppedContainers, container)

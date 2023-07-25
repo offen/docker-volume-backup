@@ -91,7 +91,6 @@ func (s *script) runLabeledCommands(label string) error {
 		})
 	}
 	containersWithCommand, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
-		Quiet:   true,
 		Filters: filters.NewArgs(f...),
 	})
 	if err != nil {
@@ -105,7 +104,6 @@ func (s *script) runLabeledCommands(label string) error {
 			Value: "docker-volume-backup.exec-pre",
 		}
 		deprecatedContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
-			Quiet:   true,
 			Filters: filters.NewArgs(f...),
 		})
 		if err != nil {
@@ -123,7 +121,6 @@ func (s *script) runLabeledCommands(label string) error {
 			Value: "docker-volume-backup.exec-post",
 		}
 		deprecatedContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
-			Quiet:   true,
 			Filters: filters.NewArgs(f...),
 		})
 		if err != nil {
