@@ -13,7 +13,7 @@ FROM alpine:3.18
 
 WORKDIR /root
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates busybox-extras
 
 COPY --from=builder /app/cmd/backup/backup /usr/bin/backup
 COPY --chmod=755 ./entrypoint.sh /root/

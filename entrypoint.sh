@@ -22,5 +22,12 @@ else
   done
 fi
 
+if [ ! -z "$SERVE_METRICS_PATH" ]; then
+  mkdir -p /var/www/html${SERVE_METRICS_PATH}
+  echo "ok" > /var/www/html${SERVE_METRICS_PATH}/metrics.txt
+  httpd -h /var/www/html -p "${SERVE_METRICS_PORT:-80}"
+  echo "Serving metrics on port ${SERVE_METRICS_PORT:-80}."
+fi
+
 echo "Starting cron in foreground."
 crond -f -d 8
