@@ -4,6 +4,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 )
 
@@ -21,7 +22,9 @@ func main() {
 		if pArg := recover(); pArg != nil {
 			if err, ok := pArg.(error); ok {
 				if hookErr := s.runHooks(err); hookErr != nil {
-					s.logger.Errorf("An error occurred calling the registered hooks: %s", hookErr)
+					s.logger.Error(
+						fmt.Sprintf("An error occurred calling the registered hooks: %s", hookErr),
+					)
 				}
 				os.Exit(1)
 			}
@@ -29,9 +32,12 @@ func main() {
 		}
 
 		if err := s.runHooks(nil); err != nil {
-			s.logger.Errorf(
-				"Backup procedure ran successfully, but an error ocurred calling the registered hooks: %v",
-				err,
+			s.logger.Error(
+				fmt.Sprintf(
+
+					"Backup procedure ran successfully, but an error ocurred calling the registered hooks: %v",
+					err,
+				),
 			)
 			os.Exit(1)
 		}

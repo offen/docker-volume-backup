@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -32,7 +33,6 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
 	"github.com/otiai10/copy"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/sync/errgroup"
 )
@@ -42,7 +42,7 @@ import (
 type script struct {
 	cli       *client.Client
 	storages  []storage.Backend
-	logger    *logrus.Logger
+	logger    *slog.Logger
 	sender    *router.ServiceRouter
 	template  *template.Template
 	hooks     []hook
@@ -63,13 +63,8 @@ type script struct {
 func newScript() (*script, error) {
 	stdOut, logBuffer := buffer(os.Stdout)
 	s := &script{
-		c: &Config{},
-		logger: &logrus.Logger{
-			Out:       stdOut,
-			Formatter: new(logrus.TextFormatter),
-			Hooks:     make(logrus.LevelHooks),
-			Level:     logrus.InfoLevel,
-		},
+		c:      &Config{},
+		logger: slog.New(slog.NewTextHandler(stdOut, nil)),
 		stats: &Stats{
 			StartTime: time.Now(),
 			LogOutput: logBuffer,
@@ -114,12 +109,12 @@ func newScript() (*script, error) {
 	logFunc := func(logType storage.LogLevel, context string, msg string, params ...any) {
 		switch logType {
 		case storage.LogLevelWarning:
-			s.logger.Warnf("["+context+"] "+msg, params...)
+			s.logger.Warn(fmt.Sprintf("["+context+"] "+msg, params...))
 		case storage.LogLevelError:
-			s.logger.Errorf("["+context+"] "+msg, params...)
+			s.logger.Error(fmt.Sprintf("["+context+"] "+msg, params...))
 		case storage.LogLevelInfo:
 		default:
-			s.logger.Infof("["+context+"] "+msg, params...)
+			s.logger.Info(fmt.Sprintf("["+context+"] "+msg, params...))
 		}
 	}
 
@@ -306,11 +301,13 @@ func (s *script) stopContainers() (func() error, error) {
 		return noop, nil
 	}
 
-	s.logger.Infof(
-		"Stopping %d container(s) labeled `%s` out of %d running container(s).",
-		len(containersToStop),
-		containerLabel,
-		len(allContainers),
+	s.logger.Info(
+		fmt.Sprintf(
+			"Stopping %d container(s) labeled `%s` out of %d running container(s).",
+			len(containersToStop),
+			containerLabel,
+			len(allContainers),
+		),
 	)
 
 	var stoppedContainers []types.Container
@@ -382,9 +379,11 @@ func (s *script) stopContainers() (func() error, error) {
 				errors.Join(restartErrors...),
 			)
 		}
-		s.logger.Infof(
-			"Restarted %d container(s) and the matching service(s).",
-			len(stoppedContainers),
+		s.logger.Info(
+			fmt.Sprintf(
+				"Restarted %d container(s) and the matching service(s).",
+				len(stoppedContainers),
+			),
 		)
 		return nil
 	}, stopError
@@ -408,7 +407,9 @@ func (s *script) createArchive() error {
 			if err := remove(backupSources); err != nil {
 				return fmt.Errorf("createArchive: error removing snapshot: %w", err)
 			}
-			s.logger.Infof("Removed snapshot `%s`.", backupSources)
+			s.logger.Info(
+				fmt.Sprintf("Removed snapshot `%s`.", backupSources),
+			)
 			return nil
 		})
 		if err := copy.Copy(s.c.BackupSources, backupSources, copy.Options{
@@ -417,7 +418,9 @@ func (s *script) createArchive() error {
 		}); err != nil {
 			return fmt.Errorf("createArchive: error creating snapshot: %w", err)
 		}
-		s.logger.Infof("Created snapshot of `%s` at `%s`.", s.c.BackupSources, backupSources)
+		s.logger.Info(
+			fmt.Sprintf("Created snapshot of `%s` at `%s`.", s.c.BackupSources, backupSources),
+		)
 	}
 
 	tarFile := s.file
@@ -425,7 +428,9 @@ func (s *script) createArchive() error {
 		if err := remove(tarFile); err != nil {
 			return fmt.Errorf("createArchive: error removing tar file: %w", err)
 		}
-		s.logger.Infof("Removed tar file `%s`.", tarFile)
+		s.logger.Info(
+			fmt.Sprintf("Removed tar file `%s`.", tarFile),
+		)
 		return nil
 	})
 
@@ -453,7 +458,9 @@ func (s *script) createArchive() error {
 		return fmt.Errorf("createArchive: error compressing backup folder: %w", err)
 	}
 
-	s.logger.Infof("Created backup of `%s` at `%s`.", backupSources, tarFile)
+	s.logger.Info(
+		fmt.Sprintf("Created backup of `%s` at `%s`.", backupSources, tarFile),
+	)
 	return nil
 }
 
@@ -470,7 +477,9 @@ func (s *script) encryptArchive() error {
 		if err := remove(gpgFile); err != nil {
 			return fmt.Errorf("encryptArchive: error removing gpg file: %w", err)
 		}
-		s.logger.Infof("Removed GPG file `%s`.", gpgFile)
+		s.logger.Info(
+			fmt.Sprintf("Removed GPG file `%s`.", gpgFile),
+		)
 		return nil
 	})
 
@@ -500,7 +509,9 @@ func (s *script) encryptArchive() error {
 	}
 
 	s.file = gpgFile
-	s.logger.Infof("Encrypted backup using given passphrase, saving as `%s`.", s.file)
+	s.logger.Info(
+		fmt.Sprintf("Encrypted backup using given passphrase, saving as `%s`.", s.file),
+	)
 	return nil
 }
 
@@ -572,7 +583,9 @@ func (s *script) pruneBackups() error {
 // is non-nil.
 func (s *script) must(err error) {
 	if err != nil {
-		s.logger.Errorf("Fatal error running backup: %s", err)
+		s.logger.Error(
+			fmt.Sprintf("Fatal error running backup: %s", err),
+		)
 		panic(err)
 	}
 }

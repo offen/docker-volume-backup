@@ -160,7 +160,7 @@ func (s *script) runLabeledCommands(label string) error {
 			userLabelName := fmt.Sprintf("%s.user", label)
 			user := c.Labels[userLabelName]
 
-			s.logger.Infof("Running %s command %s for container %s", label, cmd, strings.TrimPrefix(c.Names[0], "/"))
+			s.logger.Info(fmt.Sprintf("Running %s command %s for container %s", label, cmd, strings.TrimPrefix(c.Names[0], "/")))
 			stdout, stderr, err := s.exec(c.ID, cmd, user)
 			if s.c.ExecForwardOutput {
 				os.Stderr.Write(stderr)

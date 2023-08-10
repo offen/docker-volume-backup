@@ -41,9 +41,11 @@ func (s *script) lock(lockfile string) (func() error, error) {
 		}
 
 		if !s.encounteredLock {
-			s.logger.Infof(
-				"Exclusive lock was not available on first attempt. Will retry until it becomes available or the timeout of %s is exceeded.",
-				s.c.LockTimeout,
+			s.logger.Info(
+				fmt.Sprintf(
+					"Exclusive lock was not available on first attempt. Will retry until it becomes available or the timeout of %s is exceeded.",
+					s.c.LockTimeout,
+				),
 			)
 			s.encounteredLock = true
 		}
