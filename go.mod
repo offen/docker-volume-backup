@@ -14,7 +14,6 @@ require (
 	github.com/minio/minio-go/v7 v7.0.61
 	github.com/otiai10/copy v1.11.0
 	github.com/pkg/sftp v1.13.5
-	github.com/sirupsen/logrus v1.9.3
 	github.com/studio-b12/gowebdav v0.9.0
 	golang.org/x/crypto v0.11.0
 	golang.org/x/sync v0.3.0
@@ -52,6 +51,7 @@ require (
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/xid v1.5.0 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
