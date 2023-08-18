@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -89,6 +90,20 @@ func newScript() (*script, error) {
 	}
 
 	s.file = path.Join("/tmp", s.c.BackupFilename)
+
+	tmplFileName, tErr := template.New("extension").Parse(s.file)
+	if tErr != nil {
+		return nil, fmt.Errorf("newScript: unable to parse backup file extension template: %w", tErr)
+	}
+
+	var bf bytes.Buffer
+	if tErr := tmplFileName.Execute(&bf, map[string]string{
+		"Extension": fmt.Sprintf("tar.%s", s.c.BackupCompression),
+	}); tErr != nil {
+		return nil, fmt.Errorf("newScript: error executing backup file extension template: %w", tErr)
+	}
+	s.file = bf.String()
+
 	if s.c.BackupFilenameExpand {
 		s.file = os.ExpandEnv(s.file)
 		s.c.BackupLatestSymlink = os.ExpandEnv(s.c.BackupLatestSymlink)
@@ -454,7 +469,7 @@ func (s *script) createArchive() error {
 		return fmt.Errorf("createArchive: error walking filesystem tree: %w", err)
 	}
 
-	if err := createArchive(filesEligibleForBackup, backupSources, tarFile); err != nil {
+	if err := createArchive(filesEligibleForBackup, backupSources, tarFile, s.c.BackupCompression.String()); err != nil {
 		return fmt.Errorf("createArchive: error compressing backup folder: %w", err)
 	}
 
