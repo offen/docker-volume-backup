@@ -10,6 +10,7 @@ require (
 	github.com/docker/docker v24.0.5+incompatible
 	github.com/gofrs/flock v0.8.1
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/klauspost/compress v1.16.7
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.61
 	github.com/otiai10/copy v1.11.0
@@ -33,7 +34,6 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
