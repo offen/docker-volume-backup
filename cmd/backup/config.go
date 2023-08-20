@@ -70,6 +70,8 @@ type Config struct {
 	AzureStorageContainerName     string          `split_words:"true"`
 	AzureStoragePath              string          `split_words:"true"`
 	AzureStorageEndpoint          string          `split_words:"true" default:"https://{{ .AccountName }}.blob.core.windows.net/"`
+	DropboxToken                  string          `split_words:"true"`
+	DropboxRemotePath             string          `split_words:"true"`
 }
 
 func (c *Config) resolveSecret(envVar string, secretPath string) (string, error) {

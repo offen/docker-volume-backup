@@ -19,6 +19,7 @@ import (
 
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"github.com/offen/docker-volume-backup/internal/storage/azure"
+	"github.com/offen/docker-volume-backup/internal/storage/dropbox"
 	"github.com/offen/docker-volume-backup/internal/storage/local"
 	"github.com/offen/docker-volume-backup/internal/storage/s3"
 	"github.com/offen/docker-volume-backup/internal/storage/ssh"
@@ -70,11 +71,12 @@ func newScript() (*script, error) {
 			StartTime: time.Now(),
 			LogOutput: logBuffer,
 			Storages: map[string]StorageStats{
-				"S3":     {},
-				"WebDAV": {},
-				"SSH":    {},
-				"Local":  {},
-				"Azure":  {},
+				"S3":      {},
+				"WebDAV":  {},
+				"SSH":     {},
+				"Local":   {},
+				"Azure":   {},
+				"Dropbox": {},
 			},
 		},
 	}
@@ -216,6 +218,18 @@ func newScript() (*script, error) {
 			return nil, err
 		}
 		s.storages = append(s.storages, azureBackend)
+	}
+
+	if s.c.DropboxToken != "" {
+		dropboxConfig := dropbox.Config{
+			Token:      s.c.DropboxToken,
+			RemotePath: s.c.DropboxRemotePath,
+		}
+		dropboxBackend, err := dropbox.NewStorageBackend(dropboxConfig, logFunc)
+		if err != nil {
+			return nil, err
+		}
+		s.storages = append(s.storages, dropboxBackend)
 	}
 
 	if s.c.EmailNotificationRecipient != "" {
