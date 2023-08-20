@@ -127,7 +127,6 @@ func newScript() (*script, error) {
 			s.logger.Warn(fmt.Sprintf("["+context+"] "+msg, params...))
 		case storage.LogLevelError:
 			s.logger.Error(fmt.Sprintf("["+context+"] "+msg, params...))
-		case storage.LogLevelInfo:
 		default:
 			s.logger.Info(fmt.Sprintf("["+context+"] "+msg, params...))
 		}
