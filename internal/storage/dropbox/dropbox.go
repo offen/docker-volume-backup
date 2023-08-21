@@ -2,7 +2,6 @@ package dropbox
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -29,23 +28,19 @@ type Config struct {
 
 // NewStorageBackend creates and initializes a new Dropbox storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
-	if opts.Token == "" {
-		return nil, errors.New("NewStorageBackend: No Dropbox token has been provided")
-	} else {
-		config := dropbox.Config{
-			Token: opts.Token,
-		}
-
-		client := files.New(config)
-
-		return &dropboxStorage{
-			StorageBackend: &storage.StorageBackend{
-				DestinationPath: opts.RemotePath,
-				Log:             logFunc,
-			},
-			client: client,
-		}, nil
+	config := dropbox.Config{
+		Token: opts.Token,
 	}
+
+	client := files.New(config)
+
+	return &dropboxStorage{
+		StorageBackend: &storage.StorageBackend{
+			DestinationPath: opts.RemotePath,
+			Log:             logFunc,
+		},
+		client: client,
+	}, nil
 }
 
 // Name returns the name of the storage backend
