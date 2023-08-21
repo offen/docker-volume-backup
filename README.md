@@ -1064,7 +1064,7 @@ curl https://api.dropbox.com/oauth2/token \
 7. Execute the request. You will get a JSON formatted reply. Use the value of the `refresh_token` for the last environment variable `DROPBOX_REFRESH_TOKEN`
 8. You should now have `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET` and `DROPBOX_REFRESH_TOKEN` set. These don't expire.
 
-Note: Using the "Generated access token" in the app console is not supported, as it is only very short lived and suitable for an automatic backup solution. The refresh token handles this automatically - the setup procedure above is only needed once.
+Note: Using the "Generated access token" in the app console is not supported, as it is only very short lived and therefore not suitable for an automatic backup solution. The refresh token handles this automatically - the setup procedure above is only needed once.
 
 #### Other parameters
 
