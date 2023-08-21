@@ -63,9 +63,14 @@ func (b *dropboxStorage) Copy(file string) error {
 
 	folderArg := files.NewCreateFolderArg(b.DestinationPath)
 	if _, err := b.client.CreateFolderV2(folderArg); err != nil {
-		if err.(files.CreateFolderV2APIError).EndpointError.Path.Tag == files.WriteErrorConflict {
-			b.Log(storage.LogLevelInfo, b.Name(), "Destination path '%s' already exists in Dropbox, no new directory required.", b.DestinationPath)
-		} else {
+		switch err := err.(type) {
+		case files.CreateFolderV2APIError:
+			if err.EndpointError.Path.Tag == files.WriteErrorConflict {
+				b.Log(storage.LogLevelInfo, b.Name(), "Destination path '%s' already exists in Dropbox, no new directory required.", b.DestinationPath)
+			} else {
+				return fmt.Errorf("(*dropboxStorage).Copy: Error creating directory '%s' in Dropbox: %w", b.DestinationPath, err)
+			}
+		default:
 			return fmt.Errorf("(*dropboxStorage).Copy: Error creating directory '%s' in Dropbox: %w", b.DestinationPath, err)
 		}
 	}
@@ -98,6 +103,7 @@ func (b *dropboxStorage) Copy(file string) error {
 	var errorChn = make(chan error, b.concurrencyLevel)
 	var EOFChn = make(chan bool, b.concurrencyLevel)
 	var mu sync.Mutex
+	var wg sync.WaitGroup
 
 loop:
 	for {
@@ -106,12 +112,17 @@ loop:
 		case err := <-errorChn: // error from goroutine
 			return err
 		case <-EOFChn: // EOF from goroutine
+			wg.Wait() // wait for all goroutines to finish
 			break loop
 		default:
 		}
 
 		go func() {
-			defer func() { <-guard }()
+			defer func() {
+				wg.Done()
+				<-guard
+			}()
+			wg.Add(1)
 			chunk := make([]byte, chunkSize)
 
 			mu.Lock() // to preserve offset of chunks
@@ -119,13 +130,15 @@ loop:
 			select {
 			case <-EOFChn:
 				EOFChn <- true // put it back for outer loop
-				return         // already EOF
+				mu.Unlock()
+				return // already EOF
 			default:
 			}
 
 			bytesRead, err := r.Read(chunk)
 			if err != nil {
 				errorChn <- fmt.Errorf("(*dropboxStorage).Copy: Error reading the file to be uploaded: %w", err)
+				mu.Unlock()
 				return
 			}
 			chunk = chunk[:bytesRead]
