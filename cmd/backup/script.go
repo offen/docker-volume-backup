@@ -158,7 +158,7 @@ func newScript() (*script, error) {
 			PartSize:         s.c.AwsPartSize,
 		}
 		if s3Backend, err := s3.NewStorageBackend(s3Config, logFunc); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("newScript: error creating s3 storage backend: %w", err)
 		} else {
 			s.storages = append(s.storages, s3Backend)
 		}
@@ -173,7 +173,7 @@ func newScript() (*script, error) {
 			RemotePath:  s.c.WebdavPath,
 		}
 		if webdavBackend, err := webdav.NewStorageBackend(webDavConfig, logFunc); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("newScript: error creating webdav storage backend: %w", err)
 		} else {
 			s.storages = append(s.storages, webdavBackend)
 		}
@@ -190,7 +190,7 @@ func newScript() (*script, error) {
 			RemotePath:         s.c.SSHRemotePath,
 		}
 		if sshBackend, err := ssh.NewStorageBackend(sshConfig, logFunc); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("newScript: error creating ssh storage backend: %w", err)
 		} else {
 			s.storages = append(s.storages, sshBackend)
 		}
@@ -215,7 +215,7 @@ func newScript() (*script, error) {
 		}
 		azureBackend, err := azure.NewStorageBackend(azureConfig, logFunc)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("newScript: error creating azure storage backend: %w", err)
 		}
 		s.storages = append(s.storages, azureBackend)
 	}
@@ -228,7 +228,7 @@ func newScript() (*script, error) {
 		}
 		dropboxBackend, err := dropbox.NewStorageBackend(dropboxConfig, logFunc)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("newScript: error creating dropbox storage backend: %w", err)
 		}
 		s.storages = append(s.storages, dropboxBackend)
 	}
