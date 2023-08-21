@@ -220,9 +220,11 @@ func newScript() (*script, error) {
 		s.storages = append(s.storages, azureBackend)
 	}
 
-	if s.c.DropboxToken != "" {
+	if s.c.DropboxRefreshToken != "" && s.c.DropboxAppKey != "" && s.c.DropboxAppSecret != "" {
 		dropboxConfig := dropbox.Config{
-			Token:            s.c.DropboxToken,
+			RefreshToken:     s.c.DropboxRefreshToken,
+			AppKey:           s.c.DropboxAppKey,
+			AppSecret:        s.c.DropboxAppSecret,
 			RemotePath:       s.c.DropboxRemotePath,
 			ConcurrencyLevel: s.c.DropboxConcurrencyLevel,
 		}

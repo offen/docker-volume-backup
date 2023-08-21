@@ -70,7 +70,9 @@ type Config struct {
 	AzureStorageContainerName     string          `split_words:"true"`
 	AzureStoragePath              string          `split_words:"true"`
 	AzureStorageEndpoint          string          `split_words:"true" default:"https://{{ .AccountName }}.blob.core.windows.net/"`
-	DropboxToken                  string          `split_words:"true"`
+	DropboxRefreshToken           string          `split_words:"true"`
+	DropboxAppKey                 string          `split_words:"true"`
+	DropboxAppSecret              string          `split_words:"true"`
 	DropboxRemotePath             string          `split_words:"true"`
 	DropboxConcurrencyLevel       int             `split_words:"true" default:"6"`
 }

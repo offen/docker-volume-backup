@@ -2,6 +2,7 @@ package dropbox
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -14,6 +15,7 @@ import (
 	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox"
 	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox/files"
 	"github.com/offen/docker-volume-backup/internal/storage"
+	"golang.org/x/oauth2"
 )
 
 type dropboxStorage struct {
@@ -24,18 +26,33 @@ type dropboxStorage struct {
 
 // Config allows to configure a Dropbox storage backend.
 type Config struct {
-	Token            string
+	RefreshToken     string
+	AppKey           string
+	AppSecret        string
 	RemotePath       string
 	ConcurrencyLevel int
 }
 
 // NewStorageBackend creates and initializes a new Dropbox storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
-	config := dropbox.Config{
-		Token: opts.Token,
+	conf := &oauth2.Config{
+		ClientID:     opts.AppKey,
+		ClientSecret: opts.AppSecret,
+		Endpoint: oauth2.Endpoint{
+			TokenURL: "https://api.dropbox.com/oauth2/token",
+		},
 	}
 
-	client := files.New(config)
+	logFunc(storage.LogLevelInfo, "Dropbox", "Fetching fresh access token for Dropbox storage backend.")
+	tkSource := conf.TokenSource(context.TODO(), &oauth2.Token{RefreshToken: opts.RefreshToken})
+	token, err := tkSource.Token()
+	if err != nil {
+		return nil, fmt.Errorf("(*dropboxStorage).NewStorageBackend: Error refreshing token: %w", err)
+	}
+
+	client := files.New(dropbox.Config{
+		Token: token.AccessToken,
+	})
 
 	if opts.ConcurrencyLevel < 1 {
 		logFunc(storage.LogLevelWarning, "Dropbox", "Concurrency level must be at least 1! Using 1 instead of %d.", opts.ConcurrencyLevel)

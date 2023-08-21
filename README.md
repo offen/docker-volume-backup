@@ -357,6 +357,8 @@ You can populate below template according to your requirements and use it as you
 # AZURE_STORAGE_ENDPOINT="https://{{ .AccountName }}.blob.core.windows.net/"
 
 # Absolute remote path in your Dropbox where the backups shall be stored.
+# Note: Use your app's subpath in Dropbox, if it doesn't have global access.
+# Consulte the README for further information.
 
 # DROPBOX_REMOTE_PATH="/my/directory"
 
@@ -364,6 +366,15 @@ You can populate below template according to your requirements and use it as you
 # Values above 6 usually result in no enhancements.
 
 # DROPBOX_CONCURRENCY_LEVEL="6"
+
+# App key and app secret from your app created at https://www.dropbox.com/developers/apps/info
+
+# DROPBOX_APP_KEY=""
+# DROPBOX_APP_SECRET=""
+
+# Refresh token to request new short-lived tokens (OAuth2). Consult README to see how to get one.
+
+# DROPBOX_REFRESH_TOKEN=""
 
 # In addition to storing backups remotely, you can also keep local copies.
 # Pass a container-local path to store your backups if needed. You also need to
@@ -1029,6 +1040,37 @@ volumes:
 
 Commands will be invoked with the filepath of the tar archive passed as `COMMAND_RUNTIME_BACKUP_FILEPATH`.
 
+### Setup Dropbox storage backend
+
+#### Auth-Setup:
+
+1. Create a new Dropbox App in the [App Console](https://www.dropbox.com/developers/apps)
+2. Open your new Dropbox App and set `DROPBOX_APP_KEY` and `DROPBOX_APP_SECRET` in your environment (e.g. docker-compose.yml) accordingly
+3. Click on `Permissions` in your app and make sure, that the following permissions are cranted (or more):
+  - `files.metadata.write`
+  - `files.metadata.read`
+  - `files.content.write`
+  - `files.content.read`
+4. Replace APPKEY in `https://www.dropbox.com/oauth2/authorize?client_id=APPKEY&token_access_type=offline&response_type=code` with the app key from step 2
+5. Visit the URL and confirm the access of your app. This gives you an `auth code` -> save it somewhere!
+6. Replace AUTHCODE, APPKEY, APPSECRET accordingly and perform the request:
+```
+curl https://api.dropbox.com/oauth2/token \
+    -d code=AUTHCODE \
+    -d grant_type=authorization_code \
+    -d client_id=APPKEY \
+    -d client_secret=APPSECRET
+```
+7. Execute the request. You will get a JSON formatted reply. Use the value of the `refresh_token` for the last environment variable `DROPBOX_REFRESH_TOKEN`
+8. You should now have `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET` and `DROPBOX_REFRESH_TOKEN` set. These don't expire.
+
+Note: Using the "Generated access token" in the app console is not supported, as it is only very short lived and suitable for an automatic backup solution. The refresh token handles this automatically - the setup procedure above is only needed once.
+
+#### Other parameters
+
+Important: If you chose `App folder` access during the creation of your Dropbox app in step 1 above, you can only write in the app's directory!
+This means, that `DROPBOX_REMOTE_PATH` must start with e.g. `/Apps/YOUR_APP_NAME` or `/Apps/YOUR_APP_NAME/some_sub_dir`
+
 ## Recipes
 
 This section lists configuration for some real-world use cases that you can mix and match according to your needs.
@@ -1188,6 +1230,30 @@ services:
       AZURE_STORAGE_CONTAINER_NAME: backup-container
       AZURE_STORAGE_ACCOUNT_NAME: account-name
       AZURE_STORAGE_PRIMARY_ACCOUNT_KEY: Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==
+    volumes:
+      - data:/backup/my-app-backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  data:
+```
+
+### Backing up to Dropbox
+
+See [Dropbox Setup](#setup-dropbox-storage-backend) on how to get the appropriate environment values.
+
+```yml
+version: '3'
+
+services:
+  # ... define other services using the `data` volume here
+  backup:
+    image: offen/docker-volume-backup:v2
+    environment:
+      DROPBOX_REFRESH_TOKEN: REFRESH_KEY  # replace
+      DROPBOX_APP_KEY: APP_KEY  # replace
+      DROPBOX_APP_SECRET: APP_SECRET  # replace
+      DROPBOX_REMOTE_PATH: /Apps/my-test-app/some_subdir  # replace
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
