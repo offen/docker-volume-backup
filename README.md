@@ -356,6 +356,15 @@ You can populate below template according to your requirements and use it as you
 
 # AZURE_STORAGE_ENDPOINT="https://{{ .AccountName }}.blob.core.windows.net/"
 
+# Absolute remote path in your Dropbox where the backups shall be stored.
+
+# DROPBOX_REMOTE_PATH="/my/directory"
+
+# Number of concurrent chunked uploads for Dropbox.
+# Values above 6 usually result in no enhancements.
+
+# DROPBOX_CONCURRENCY_LEVEL="6"
+
 # In addition to storing backups remotely, you can also keep local copies.
 # Pass a container-local path to store your backups if needed. You also need to
 # mount a local folder or Docker volume into that location (`/archive`
