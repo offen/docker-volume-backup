@@ -222,8 +222,9 @@ func newScript() (*script, error) {
 
 	if s.c.DropboxToken != "" {
 		dropboxConfig := dropbox.Config{
-			Token:      s.c.DropboxToken,
-			RemotePath: s.c.DropboxRemotePath,
+			Token:            s.c.DropboxToken,
+			RemotePath:       s.c.DropboxRemotePath,
+			ConcurrencyLevel: s.c.DropboxConcurrencyLevel,
 		}
 		dropboxBackend, err := dropbox.NewStorageBackend(dropboxConfig, logFunc)
 		if err != nil {

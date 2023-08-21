@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox"
@@ -17,13 +18,15 @@ import (
 
 type dropboxStorage struct {
 	*storage.StorageBackend
-	client files.Client
+	client           files.Client
+	concurrencyLevel int
 }
 
 // Config allows to configure a Dropbox storage backend.
 type Config struct {
-	Token      string
-	RemotePath string
+	Token            string
+	RemotePath       string
+	ConcurrencyLevel int
 }
 
 // NewStorageBackend creates and initializes a new Dropbox storage backend.
@@ -34,12 +37,18 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 
 	client := files.New(config)
 
+	if opts.ConcurrencyLevel < 1 {
+		logFunc(storage.LogLevelWarning, "Dropbox", "Concurrency level must be at least 1! Using 1 instead of %d.", opts.ConcurrencyLevel)
+		opts.ConcurrencyLevel = 1
+	}
+
 	return &dropboxStorage{
 		StorageBackend: &storage.StorageBackend{
 			DestinationPath: opts.RemotePath,
 			Log:             logFunc,
 		},
-		client: client,
+		client:           client,
+		concurrencyLevel: opts.ConcurrencyLevel,
 	}, nil
 }
 
@@ -85,39 +94,71 @@ func (b *dropboxStorage) Copy(file string) error {
 
 	const chunkSize = 148 * 1024 * 1024 // 148MB
 	var offset uint64 = 0
+	var guard = make(chan struct{}, b.concurrencyLevel)
+	var errorChn = make(chan error, b.concurrencyLevel)
+	var EOFChn = make(chan bool, b.concurrencyLevel)
+	var mu sync.Mutex
 
+loop:
 	for {
-		chunk := make([]byte, chunkSize)
-		bytesRead, err := r.Read(chunk)
-		if err != nil {
-			return fmt.Errorf("(*dropboxStorage).Copy: Error reading the file to be uploaded: %w", err)
-		}
-		chunk = chunk[:bytesRead]
-
-		uploadSessionAppendArg := files.NewUploadSessionAppendArg(
-			files.NewUploadSessionCursor(sessionId, offset),
-		)
-		isEOF := bytesRead < chunkSize
-		uploadSessionAppendArg.Close = isEOF
-
-		if err := b.client.UploadSessionAppendV2(uploadSessionAppendArg, bytes.NewReader(chunk)); err != nil {
-			return fmt.Errorf("(*dropboxStorage).Copy: Error appending the file to the upload session: %w", err)
+		guard <- struct{}{} // limit concurrency
+		select {
+		case err := <-errorChn: // error from goroutine
+			return err
+		case <-EOFChn: // EOF from goroutine
+			break loop
+		default:
 		}
 
-		if isEOF {
-			break
-		}
+		go func() {
+			defer func() { <-guard }()
+			chunk := make([]byte, chunkSize)
 
-		offset += uint64(bytesRead)
+			mu.Lock() // to preserve offset of chunks
+
+			select {
+			case <-EOFChn:
+				EOFChn <- true // put it back for outer loop
+				return         // already EOF
+			default:
+			}
+
+			bytesRead, err := r.Read(chunk)
+			if err != nil {
+				errorChn <- fmt.Errorf("(*dropboxStorage).Copy: Error reading the file to be uploaded: %w", err)
+				return
+			}
+			chunk = chunk[:bytesRead]
+
+			uploadSessionAppendArg := files.NewUploadSessionAppendArg(
+				files.NewUploadSessionCursor(sessionId, offset),
+			)
+			isEOF := bytesRead < chunkSize
+			uploadSessionAppendArg.Close = isEOF
+			if isEOF {
+				EOFChn <- true
+			}
+			offset += uint64(bytesRead)
+
+			mu.Unlock()
+
+			if err := b.client.UploadSessionAppendV2(uploadSessionAppendArg, bytes.NewReader(chunk)); err != nil {
+				errorChn <- fmt.Errorf("(*dropboxStorage).Copy: Error appending the file to the upload session: %w", err)
+				return
+			}
+		}()
 	}
 
 	// Finish the upload session, commit the file (no new data added)
 
-	b.client.UploadSessionFinish(
+	_, err = b.client.UploadSessionFinish(
 		files.NewUploadSessionFinishArg(
 			files.NewUploadSessionCursor(sessionId, 0),
 			files.NewCommitInfo(filepath.Join(b.DestinationPath, name)),
 		), nil)
+	if err != nil {
+		return fmt.Errorf("(*dropboxStorage).Copy: Error finishing the upload session: %w", err)
+	}
 
 	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup '%s' to Dropbox at path '%s'.", file, b.DestinationPath)
 
