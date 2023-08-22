@@ -4,10 +4,10 @@
 
 # docker-volume-backup
 
-Backup Docker volumes locally or to any S3, WebDAV, Azure Blob Storage or SSH compatible storage.
+Backup Docker volumes locally or to any S3, WebDAV, Azure Blob Storage, Dropbox or SSH compatible storage.
 
 The [offen/docker-volume-backup](https://hub.docker.com/r/offen/docker-volume-backup) Docker image can be used as a lightweight (below 15MB) sidecar container to an existing Docker setup.
-It handles __recurring or one-off backups of Docker volumes__ to a __local directory__, __any S3, WebDAV, Azure Blob Storage or SSH compatible storage (or any combination) and rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__ and __sending notifications for failed backup runs__.
+It handles __recurring or one-off backups of Docker volumes__ to a __local directory__, __any S3, WebDAV, Azure Blob Storage, Dropbox or SSH compatible storage (or any combination) and rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__ and __sending notifications for failed backup runs__.
 
 <!-- MarkdownTOC -->
 
@@ -36,6 +36,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Define different retention schedules](#define-different-retention-schedules)
   - [Use special characters in notification URLs](#use-special-characters-in-notification-urls)
   - [Handle file uploads using third party tools](#handle-file-uploads-using-third-party-tools)
+  - [Setup Dropbox storage backend](#setup-dropbox-storage-backend)
 - [Recipes](#recipes)
   - [Backing up to AWS S3](#backing-up-to-aws-s3)
   - [Backing up to Filebase](#backing-up-to-filebase)
@@ -44,6 +45,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Backing up to WebDAV](#backing-up-to-webdav)
   - [Backing up to SSH](#backing-up-to-ssh)
   - [Backing up to Azure Blob Storage](#backing-up-to-azure-blob-storage)
+  - [Backing up to Dropbox](#backing-up-to-dropbox)
   - [Backing up locally](#backing-up-locally)
   - [Backing up to AWS S3 as well as locally](#backing-up-to-aws-s3-as-well-as-locally)
   - [Running on a custom cron schedule](#running-on-a-custom-cron-schedule)
