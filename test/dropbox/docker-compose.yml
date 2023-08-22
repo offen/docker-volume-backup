@@ -3,13 +3,9 @@ version: '3'
 services:
   openapi_mock:
     image: muonsoft/openapi-mock
-    volumes:
-      - dropbox_backup_data:/var/lib/dav
-      - ./user_v2.yaml:/etc/openapi/user_v2.yaml
-      - ./openapi-mock.yaml:/etc/openapi/openapi-mock.yaml
     environment:
-      - OPENAPI_MOCK_USE_EXAMPLES: if_present
-      - OPENAPI_MOCK_SPECIFICATION_URL: https://raw.githubusercontent.com/offen/docker-volume-backup/2ea59a649be79d6cb22b8b5ad29e24377d4ab9d4/test/dropbox/user_v2.yaml
+      OPENAPI_MOCK_USE_EXAMPLES: if_present
+      OPENAPI_MOCK_SPECIFICATION_URL: https://raw.githubusercontent.com/offen/docker-volume-backup/2ea59a649be79d6cb22b8b5ad29e24377d4ab9d4/test/dropbox/user_v2.yaml
     ports:
       - 8080:8080
 
@@ -44,6 +40,4 @@ services:
       - app_data:/var/opt/offen
 
 volumes:
-  dropbox_backup_data:
-    name: dropbox_backup_data
   app_data:
