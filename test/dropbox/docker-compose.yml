@@ -1,0 +1,49 @@
+version: '3'
+
+services:
+  openapi_mock:
+    image: muonsoft/openapi-mock
+    volumes:
+      - dropbox_backup_data:/var/lib/dav
+      - ./user_v2.yaml:/etc/openapi/user_v2.yaml
+      - ./openapi-mock.yaml:/etc/openapi/openapi-mock.yaml
+    environment:
+      - OPENAPI_MOCK_USE_EXAMPLES: if_present
+      - OPENAPI_MOCK_SPECIFICATION_URL: https://raw.githubusercontent.com/offen/docker-volume-backup/2ea59a649be79d6cb22b8b5ad29e24377d4ab9d4/test/dropbox/user_v2.yaml
+    ports:
+      - 8080:8080
+
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    hostname: hostnametoken
+    depends_on:
+      - openapi_mock
+    restart: always
+    environment:
+      BACKUP_FILENAME_EXPAND: 'true'
+      BACKUP_FILENAME: test-$$HOSTNAME.tar.gz
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_PRUNING_LEEWAY: 5s
+      BACKUP_PRUNING_PREFIX: test
+      DROPBOX_ENDPOINT: http://127.0.0.1:8080
+      DROPBOX_REFRESH_TOKEN: test
+      DROPBOX_APP_KEY: test
+      DROPBOX_APP_SECRET: test
+      DROPBOX_REMOTE_PATH: /test
+      DROPBOX_CONCURRENCY_LEVEL: 6
+    volumes:
+      - app_data:/backup/app_data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  offen:
+    image: offen/offen:latest
+    labels:
+      - docker-volume-backup.stop-during-backup=true
+    volumes:
+      - app_data:/var/opt/offen
+
+volumes:
+  dropbox_backup_data:
+    name: dropbox_backup_data
+  app_data:
