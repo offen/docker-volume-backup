@@ -15,7 +15,7 @@ sleep 5
 
 expect_running_containers "3"
 
-dvb_logs=$(docker logs backup-1 2>&1)
+dvb_logs=$(docker logs dropbox-backup-1 2>&1)
 if $dvb_logs | grep "ERROR"
 then
   fail "Backup failed, errors reported: $dvb_logs"
@@ -23,7 +23,7 @@ else
   pass "Backup succeeded, no errors reported."
 fi
 
-dbx_logs=$(docker logs openapi_mock-1 2>&1)
+dbx_logs=$(docker logs dropbox-openapi_mock-1 2>&1)
 if $dbx_logs | grep "ERROR"
 then
   fail "Backup failed, errors reported: $dvb_logs"
@@ -39,7 +39,7 @@ sleep 5
 
 docker compose exec backup backup
 
-dvb_logs=$(docker logs backup-1 2>&1)
+dvb_logs=$(docker logs dropbox-backup-1 2>&1)
 if $dvb_logs | grep "Refusing to do so, please check your configuratio"
 then
   pass "Remote backups have not been deleted."
