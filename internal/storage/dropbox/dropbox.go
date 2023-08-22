@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -26,6 +27,7 @@ type dropboxStorage struct {
 
 // Config allows to configure a Dropbox storage backend.
 type Config struct {
+	Endpoint         string
 	RefreshToken     string
 	AppKey           string
 	AppSecret        string
@@ -35,24 +37,41 @@ type Config struct {
 
 // NewStorageBackend creates and initializes a new Dropbox storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
+	tokenUrl, _ := url.JoinPath(opts.Endpoint, "oauth2/token")
+
 	conf := &oauth2.Config{
 		ClientID:     opts.AppKey,
 		ClientSecret: opts.AppSecret,
 		Endpoint: oauth2.Endpoint{
-			TokenURL: "https://api.dropbox.com/oauth2/token",
+			TokenURL: tokenUrl,
 		},
 	}
 
+	isCITest := opts.Endpoint != "https://api.dropbox.com/"
+
 	logFunc(storage.LogLevelInfo, "Dropbox", "Fetching fresh access token for Dropbox storage backend.")
-	tkSource := conf.TokenSource(context.TODO(), &oauth2.Token{RefreshToken: opts.RefreshToken})
-	token, err := tkSource.Token()
-	if err != nil {
-		return nil, fmt.Errorf("(*dropboxStorage).NewStorageBackend: Error refreshing token: %w", err)
+	token := &oauth2.Token{RefreshToken: opts.RefreshToken}
+	if !isCITest {
+		tkSource := conf.TokenSource(context.TODO(), &oauth2.Token{RefreshToken: opts.RefreshToken})
+		var err error
+		token, err = tkSource.Token()
+		if err != nil {
+			return nil, fmt.Errorf("(*dropboxStorage).NewStorageBackend: Error refreshing token: %w", err)
+		}
 	}
 
-	client := files.New(dropbox.Config{
-		Token: token.AccessToken,
-	})
+	dbxConfig := dropbox.Config{}
+
+	if isCITest {
+		dbxConfig.Token = opts.RefreshToken
+		dbxConfig.URLGenerator = func(hostType string, namespace string, route string) string {
+			return fmt.Sprintf("%s/%d/%s/%s", opts.Endpoint, 2, namespace, route)
+		}
+	} else {
+		dbxConfig.Token = token.AccessToken
+	}
+
+	client := files.New(dbxConfig)
 
 	if opts.ConcurrencyLevel < 1 {
 		logFunc(storage.LogLevelWarning, "Dropbox", "Concurrency level must be at least 1! Using 1 instead of %d.", opts.ConcurrencyLevel)

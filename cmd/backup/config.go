@@ -70,6 +70,7 @@ type Config struct {
 	AzureStorageContainerName     string          `split_words:"true"`
 	AzureStoragePath              string          `split_words:"true"`
 	AzureStorageEndpoint          string          `split_words:"true" default:"https://{{ .AccountName }}.blob.core.windows.net/"`
+	DropboxEndpoint               string          `split_words:"true" default:"https://api.dropbox.com/"`
 	DropboxRefreshToken           string          `split_words:"true"`
 	DropboxAppKey                 string          `split_words:"true"`
 	DropboxAppSecret              string          `split_words:"true"`
