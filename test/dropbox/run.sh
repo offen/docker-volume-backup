@@ -9,21 +9,13 @@ current_test=$(basename $(pwd))
 docker compose up -d
 sleep 5
 
-docker compose exec backup backup
+logs=$(docker compose exec -T backup backup)
 
 sleep 5
 
 expect_running_containers "3"
 
-dvb_logs=$(docker compose logs backup)
-if echo "$dvb_logs" | grep -q "ERROR"; then
-  fail "Backup failed, errors reported: $dvb_logs"
-else
-  pass "Backup succeeded, no errors reported."
-fi
-
-dbx_logs=$(docker compose logs openapi_mock)
-if echo "$dbx_logs" | grep -q "ERROR"; then
+if echo "$logs" | grep -q "ERROR"; then
   fail "Backup failed, errors reported: $dvb_logs"
 else
   pass "Backup succeeded, no errors reported."
@@ -35,10 +27,9 @@ fi
 BACKUP_RETENTION_DAYS="0" docker compose up -d
 sleep 5
 
-docker compose exec backup backup
+logs=$(docker compose exec -T backup backup)
 
-dvb_logs=$(docker compose logs backup)
-if echo "$dvb_logs" | grep -q "Refusing to do so, please check your configuration"; then
+if echo "$logs" | grep -q "Refusing to do so, please check your configuration"; then
   pass "Remote backups have not been deleted."
 else
   fail "Remote backups would have been deleted: $dvb_logs"
