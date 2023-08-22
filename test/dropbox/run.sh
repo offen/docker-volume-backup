@@ -15,6 +15,7 @@ sleep 5
 
 expect_running_containers "3"
 
+echo "$logs"
 if echo "$logs" | grep -q "ERROR"; then
   fail "Backup failed, errors reported: $dvb_logs"
 else
@@ -29,6 +30,7 @@ sleep 5
 
 logs=$(docker compose exec -T backup backup)
 
+echo "$logs"
 if echo "$logs" | grep -q "Refusing to do so, please check your configuration"; then
   pass "Remote backups have not been deleted."
 else
