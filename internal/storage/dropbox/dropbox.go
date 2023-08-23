@@ -52,7 +52,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 	logFunc(storage.LogLevelInfo, "Dropbox", "Fetching fresh access token for Dropbox storage backend.")
 	token := &oauth2.Token{RefreshToken: opts.RefreshToken}
 	if !isCITest {
-		tkSource := conf.TokenSource(context.TODO(), &oauth2.Token{RefreshToken: opts.RefreshToken})
+		tkSource := conf.TokenSource(context.Background(), &oauth2.Token{RefreshToken: opts.RefreshToken})
 		var err error
 		token, err = tkSource.Token()
 		if err != nil {
@@ -101,11 +101,10 @@ func (b *dropboxStorage) Copy(file string) error {
 	if _, err := b.client.CreateFolderV2(folderArg); err != nil {
 		switch err := err.(type) {
 		case files.CreateFolderV2APIError:
-			if err.EndpointError.Path.Tag == files.WriteErrorConflict {
-				b.Log(storage.LogLevelInfo, b.Name(), "Destination path '%s' already exists in Dropbox, no new directory required.", b.DestinationPath)
-			} else {
+			if err.EndpointError.Path.Tag != files.WriteErrorConflict {
 				return fmt.Errorf("(*dropboxStorage).Copy: Error creating directory '%s' in Dropbox: %w", b.DestinationPath, err)
 			}
+			b.Log(storage.LogLevelInfo, b.Name(), "Destination path '%s' already exists in Dropbox, no new directory required.", b.DestinationPath)
 		default:
 			return fmt.Errorf("(*dropboxStorage).Copy: Error creating directory '%s' in Dropbox: %w", b.DestinationPath, err)
 		}
