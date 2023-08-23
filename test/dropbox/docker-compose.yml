@@ -20,12 +20,14 @@ services:
       JSON_CONFIG_PATH: '/etc/oauth2/config.yaml'
     volumes:
       - ./oauth2_config.yaml:/etc/oauth2/config.yaml
+    hostname: hostnametoken
 
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
     hostname: hostnametoken
     depends_on:
       - openapi_mock
+      - oauth2_mock
     restart: always
     environment:
       BACKUP_FILENAME_EXPAND: 'true'
@@ -35,7 +37,7 @@ services:
       BACKUP_PRUNING_LEEWAY: 5s
       BACKUP_PRUNING_PREFIX: test
       DROPBOX_ENDPOINT: http://openapi_mock:8080
-      DROPBOX_OAUTH2_ENDPOINT: oauth2_mock:8090
+      DROPBOX_OAUTH2_ENDPOINT: http://oauth2_mock:8090
       DROPBOX_REFRESH_TOKEN: test
       DROPBOX_APP_KEY: test
       DROPBOX_APP_SECRET: test
