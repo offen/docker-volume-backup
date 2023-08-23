@@ -13,7 +13,7 @@ logs=$(docker compose exec -T backup backup)
 
 sleep 5
 
-expect_running_containers "3"
+expect_running_containers "4"
 
 echo "$logs"
 if echo "$logs" | grep -q "ERROR"; then
