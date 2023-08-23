@@ -9,7 +9,8 @@ current_test=$(basename $(pwd))
 docker compose up -d
 sleep 10
 
-logs=$(docker compose exec -T backup backup)
+#logs=$(docker compose exec -T backup backup)
+docker compose exec backup backup
 
 sleep 5
 
