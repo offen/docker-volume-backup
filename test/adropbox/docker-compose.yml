@@ -10,8 +10,7 @@ services:
       - 8080:8080
     volumes:
       - ./user_v2.yaml:/etc/openapi/user_v2.yaml
-    networks:
-      - mock_network
+    network_mode: bridge
 
   oauth2_mock:
     image: ghcr.io/navikt/mock-oauth2-server:1.0.0
@@ -49,8 +48,7 @@ services:
           ]
         }'
     hostname: host.docker.internal
-    networks:
-      - mock_network
+    network_mode: bridge
 
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
@@ -76,8 +74,7 @@ services:
     volumes:
       - app_data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - mock_network
+    network_mode: bridge
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -90,7 +87,3 @@ services:
 
 volumes:
   app_data:
-
-networks:
-  mock_network:
-    name: mock_network
