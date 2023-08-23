@@ -19,6 +19,7 @@ services:
       - 8090:8090
     environment:
       PORT: '8090'
+      SERVER_HOSTNAME: 'oauth2_mock'
       JSON_CONFIG: >
         '{
           "issuer":"http://oauth2_mock:8090/default",
