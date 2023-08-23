@@ -15,15 +15,14 @@ services:
   oauth2_mock:
     image: ghcr.io/navikt/mock-oauth2-server:1.0.0
     ports:
-      - 127.0.0.1:8090:8090
+      - 8090:8090
     environment:
       PORT: '8090'
-      SERVER_HOSTNAME: 'oauth2_mock'
       JSON_CONFIG: >
         '{
-          "issuer":"http://oauth2_mock:8090/default",
-          "authorization_endpoint":"http://oauth2_mock:8090/default/authorize",
-          "token_endpoint":"http://oauth2_mock:8090/default/token",
+          "issuer":"http://localhost:8090/default",
+          "authorization_endpoint":"http://localhost:8090/default/authorize",
+          "token_endpoint":"http://localhost:8090/default/token",
           "response_types_supported":[
               "query",
               "fragment",
