@@ -27,6 +27,7 @@ type dropboxStorage struct {
 // Config allows to configure a Dropbox storage backend.
 type Config struct {
 	Endpoint         string
+	OAuth2Endpoint   string
 	RefreshToken     string
 	AppKey           string
 	AppSecret        string
@@ -36,7 +37,7 @@ type Config struct {
 
 // NewStorageBackend creates and initializes a new Dropbox storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
-	tokenUrl, _ := url.JoinPath(opts.Endpoint, "oauth2/token")
+	tokenUrl, _ := url.JoinPath(opts.OAuth2Endpoint, "oauth2/token")
 
 	conf := &oauth2.Config{
 		ClientID:     opts.AppKey,
@@ -46,28 +47,21 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		},
 	}
 
-	isCITest := opts.Endpoint != "https://api.dropbox.com/"
-
 	logFunc(storage.LogLevelInfo, "Dropbox", "Fetching fresh access token for Dropbox storage backend.")
-	token := &oauth2.Token{RefreshToken: opts.RefreshToken}
-	if !isCITest {
-		tkSource := conf.TokenSource(context.Background(), &oauth2.Token{RefreshToken: opts.RefreshToken})
-		var err error
-		token, err = tkSource.Token()
-		if err != nil {
-			return nil, fmt.Errorf("(*dropboxStorage).NewStorageBackend: Error refreshing token: %w", err)
-		}
+	tkSource := conf.TokenSource(context.Background(), &oauth2.Token{RefreshToken: opts.RefreshToken})
+	token, err := tkSource.Token()
+	if err != nil {
+		return nil, fmt.Errorf("(*dropboxStorage).NewStorageBackend: Error refreshing token: %w", err)
 	}
 
-	dbxConfig := dropbox.Config{}
+	dbxConfig := dropbox.Config{
+		Token: token.AccessToken,
+	}
 
-	if isCITest {
-		dbxConfig.Token = opts.RefreshToken
+	if opts.Endpoint != "https://api.dropbox.com/" {
 		dbxConfig.URLGenerator = func(hostType string, namespace string, route string) string {
 			return fmt.Sprintf("%s/%d/%s/%s", opts.Endpoint, 2, namespace, route)
 		}
-	} else {
-		dbxConfig.Token = token.AccessToken
 	}
 
 	client := files.New(dbxConfig)
