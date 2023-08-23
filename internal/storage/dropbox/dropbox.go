@@ -47,7 +47,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		},
 	}
 
-	logFunc(storage.LogLevelInfo, "Dropbox", "Fetching fresh access token from Dropbox OAuth2 endpoint '%s'...", tokenUrl)
+	logFunc(storage.LogLevelInfo, "Dropbox", "Fetching fresh access token for Dropbox storage backend.")
 	tkSource := conf.TokenSource(context.Background(), &oauth2.Token{RefreshToken: opts.RefreshToken})
 	token, err := tkSource.Token()
 	if err != nil {

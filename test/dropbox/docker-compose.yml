@@ -1,0 +1,56 @@
+version: '3'
+
+services:
+  openapi_mock:
+    image: muonsoft/openapi-mock
+    environment:
+      OPENAPI_MOCK_USE_EXAMPLES: if_present
+      OPENAPI_MOCK_SPECIFICATION_URL: '/etc/openapi/user_v2.yaml'
+    ports:
+      - 8080:8080
+    volumes:
+      - ./user_v2.yaml:/etc/openapi/user_v2.yaml
+
+  oauth2_mock:
+    image: ghcr.io/navikt/mock-oauth2-server:1.0.0
+    ports:
+      - 8090:8090
+    environment:
+      PORT: 8090
+      JSON_CONFIG_PATH: '/etc/oauth2/config.yaml'
+    volumes:
+      - ./oauth2_config.yaml:/etc/oauth2/config.yaml
+
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    hostname: hostnametoken
+    depends_on:
+      - openapi_mock
+    restart: always
+    environment:
+      BACKUP_FILENAME_EXPAND: 'true'
+      BACKUP_FILENAME: test-$$HOSTNAME.tar.gz
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_PRUNING_LEEWAY: 5s
+      BACKUP_PRUNING_PREFIX: test
+      DROPBOX_ENDPOINT: http://openapi_mock:8080
+      DROPBOX_OAUTH2_ENDPOINT: http://oauth2_mock:8090
+      DROPBOX_REFRESH_TOKEN: test
+      DROPBOX_APP_KEY: test
+      DROPBOX_APP_SECRET: test
+      DROPBOX_REMOTE_PATH: /test
+      DROPBOX_CONCURRENCY_LEVEL: 6
+    volumes:
+      - app_data:/backup/app_data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  offen:
+    image: offen/offen:latest
+    labels:
+      - docker-volume-backup.stop-during-backup=true
+    volumes:
+      - app_data:/var/opt/offen
+
+volumes:
+  app_data:
