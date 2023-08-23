@@ -80,7 +80,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       mocking:
-        ipv4_address: 172.16.238.10
+        ipv4_address: 172.16.238.12
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
