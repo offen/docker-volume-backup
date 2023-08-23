@@ -223,6 +223,7 @@ func newScript() (*script, error) {
 	if s.c.DropboxRefreshToken != "" && s.c.DropboxAppKey != "" && s.c.DropboxAppSecret != "" {
 		dropboxConfig := dropbox.Config{
 			Endpoint:         s.c.DropboxEndpoint,
+			OAuth2Endpoint:   s.c.DropboxOAuth2Endpoint,
 			RefreshToken:     s.c.DropboxRefreshToken,
 			AppKey:           s.c.DropboxAppKey,
 			AppSecret:        s.c.DropboxAppSecret,
