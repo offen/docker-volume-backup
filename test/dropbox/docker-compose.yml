@@ -10,21 +10,24 @@ services:
       - 8080:8080
     volumes:
       - ./user_v2.yaml:/etc/openapi/user_v2.yaml
+    networks:
+      - mock_network
 
   oauth2_mock:
     image: ghcr.io/navikt/mock-oauth2-server:1.0.0
     ports:
       - 8090:8090
     environment:
-      PORT: 8090
+      PORT: '8090'
       JSON_CONFIG_PATH: '/etc/oauth2/config.yaml'
     volumes:
       - ./oauth2_config.yaml:/etc/oauth2/config.yaml
     hostname: host.docker.internal
+    networks:
+      - mock_network
 
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
-    hostname: hostnametoken
     depends_on:
       - openapi_mock
       - oauth2_mock
@@ -46,6 +49,8 @@ services:
     volumes:
       - app_data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - mock_network
 
   offen:
     image: offen/offen:latest
@@ -56,3 +61,8 @@ services:
 
 volumes:
   app_data:
+
+networks:
+  mock_network:
+    external:
+      name: mock_network
