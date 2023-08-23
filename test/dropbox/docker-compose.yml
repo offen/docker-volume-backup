@@ -19,9 +19,34 @@ services:
       - 8090:8090
     environment:
       PORT: '8090'
-      JSON_CONFIG_PATH: '/etc/oauth2/config.yaml'
-    volumes:
-      - ./oauth2_config.yaml:/etc/oauth2/config.yaml
+      JSON_CONFIG: >
+        '{
+          "issuer":"http://oauth2_mock:8090/default",
+          "authorization_endpoint":"http://oauth2_mock:8090/default/authorize",
+          "token_endpoint":"http://oauth2_mock:8090/default/token",
+          "response_types_supported":[
+              "query",
+              "fragment",
+              "form_post"
+          ],
+          "subject_types_supported":[
+              "public"
+          ],
+          "id_token_signing_alg_values_supported":[
+            "ES256",
+            "ES384",
+            "RS256",
+            "RS384",
+            "RS512",
+            "PS256",
+            "PS384",
+            "PS512"
+          ],
+          "code_challenge_methods_supported":[
+              "plain", 
+              "S256" 
+          ]
+        }'
     hostname: host.docker.internal
     networks:
       - mock_network
