@@ -78,6 +78,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - mock_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   offen:
     image: offen/offen:latest
