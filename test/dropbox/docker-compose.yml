@@ -5,9 +5,11 @@ services:
     image: muonsoft/openapi-mock
     environment:
       OPENAPI_MOCK_USE_EXAMPLES: if_present
-      OPENAPI_MOCK_SPECIFICATION_URL: https://raw.githubusercontent.com/offen/docker-volume-backup/2ea59a649be79d6cb22b8b5ad29e24377d4ab9d4/test/dropbox/user_v2.yaml
+      OPENAPI_MOCK_SPECIFICATION_URL: '/etc/openapi/user_v2.yaml'
     ports:
       - 8080:8080
+    volumes:
+      - ./user_v2.yaml:/etc/openapi/user_v2.yaml
 
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}

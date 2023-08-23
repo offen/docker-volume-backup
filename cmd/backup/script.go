@@ -227,7 +227,7 @@ func newScript() (*script, error) {
 			AppKey:           s.c.DropboxAppKey,
 			AppSecret:        s.c.DropboxAppSecret,
 			RemotePath:       s.c.DropboxRemotePath,
-			ConcurrencyLevel: s.c.DropboxConcurrencyLevel,
+			ConcurrencyLevel: s.c.DropboxConcurrencyLevel.Int(),
 		}
 		dropboxBackend, err := dropbox.NewStorageBackend(dropboxConfig, logFunc)
 		if err != nil {

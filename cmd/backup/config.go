@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -75,7 +76,7 @@ type Config struct {
 	DropboxAppKey                 string          `split_words:"true"`
 	DropboxAppSecret              string          `split_words:"true"`
 	DropboxRemotePath             string          `split_words:"true"`
-	DropboxConcurrencyLevel       int             `split_words:"true" default:"6"`
+	DropboxConcurrencyLevel       NaturalNumber   `split_words:"true" default:"6"`
 }
 
 func (c *Config) resolveSecret(envVar string, secretPath string) (string, error) {
@@ -140,4 +141,22 @@ func (r *RegexpDecoder) Decode(v string) error {
 	}
 	*r = RegexpDecoder{Re: re}
 	return nil
+}
+
+type NaturalNumber int
+
+func (n *NaturalNumber) Decode(v string) error {
+	asInt, err := strconv.Atoi(v)
+	if err != nil {
+		return fmt.Errorf("config: error converting %s to int", v)
+	}
+	if asInt <= 0 {
+		return fmt.Errorf("config: expected a natural number, got %d", asInt)
+	}
+	*n = NaturalNumber(asInt)
+	return nil
+}
+
+func (n *NaturalNumber) Int() int {
+	return int(*n)
 }

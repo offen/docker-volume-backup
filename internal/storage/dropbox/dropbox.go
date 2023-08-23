@@ -8,7 +8,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -233,16 +232,17 @@ func (b *dropboxStorage) Prune(deadline time.Time, pruningPrefix string) (*stora
 	var matches []*files.FileMetadata
 	var lenCandidates int
 	for _, candidate := range entries {
-		if reflect.Indirect(reflect.ValueOf(candidate)).Type() != reflect.TypeOf(files.FileMetadata{}) {
+		switch candidate := candidate.(type) {
+		case *files.FileMetadata:
+			if !strings.HasPrefix(candidate.Name, pruningPrefix) {
+				continue
+			}
+			lenCandidates++
+			if candidate.ServerModified.Before(deadline) {
+				matches = append(matches, candidate)
+			}
+		default:
 			continue
-		}
-		candidate := candidate.(*files.FileMetadata)
-		if !strings.HasPrefix(candidate.Name, pruningPrefix) {
-			continue
-		}
-		lenCandidates++
-		if candidate.ServerModified.Before(deadline) {
-			matches = append(matches, candidate)
 		}
 	}
 
