@@ -64,5 +64,4 @@ volumes:
 
 networks:
   mock_network:
-    external:
-      name: mock_network
+    name: mock_network
