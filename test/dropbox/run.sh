@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 current_test=$(basename $(pwd))
 
 docker compose up -d
-sleep 5
+sleep 10
 
 logs=$(docker compose exec -T backup backup)
 
@@ -26,7 +26,7 @@ fi
 # is set to 0 days (which it should not as it would mean all backups get deleted)
 # TODO: find out if we can test actual deletion without having to wait for a day
 BACKUP_RETENTION_DAYS="0" docker compose up -d
-sleep 5
+sleep 10
 
 logs=$(docker compose exec -T backup backup)
 
