@@ -17,7 +17,7 @@ services:
   oauth2_mock:
     image: ghcr.io/navikt/mock-oauth2-server:1.0.0
     ports:
-      - 10.5.0.6:8090:8090
+      - 8090:8090
     environment:
       PORT: '8090'
       SERVER_HOSTNAME: '10.5.0.6'
