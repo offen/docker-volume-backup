@@ -1,0 +1,102 @@
+version: '3'
+
+services:
+  openapi_mock:
+    image: muonsoft/openapi-mock
+    environment:
+      OPENAPI_MOCK_USE_EXAMPLES: if_present
+      OPENAPI_MOCK_SPECIFICATION_URL: '/etc/openapi/user_v2.yaml'
+    ports:
+      - 8080:8080
+    volumes:
+      - ./user_v2.yaml:/etc/openapi/user_v2.yaml
+    networks:
+      mocking:
+        ipv4_address: 172.16.238.11
+
+  oauth2_mock:
+    image: ghcr.io/navikt/mock-oauth2-server:1.0.0
+    ports:
+      - 8090:8090
+    environment:
+      PORT: '8090'
+      SERVER_HOSTNAME: '172.16.238.10'
+      JSON_CONFIG: >
+        '{
+          "issuer":"http://localhost:8090/default",
+          "authorization_endpoint":"http://localhost:8090/default/authorize",
+          "token_endpoint":"http://localhost:8090/default/token",
+          "response_types_supported":[
+              "query",
+              "fragment",
+              "form_post"
+          ],
+          "subject_types_supported":[
+              "public"
+          ],
+          "id_token_signing_alg_values_supported":[
+            "ES256",
+            "ES384",
+            "RS256",
+            "RS384",
+            "RS512",
+            "PS256",
+            "PS384",
+            "PS512"
+          ],
+          "code_challenge_methods_supported":[
+              "plain", 
+              "S256" 
+          ]
+        }'
+    hostname: host.docker.internal
+    networks:
+      mocking:
+        ipv4_address: 172.16.238.10
+
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    hostname: host.docker.internal
+    depends_on:
+      - openapi_mock
+      - oauth2_mock
+    restart: always
+    environment:
+      BACKUP_FILENAME_EXPAND: 'true'
+      BACKUP_FILENAME: test-$$HOSTNAME.tar.gz
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_PRUNING_LEEWAY: 5s
+      BACKUP_PRUNING_PREFIX: test
+      DROPBOX_ENDPOINT: http://openapi_mock:8080
+      DROPBOX_OAUTH2_ENDPOINT: http://172.16.238.10:8090
+      DROPBOX_REFRESH_TOKEN: test
+      DROPBOX_APP_KEY: test
+      DROPBOX_APP_SECRET: test
+      DROPBOX_REMOTE_PATH: /test
+      DROPBOX_CONCURRENCY_LEVEL: 6
+    volumes:
+      - app_data:/backup/app_data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      mocking:
+        ipv4_address: 172.16.238.12
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  offen:
+    image: offen/offen:latest
+    labels:
+      - docker-volume-backup.stop-during-backup=true
+    volumes:
+      - app_data:/var/opt/offen
+
+volumes:
+  app_data:
+
+networks:
+  mocking:
+    driver: default
+    ipam:
+      config:
+        - subnet: 172.16.238.0/24
