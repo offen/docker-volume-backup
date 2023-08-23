@@ -10,14 +10,17 @@ services:
       - 8080:8080
     volumes:
       - ./user_v2.yaml:/etc/openapi/user_v2.yaml
-    network_mode: bridge
+    networks:
+      mocking:
+        ipv4_address: 10.5.0.7
 
   oauth2_mock:
     image: ghcr.io/navikt/mock-oauth2-server:1.0.0
     ports:
-      - 8090:8090
+      - 10.5.0.6:8090:8090
     environment:
       PORT: '8090'
+      SERVER_HOSTNAME: '10.5.0.6'
       JSON_CONFIG: >
         '{
           "issuer":"http://localhost:8090/default",
@@ -47,7 +50,9 @@ services:
           ]
         }'
     hostname: host.docker.internal
-    network_mode: bridge
+    networks:
+      mocking:
+        ipv4_address: 10.5.0.6
 
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
@@ -64,7 +69,7 @@ services:
       BACKUP_PRUNING_LEEWAY: 5s
       BACKUP_PRUNING_PREFIX: test
       DROPBOX_ENDPOINT: http://openapi_mock:8080
-      DROPBOX_OAUTH2_ENDPOINT: http://oauth2_mock:8090
+      DROPBOX_OAUTH2_ENDPOINT: http://10.5.0.6:8090
       DROPBOX_REFRESH_TOKEN: test
       DROPBOX_APP_KEY: test
       DROPBOX_APP_SECRET: test
@@ -73,7 +78,9 @@ services:
     volumes:
       - app_data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock
-    network_mode: bridge
+    networks:
+      mocking:
+        ipv4_address: 10.5.0.5
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -86,3 +93,11 @@ services:
 
 volumes:
   app_data:
+
+networks:
+  mocking:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
+          gateway: 10.5.0.1
