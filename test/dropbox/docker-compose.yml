@@ -28,6 +28,7 @@ services:
 
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    hostname: host.docker.internal
     depends_on:
       - openapi_mock
       - oauth2_mock
