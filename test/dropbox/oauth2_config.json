@@ -1,0 +1,37 @@
+{
+   "interactiveLogin": true,
+   "httpServer": "NettyWrapper",
+   "tokenCallbacks": [
+       {
+           "issuerId": "issuer1",
+           "tokenExpiry": 120,
+           "requestMappings": [
+               {
+                   "requestParam": "scope",
+                   "match": "scope1",
+                   "claims": {
+                       "sub": "subByScope",
+                       "aud": [
+                           "audByScope"
+                       ]
+                   }
+               }
+           ]
+       },
+       {
+           "issuerId": "issuer2",
+           "requestMappings": [
+               {
+                   "requestParam": "someparam",
+                   "match": "somevalue",
+                   "claims": {
+                       "sub": "subBySomeParam",
+                       "aud": [
+                           "audBySomeParam"
+                       ]
+                   }
+               }
+           ]
+       }
+   ]
+}
