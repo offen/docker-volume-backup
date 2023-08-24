@@ -17,9 +17,9 @@ services:
       - 8090:8090
     environment:
       PORT: 8090
-      JSON_CONFIG_PATH: '/etc/oauth2/config.yaml'
+      JSON_CONFIG_PATH: '/etc/oauth2/config.json'
     volumes:
-      - ./oauth2_config.yaml:/etc/oauth2/config.yaml
+      - ./oauth2_config.json:/etc/oauth2/config.json
 
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
