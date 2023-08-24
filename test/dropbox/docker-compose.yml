@@ -26,6 +26,7 @@ services:
     hostname: hostnametoken
     depends_on:
       - openapi_mock
+      - oauth2_mock
     restart: always
     environment:
       BACKUP_FILENAME_EXPAND: 'true'
