@@ -2,7 +2,7 @@ version: '3'
 
 services:
   openapi_mock:
-    image: muonsoft/openapi-mock
+    image: muonsoft/openapi-mock:0.3.9
     environment:
       OPENAPI_MOCK_USE_EXAMPLES: if_present
       OPENAPI_MOCK_SPECIFICATION_URL: '/etc/openapi/user_v2.yaml'
