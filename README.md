@@ -4,10 +4,10 @@
 
 # docker-volume-backup
 
-Backup Docker volumes locally or to any S3, WebDAV, Azure Blob Storage or SSH compatible storage.
+Backup Docker volumes locally or to any S3, WebDAV, Azure Blob Storage, Dropbox or SSH compatible storage.
 
 The [offen/docker-volume-backup](https://hub.docker.com/r/offen/docker-volume-backup) Docker image can be used as a lightweight (below 15MB) sidecar container to an existing Docker setup.
-It handles __recurring or one-off backups of Docker volumes__ to a __local directory__, __any S3, WebDAV, Azure Blob Storage or SSH compatible storage (or any combination) and rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__ and __sending notifications for failed backup runs__.
+It handles __recurring or one-off backups of Docker volumes__ to a __local directory__, __any S3, WebDAV, Azure Blob Storage, Dropbox or SSH compatible storage (or any combination) and rotates away old backups__ if configured. It also supports __encrypting your backups using GPG__ and __sending notifications for failed backup runs__.
 
 <!-- MarkdownTOC -->
 
@@ -36,6 +36,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Define different retention schedules](#define-different-retention-schedules)
   - [Use special characters in notification URLs](#use-special-characters-in-notification-urls)
   - [Handle file uploads using third party tools](#handle-file-uploads-using-third-party-tools)
+  - [Setup Dropbox storage backend](#setup-dropbox-storage-backend)
 - [Recipes](#recipes)
   - [Backing up to AWS S3](#backing-up-to-aws-s3)
   - [Backing up to Filebase](#backing-up-to-filebase)
@@ -44,6 +45,7 @@ It handles __recurring or one-off backups of Docker volumes__ to a __local direc
   - [Backing up to WebDAV](#backing-up-to-webdav)
   - [Backing up to SSH](#backing-up-to-ssh)
   - [Backing up to Azure Blob Storage](#backing-up-to-azure-blob-storage)
+  - [Backing up to Dropbox](#backing-up-to-dropbox)
   - [Backing up locally](#backing-up-locally)
   - [Backing up to AWS S3 as well as locally](#backing-up-to-aws-s3-as-well-as-locally)
   - [Running on a custom cron schedule](#running-on-a-custom-cron-schedule)
@@ -355,6 +357,26 @@ You can populate below template according to your requirements and use it as you
 # can be passed the account name as shown in the default value below.
 
 # AZURE_STORAGE_ENDPOINT="https://{{ .AccountName }}.blob.core.windows.net/"
+
+# Absolute remote path in your Dropbox where the backups shall be stored.
+# Note: Use your app's subpath in Dropbox, if it doesn't have global access.
+# Consulte the README for further information.
+
+# DROPBOX_REMOTE_PATH="/my/directory"
+
+# Number of concurrent chunked uploads for Dropbox.
+# Values above 6 usually result in no enhancements.
+
+# DROPBOX_CONCURRENCY_LEVEL="6"
+
+# App key and app secret from your app created at https://www.dropbox.com/developers/apps/info
+
+# DROPBOX_APP_KEY=""
+# DROPBOX_APP_SECRET=""
+
+# Refresh token to request new short-lived tokens (OAuth2). Consult README to see how to get one.
+
+# DROPBOX_REFRESH_TOKEN=""
 
 # In addition to storing backups remotely, you can also keep local copies.
 # Pass a container-local path to store your backups if needed. You also need to
@@ -1020,6 +1042,37 @@ volumes:
 
 Commands will be invoked with the filepath of the tar archive passed as `COMMAND_RUNTIME_BACKUP_FILEPATH`.
 
+### Setup Dropbox storage backend
+
+#### Auth-Setup:
+
+1. Create a new Dropbox App in the [App Console](https://www.dropbox.com/developers/apps)
+2. Open your new Dropbox App and set `DROPBOX_APP_KEY` and `DROPBOX_APP_SECRET` in your environment (e.g. docker-compose.yml) accordingly
+3. Click on `Permissions` in your app and make sure, that the following permissions are cranted (or more):
+  - `files.metadata.write`
+  - `files.metadata.read`
+  - `files.content.write`
+  - `files.content.read`
+4. Replace APPKEY in `https://www.dropbox.com/oauth2/authorize?client_id=APPKEY&token_access_type=offline&response_type=code` with the app key from step 2
+5. Visit the URL and confirm the access of your app. This gives you an `auth code` -> save it somewhere!
+6. Replace AUTHCODE, APPKEY, APPSECRET accordingly and perform the request:
+```
+curl https://api.dropbox.com/oauth2/token \
+    -d code=AUTHCODE \
+    -d grant_type=authorization_code \
+    -d client_id=APPKEY \
+    -d client_secret=APPSECRET
+```
+7. Execute the request. You will get a JSON formatted reply. Use the value of the `refresh_token` for the last environment variable `DROPBOX_REFRESH_TOKEN`
+8. You should now have `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET` and `DROPBOX_REFRESH_TOKEN` set. These don't expire.
+
+Note: Using the "Generated access token" in the app console is not supported, as it is only very short lived and therefore not suitable for an automatic backup solution. The refresh token handles this automatically - the setup procedure above is only needed once.
+
+#### Other parameters
+
+Important: If you chose `App folder` access during the creation of your Dropbox app in step 1 above, you can only write in the app's directory!
+This means, that `DROPBOX_REMOTE_PATH` must start with e.g. `/Apps/YOUR_APP_NAME` or `/Apps/YOUR_APP_NAME/some_sub_dir`
+
 ## Recipes
 
 This section lists configuration for some real-world use cases that you can mix and match according to your needs.
@@ -1179,6 +1232,30 @@ services:
       AZURE_STORAGE_CONTAINER_NAME: backup-container
       AZURE_STORAGE_ACCOUNT_NAME: account-name
       AZURE_STORAGE_PRIMARY_ACCOUNT_KEY: Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==
+    volumes:
+      - data:/backup/my-app-backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  data:
+```
+
+### Backing up to Dropbox
+
+See [Dropbox Setup](#setup-dropbox-storage-backend) on how to get the appropriate environment values.
+
+```yml
+version: '3'
+
+services:
+  # ... define other services using the `data` volume here
+  backup:
+    image: offen/docker-volume-backup:v2
+    environment:
+      DROPBOX_REFRESH_TOKEN: REFRESH_KEY  # replace
+      DROPBOX_APP_KEY: APP_KEY  # replace
+      DROPBOX_APP_SECRET: APP_SECRET  # replace
+      DROPBOX_REMOTE_PATH: /Apps/my-test-app/some_subdir  # replace
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro

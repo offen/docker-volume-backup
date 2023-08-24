@@ -19,6 +19,7 @@ import (
 
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"github.com/offen/docker-volume-backup/internal/storage/azure"
+	"github.com/offen/docker-volume-backup/internal/storage/dropbox"
 	"github.com/offen/docker-volume-backup/internal/storage/local"
 	"github.com/offen/docker-volume-backup/internal/storage/s3"
 	"github.com/offen/docker-volume-backup/internal/storage/ssh"
@@ -70,11 +71,12 @@ func newScript() (*script, error) {
 			StartTime: time.Now(),
 			LogOutput: logBuffer,
 			Storages: map[string]StorageStats{
-				"S3":     {},
-				"WebDAV": {},
-				"SSH":    {},
-				"Local":  {},
-				"Azure":  {},
+				"S3":      {},
+				"WebDAV":  {},
+				"SSH":     {},
+				"Local":   {},
+				"Azure":   {},
+				"Dropbox": {},
 			},
 		},
 	}
@@ -155,7 +157,7 @@ func newScript() (*script, error) {
 			PartSize:         s.c.AwsPartSize,
 		}
 		if s3Backend, err := s3.NewStorageBackend(s3Config, logFunc); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("newScript: error creating s3 storage backend: %w", err)
 		} else {
 			s.storages = append(s.storages, s3Backend)
 		}
@@ -170,7 +172,7 @@ func newScript() (*script, error) {
 			RemotePath:  s.c.WebdavPath,
 		}
 		if webdavBackend, err := webdav.NewStorageBackend(webDavConfig, logFunc); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("newScript: error creating webdav storage backend: %w", err)
 		} else {
 			s.storages = append(s.storages, webdavBackend)
 		}
@@ -187,7 +189,7 @@ func newScript() (*script, error) {
 			RemotePath:         s.c.SSHRemotePath,
 		}
 		if sshBackend, err := ssh.NewStorageBackend(sshConfig, logFunc); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("newScript: error creating ssh storage backend: %w", err)
 		} else {
 			s.storages = append(s.storages, sshBackend)
 		}
@@ -212,9 +214,26 @@ func newScript() (*script, error) {
 		}
 		azureBackend, err := azure.NewStorageBackend(azureConfig, logFunc)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("newScript: error creating azure storage backend: %w", err)
 		}
 		s.storages = append(s.storages, azureBackend)
+	}
+
+	if s.c.DropboxRefreshToken != "" && s.c.DropboxAppKey != "" && s.c.DropboxAppSecret != "" {
+		dropboxConfig := dropbox.Config{
+			Endpoint:         s.c.DropboxEndpoint,
+			OAuth2Endpoint:   s.c.DropboxOAuth2Endpoint,
+			RefreshToken:     s.c.DropboxRefreshToken,
+			AppKey:           s.c.DropboxAppKey,
+			AppSecret:        s.c.DropboxAppSecret,
+			RemotePath:       s.c.DropboxRemotePath,
+			ConcurrencyLevel: s.c.DropboxConcurrencyLevel.Int(),
+		}
+		dropboxBackend, err := dropbox.NewStorageBackend(dropboxConfig, logFunc)
+		if err != nil {
+			return nil, fmt.Errorf("newScript: error creating dropbox storage backend: %w", err)
+		}
+		s.storages = append(s.storages, dropboxBackend)
 	}
 
 	if s.c.EmailNotificationRecipient != "" {
