@@ -95,11 +95,11 @@ func (b *dropboxStorage) Copy(file string) error {
 		switch err := err.(type) {
 		case files.CreateFolderV2APIError:
 			if err.EndpointError.Path.Tag != files.WriteErrorConflict {
-				return fmt.Errorf("(*dropboxStorage).Copy: Error creating directory '%s' in Dropbox: %w", b.DestinationPath, err)
+				return fmt.Errorf("(*dropboxStorage).Copy: Error creating directory '%s': %w", b.DestinationPath, err)
 			}
-			b.Log(storage.LogLevelInfo, b.Name(), "Destination path '%s' already exists in Dropbox, no new directory required.", b.DestinationPath)
+			b.Log(storage.LogLevelInfo, b.Name(), "Destination path '%s' already exists, no new directory required.", b.DestinationPath)
 		default:
-			return fmt.Errorf("(*dropboxStorage).Copy: Error creating directory '%s' in Dropbox: %w", b.DestinationPath, err)
+			return fmt.Errorf("(*dropboxStorage).Copy: Error creating directory '%s': %w", b.DestinationPath, err)
 		}
 	}
 
@@ -111,7 +111,7 @@ func (b *dropboxStorage) Copy(file string) error {
 
 	// Start new upload session and get session id
 
-	b.Log(storage.LogLevelInfo, b.Name(), "Starting upload session for backup '%s' to Dropbox at path '%s'.", file, b.DestinationPath)
+	b.Log(storage.LogLevelInfo, b.Name(), "Starting upload session for backup '%s' at path '%s'.", file, b.DestinationPath)
 
 	var sessionId string
 	uploadSessionStartArg := files.NewUploadSessionStartArg()
@@ -201,7 +201,7 @@ loop:
 		return fmt.Errorf("(*dropboxStorage).Copy: Error finishing the upload session: %w", err)
 	}
 
-	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup '%s' to Dropbox at path '%s'.", file, b.DestinationPath)
+	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup '%s' at path '%s'.", file, b.DestinationPath)
 
 	return nil
 }
