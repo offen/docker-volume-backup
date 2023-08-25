@@ -205,6 +205,15 @@ You can populate below template according to your requirements and use it as you
 
 # BACKUP_EXCLUDE_REGEXP="\.log$"
 
+# Exclude one or many storage backends from the pruning process.
+# E.g. with one backend excluded: BACKUP_SKIP_BACKENDS_FROM_PRUNE=s3
+# E.g. with multiple backends excluded: BACKUP_SKIP_BACKENDS_FROM_PRUNE=s3,webdav
+# Available backends are: S3, WebDAV, SSH, Local, Dropbox, Azure
+# Note: The name of the backends is case insensitive. 
+# Default: All backends get pruned.
+
+# BACKUP_SKIP_BACKENDS_FROM_PRUNE=
+
 ########### BACKUP STORAGE
 
 # The name of the remote bucket that should be used for storing backups. If

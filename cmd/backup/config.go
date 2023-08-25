@@ -42,6 +42,7 @@ type Config struct {
 	BackupStopContainerLabel      string          `split_words:"true" default:"true"`
 	BackupFromSnapshot            bool            `split_words:"true"`
 	BackupExcludeRegexp           RegexpDecoder   `split_words:"true"`
+	BackupSkipBackendsFromPrune   []string        `split_words:"true"`
 	GpgPassphrase                 string          `split_words:"true"`
 	NotificationURLs              []string        `envconfig:"NOTIFICATION_URLS"`
 	NotificationLevel             string          `split_words:"true" default:"error"`
