@@ -116,7 +116,7 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 		Pruned: uint(len(matches)),
 	}
 
-	if err := b.DoPrune(b.Name(), len(matches), len(candidates), "local backup(s)", func() error {
+	if err := b.DoPrune(b.Name(), len(matches), len(candidates), func() error {
 		var removeErrors []error
 		for _, match := range matches {
 			if err := os.Remove(match); err != nil {

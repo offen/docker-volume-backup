@@ -245,7 +245,7 @@ func (b *dropboxStorage) Prune(deadline time.Time, pruningPrefix string) (*stora
 		Pruned: uint(len(matches)),
 	}
 
-	if err := b.DoPrune(b.Name(), len(matches), lenCandidates, "Dropbox backup(s)", func() error {
+	if err := b.DoPrune(b.Name(), len(matches), lenCandidates, func() error {
 		for _, match := range matches {
 			if _, err := b.client.DeleteV2(files.NewDeleteArg(filepath.Join(b.DestinationPath, match.Name))); err != nil {
 				return fmt.Errorf("(*dropboxStorage).Prune: Error removing file from Dropbox storage: %w", err)

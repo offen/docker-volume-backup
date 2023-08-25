@@ -132,7 +132,7 @@ func (b *azureBlobStorage) Prune(deadline time.Time, pruningPrefix string) (*sto
 		Pruned: uint(len(matches)),
 	}
 
-	if err := b.DoPrune(b.Name(), len(matches), int(totalCount), "Azure Blob Storage backup(s)", func() error {
+	if err := b.DoPrune(b.Name(), len(matches), int(totalCount), func() error {
 		wg := sync.WaitGroup{}
 		wg.Add(len(matches))
 		var errs []error

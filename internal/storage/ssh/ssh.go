@@ -175,7 +175,7 @@ func (b *sshStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.P
 		Pruned: uint(len(matches)),
 	}
 
-	if err := b.DoPrune(b.Name(), len(matches), len(candidates), "SSH backup(s)", func() error {
+	if err := b.DoPrune(b.Name(), len(matches), len(candidates), func() error {
 		for _, match := range matches {
 			if err := b.sftpClient.Remove(filepath.Join(b.DestinationPath, match)); err != nil {
 				return fmt.Errorf("(*sshStorage).Prune: Error removing file from SSH storage: %w", err)

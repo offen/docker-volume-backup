@@ -108,7 +108,7 @@ func (b *webDavStorage) Prune(deadline time.Time, pruningPrefix string) (*storag
 		Pruned: uint(len(matches)),
 	}
 
-	if err := b.DoPrune(b.Name(), len(matches), lenCandidates, "WebDAV backup(s)", func() error {
+	if err := b.DoPrune(b.Name(), len(matches), lenCandidates, func() error {
 		for _, match := range matches {
 			if err := b.client.Remove(filepath.Join(b.DestinationPath, match.Name())); err != nil {
 				return fmt.Errorf("(*webDavStorage).Prune: Error removing file from WebDAV storage: %w", err)

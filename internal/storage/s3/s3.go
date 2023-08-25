@@ -162,7 +162,7 @@ func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.Pr
 		Pruned: uint(len(matches)),
 	}
 
-	if err := b.DoPrune(b.Name(), len(matches), lenCandidates, "remote backup(s)", func() error {
+	if err := b.DoPrune(b.Name(), len(matches), lenCandidates, func() error {
 		objectsCh := make(chan minio.ObjectInfo)
 		go func() {
 			for _, match := range matches {
