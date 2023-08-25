@@ -153,9 +153,9 @@ func (s *script) runLabeledCommands(label string) error {
 		g.Go(func() error {
 			cmd, ok := c.Labels[label]
 			if !ok && label == "docker-volume-backup.archive-pre" {
-				cmd = c.Labels["docker-volume-backup.exec-pre"]
+				cmd, _ = c.Labels["docker-volume-backup.exec-pre"]
 			} else if !ok && label == "docker-volume-backup.archive-post" {
-				cmd = c.Labels["docker-volume-backup.exec-post"]
+				cmd, _ = c.Labels["docker-volume-backup.exec-post"]
 			}
 
 			userLabelName := fmt.Sprintf("%s.user", label)
