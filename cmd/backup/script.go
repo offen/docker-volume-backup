@@ -25,6 +25,7 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage/ssh"
 	"github.com/offen/docker-volume-backup/internal/storage/webdav"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
 	"github.com/docker/docker/api/types"
@@ -35,7 +36,6 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
 	"github.com/otiai10/copy"
-	"golang.org/x/crypto/openpgp"
 	"golang.org/x/sync/errgroup"
 )
 
