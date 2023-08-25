@@ -30,7 +30,7 @@ fi
 pass "Did not find unexpected file."
 
 docker compose down --volumes
-sudo rm -rf ./local
+rm -rf ./local
 
 
 info "Running commands test in swarm mode next."

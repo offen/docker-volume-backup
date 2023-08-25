@@ -26,5 +26,5 @@ fi
 pass "Found expected user."
 
 docker compose down --volumes
-sudo rm -rf ./local
+rm -rf ./local
 
