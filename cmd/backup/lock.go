@@ -15,8 +15,6 @@ import (
 // caller invokes the returned release func. In case the lock is currently blocked
 // by another execution, it will repeatedly retry until the lock is available
 // or the given timeout is exceeded.
-//
-//lint:ignore U1000 Keep unused function
 func (s *script) lock(lockfile string) (func() error, error) {
 	start := time.Now()
 	defer func() {

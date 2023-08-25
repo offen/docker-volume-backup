@@ -51,13 +51,8 @@ func (s *script) exec(containerRef string, command string, user string) ([]byte,
 		outputDone <- err
 	}()
 
-	select {
-	case err := <-outputDone:
-		if err != nil {
-			return nil, nil, fmt.Errorf("exec: error demultiplexing output: %w", err)
-		}
-		break
-	default:
+	if <-outputDone != nil {
+		return nil, nil, fmt.Errorf("exec: error demultiplexing output: %w", err)
 	}
 
 	stdout, err := io.ReadAll(&outBuf)
@@ -153,9 +148,9 @@ func (s *script) runLabeledCommands(label string) error {
 		g.Go(func() error {
 			cmd, ok := c.Labels[label]
 			if !ok && label == "docker-volume-backup.archive-pre" {
-				cmd, _ = c.Labels["docker-volume-backup.exec-pre"]
+				cmd = c.Labels["docker-volume-backup.exec-pre"]
 			} else if !ok && label == "docker-volume-backup.archive-post" {
-				cmd, _ = c.Labels["docker-volume-backup.exec-post"]
+				cmd = c.Labels["docker-volume-backup.exec-post"]
 			}
 
 			userLabelName := fmt.Sprintf("%s.user", label)
