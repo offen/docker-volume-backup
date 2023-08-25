@@ -125,7 +125,12 @@ func (b *s3Storage) Copy(file string) error {
 
 	if _, err := b.client.FPutObject(context.Background(), b.bucket, filepath.Join(b.DestinationPath, name), file, putObjectOptions); err != nil {
 		if errResp := minio.ToErrorResponse(err); errResp.Message != "" {
-			return fmt.Errorf("(*s3Storage).Copy: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d", errResp.Message, errResp.Code, errResp.StatusCode)
+			return fmt.Errorf(
+				"(*s3Storage).Copy: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d",
+				errResp.Message,
+				errResp.Code,
+				errResp.StatusCode,
+			)
 		}
 		return fmt.Errorf("(*s3Storage).Copy: error uploading backup to remote storage: %w", err)
 	}
@@ -148,7 +153,7 @@ func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.Pr
 		lenCandidates++
 		if candidate.Err != nil {
 			return nil, fmt.Errorf(
-				"(*s3Storage).Prune: Error looking up candidates from remote storage! %w",
+				"(*s3Storage).Prune: error looking up candidates from remote storage! %w",
 				candidate.Err,
 			)
 		}
@@ -162,7 +167,7 @@ func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.Pr
 		Pruned: uint(len(matches)),
 	}
 
-	if err := b.DoPrune(b.Name(), len(matches), lenCandidates, "remote backup(s)", func() error {
+	if err := b.DoPrune(b.Name(), len(matches), lenCandidates, func() error {
 		objectsCh := make(chan minio.ObjectInfo)
 		go func() {
 			for _, match := range matches {
