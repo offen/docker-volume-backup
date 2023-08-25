@@ -17,13 +17,13 @@ require (
 	github.com/pkg/sftp v1.13.6
 	github.com/studio-b12/gowebdav v0.9.0
 	golang.org/x/crypto v0.12.0
+	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783
 	golang.org/x/sync v0.3.0
 )
 
 require (
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 )
