@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"strconv"
@@ -115,7 +114,7 @@ func (c *CertDecoder) Decode(v string) error {
 	if v == "" {
 		return nil
 	}
-	content, err := ioutil.ReadFile(v)
+	content, err := os.ReadFile(v)
 	if err != nil {
 		content = []byte(v)
 	}

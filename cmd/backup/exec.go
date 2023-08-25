@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 
@@ -57,13 +57,14 @@ func (s *script) exec(containerRef string, command string, user string) ([]byte,
 			return nil, nil, fmt.Errorf("exec: error demultiplexing output: %w", err)
 		}
 		break
+	default:
 	}
 
-	stdout, err := ioutil.ReadAll(&outBuf)
+	stdout, err := io.ReadAll(&outBuf)
 	if err != nil {
 		return nil, nil, fmt.Errorf("exec: error reading stdout: %w", err)
 	}
-	stderr, err := ioutil.ReadAll(&errBuf)
+	stderr, err := io.ReadAll(&errBuf)
 	if err != nil {
 		return nil, nil, fmt.Errorf("exec: error reading stderr: %w", err)
 	}
@@ -152,9 +153,9 @@ func (s *script) runLabeledCommands(label string) error {
 		g.Go(func() error {
 			cmd, ok := c.Labels[label]
 			if !ok && label == "docker-volume-backup.archive-pre" {
-				cmd, _ = c.Labels["docker-volume-backup.exec-pre"]
+				cmd = c.Labels["docker-volume-backup.exec-pre"]
 			} else if !ok && label == "docker-volume-backup.archive-post" {
-				cmd, _ = c.Labels["docker-volume-backup.exec-post"]
+				cmd = c.Labels["docker-volume-backup.exec-post"]
 			}
 
 			userLabelName := fmt.Sprintf("%s.user", label)

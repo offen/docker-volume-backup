@@ -53,6 +53,7 @@ type script struct {
 	file  string
 	stats *Stats
 
+	//lint:ignore U1000 used in lock.go
 	encounteredLock bool
 
 	c *Config
