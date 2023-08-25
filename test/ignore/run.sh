@@ -15,7 +15,7 @@ docker compose exec backup backup
 docker compose down --volumes
 
 out=$(mktemp -d)
-sudo tar --same-owner -xvf ./local/test.tar.gz -C "$out"
+tar --same-owner -xvf ./local/test.tar.gz -C "$out"
 
 if [ ! -f "$out/backup/data/me.txt" ]; then
   fail "Expected file was not found."
