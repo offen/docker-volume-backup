@@ -14,8 +14,6 @@ download_az () {
 docker compose up -d --quiet-pull
 sleep 5
 
-# A symlink for a known file in the volume is created so the test can check
-# whether symlinks are preserved on backup.
 docker compose exec backup backup
 
 sleep 5
