@@ -15,13 +15,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build Docker Image
-        env:
-          DOCKER_BUILDKIT: '1'
-        run: docker build . -t offen/docker-volume-backup:canary
-
       - name: Run Tests
         working-directory: ./test
         run: |
-          export GPG_TTY=$(tty)
-          ./test.sh
+          BUILD_IMAGE=1 ./test.sh

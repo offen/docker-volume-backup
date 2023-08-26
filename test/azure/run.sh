@@ -7,6 +7,7 @@ cd "$(dirname "$0")"
 current_test=$(basename $(pwd))
 
 export LOCAL_DIR=$(mktemp -d)
+export TMP_DIR=$(mktemp -d)
 
 download_az () {
   docker compose run --rm az_cli \
@@ -24,7 +25,12 @@ sleep 5
 expect_running_containers "3"
 
 download_az "test"
-tar -xvf "$LOCAL_DIR/test.tar.gz "-C /tmp && test -f /tmp/backup/app_data/offen.db
+
+tar -xvf "$LOCAL_DIR/test.tar.gz" -C $TMP_DIR
+
+if [ ! -f "$TMP_DIR/backup/app_data/offen.db" ]; then
+  fail "Could not find expeced file in untared backup"
+fi
 
 pass "Found relevant files in untared remote backups."
 
