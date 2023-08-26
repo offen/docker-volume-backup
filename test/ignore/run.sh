@@ -8,7 +8,7 @@ current_test=$(basename $(pwd))
 
 mkdir -p local
 
-docker compose up -d
+docker compose up -d --quiet-pull
 sleep 5
 docker compose exec backup backup
 

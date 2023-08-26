@@ -8,7 +8,7 @@ current_test=$(basename $(pwd))
 
 mkdir -p local
 
-docker compose up -d
+docker compose up -d --quiet-pull
 sleep 5
 
 GOTIFY_TOKEN=$(curl -sSLX POST -H 'Content-Type: application/json' -d '{"name":"test"}' http://admin:custom@localhost:8080/application | jq -r '.token')

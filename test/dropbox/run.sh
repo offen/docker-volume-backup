@@ -6,7 +6,10 @@ cd "$(dirname "$0")"
 . ../util.sh
 current_test=$(basename $(pwd))
 
-docker compose up -d
+sudo sed -i 's/SERVER_MODIFIED_1/'"$(date "+%Y-%m-%dT%H:%M:%SZ")/g" user_v2.yaml
+sudo sed -i 's/SERVER_MODIFIED_2/'"$(date "+%Y-%m-%dT%H:%M:%SZ" -d "14 days ago")/g" user_v2.yaml
+
+docker compose up -d --quiet-pull
 sleep 5
 
 logs=$(docker compose exec -T backup backup)
@@ -17,14 +20,13 @@ expect_running_containers "4"
 
 echo "$logs"
 if echo "$logs" | grep -q "ERROR"; then
-  fail "Backup failed, errors reported: $dvb_logs"
+  fail "Backup failed, errors reported: $logs"
 else
   pass "Backup succeeded, no errors reported."
 fi
 
 # The second part of this test checks if backups get deleted when the retention
 # is set to 0 days (which it should not as it would mean all backups get deleted)
-# TODO: find out if we can test actual deletion without having to wait for a day
 BACKUP_RETENTION_DAYS="0" docker compose up -d
 sleep 5
 
@@ -34,7 +36,28 @@ echo "$logs"
 if echo "$logs" | grep -q "Refusing to do so, please check your configuration"; then
   pass "Remote backups have not been deleted."
 else
-  fail "Remote backups would have been deleted: $dvb_logs"
+  fail "Remote backups would have been deleted: $logs"
 fi
+
+# The third part of this test checks if old backups get deleted when the retention
+# is set to 7 days (which it should)
+
+BACKUP_RETENTION_DAYS="7" docker compose up -d
+sleep 5
+
+echo "## Create second backup and prune"
+logs=$(docker compose exec -T backup backup)
+
+echo "$logs"
+if echo "$logs" | grep -q "Pruned 1 out of 2 backups as their age exceeded the configured retention period"; then
+  pass "Old remote backup has been pruned, new one is still present."
+elif echo "$logs" | grep -q "ERROR"; then
+  fail "Pruning failed, errors reported: $logs"
+elif echo "$logs" | grep -q "None of 1 existing backups were pruned"; then
+  fail "Pruning failed, old backup has not been pruned: $logs"
+else
+  fail "Pruning failed, unknown result: $logs"
+fi
+
 
 docker compose down --volumes

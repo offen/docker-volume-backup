@@ -8,7 +8,7 @@ current_test=$(basename $(pwd))
 
 mkdir -p local
 
-docker compose up -d
+docker compose up -d --quiet-pull
 
 # sleep until a backup is guaranteed to have happened on the 1 minute schedule
 sleep 100
