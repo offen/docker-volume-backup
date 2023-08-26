@@ -40,15 +40,3 @@ docker exec -e AWS_ACCESS_KEY_ID_FILE=/tmp/nonexistant $(docker ps -q -f name=ba
   && fail "Backup should have failed due to non existing file env variable."
 
 pass "Backup failed due to non existing file env variable."
-
-docker stack rm test_stack
-
-docker secret rm minio_root_password
-docker secret rm minio_root_user
-
-docker swarm leave --force
-
-sleep 10
-
-docker volume rm backup_data
-docker volume rm pg_data

@@ -10,7 +10,6 @@ services:
       - docker-volume-backup.archive-pre.user=testuser
       - docker-volume-backup.archive-pre=/bin/sh -c 'whoami > /tmp/whoami.txt'
 
-
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
     deploy:
@@ -21,7 +20,7 @@ services:
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
       EXEC_FORWARD_OUTPUT: "true"
     volumes:
-      - ./local:/archive
+      - ${LOCAL_DIR:-./local}:/archive
       - app_data:/backup/data:ro
       - /var/run/docker.sock:/var/run/docker.sock
 

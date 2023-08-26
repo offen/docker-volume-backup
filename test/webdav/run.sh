@@ -61,5 +61,3 @@ docker run --rm \
   ash -c 'test ! -f /webdav_data/data/my/new/path/test-hostnametoken-old.tar.gz && test -f /webdav_data/data/my/new/path/test-hostnametoken.tar.gz'
 
 pass "Old remote backup has been pruned, new one is still present."
-
-docker compose down --volumes

@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 . ../util.sh
 current_test=$(basename $(pwd))
 
-mkdir -p local
+export LOCAL_DIR=$(mktemp -d)
 
 docker compose up -d --quiet-pull
 sleep 5
@@ -21,11 +21,11 @@ sleep 5
 expect_running_containers "2"
 
 tmp_dir=$(mktemp -d)
-tar -xvf ./local/test-hostnametoken.tar.gz -C $tmp_dir
+tar -xvf "$LOCAL_DIR/test-hostnametoken.tar.gz" -C $tmp_dir
 if [ ! -f "$tmp_dir/backup/app_data/offen.db" ]; then
   fail "Could not find expected file in untared archive."
 fi
-rm -f ./local/test-hostnametoken.tar.gz
+rm -f "$LOCAL_DIR/test-hostnametoken.tar.gz"
 
 if [ ! -L "$tmp_dir/backup/app_data/db.link" ]; then
   fail "Could not find expected symlink in untared archive."
@@ -33,7 +33,7 @@ fi
 
 pass "Found relevant files in decrypted and untared local backup."
 
-if [ ! -L ./local/test-hostnametoken.latest.tar.gz.gpg ]; then
+if [ ! -L "$LOCAL_DIR/test-hostnametoken.latest.tar.gz.gpg" ]; then
   fail "Could not find symlink to latest version."
 fi
 
@@ -46,8 +46,8 @@ sleep 5
 
 docker compose exec backup backup
 
-if [ "$(find ./local -type f | wc -l)" != "1" ]; then
-  fail "Backups should not have been deleted, instead seen: "$(find ./local -type f)""
+if [ "$(find "$LOCAL_DIR" -type f | wc -l)" != "1" ]; then
+  fail "Backups should not have been deleted, instead seen: "$(find "$local_dir" -type f)""
 fi
 pass "Local backups have not been deleted."
 
@@ -60,14 +60,12 @@ sleep 5
 info "Create first backup with no prune"
 docker compose exec backup backup
 
-touch -r ./local/test-hostnametoken.tar.gz -d "14 days ago" ./local/test-hostnametoken-old.tar.gz
+touch -r "$LOCAL_DIR/test-hostnametoken.tar.gz" -d "14 days ago" "$LOCAL_DIR/test-hostnametoken-old.tar.gz"
 
 info "Create second backup and prune"
 docker compose exec backup backup
 
-test ! -f ./local/test-hostnametoken-old.tar.gz
-test -f ./local/test-hostnametoken.tar.gz
+test ! -f "$LOCAL_DIR/test-hostnametoken-old.tar.gz"
+test -f "$LOCAL_DIR/test-hostnametoken.tar.gz"
 
 pass "Old remote backup has been pruned, new one is still present."
-
-docker compose down --volumes

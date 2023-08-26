@@ -16,7 +16,7 @@ services:
     volumes:
       - app_data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./local:/archive
+      - ${LOCAL_DIR:-./local}:/archive
 
   offen:
     image: offen/offen:latest

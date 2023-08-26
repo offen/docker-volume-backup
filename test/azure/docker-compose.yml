@@ -14,7 +14,7 @@ services:
   az_cli:
     image: mcr.microsoft.com/azure-cli
     volumes:
-      - ./local:/dump
+      - ${LOCAL_DIR:-./local}:/dump
     command:
       - /bin/sh
       - -c

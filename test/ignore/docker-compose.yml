@@ -11,5 +11,5 @@ services:
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
       BACKUP_EXCLUDE_REGEXP: '\.(me|you)$$'
     volumes:
-      - ./local:/archive
+      - ${LOCAL_DIR:-./local}:/archive
       - ./sources:/backup/data:ro

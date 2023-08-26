@@ -6,12 +6,15 @@ cd "$(dirname "$0")"
 . ../util.sh
 current_test=$(basename $(pwd))
 
+export LOCAL_DIR=$(mktemp -d)
+
 download_az () {
   docker compose run --rm az_cli \
     az storage blob download -f /dump/$1.tar.gz -c test-container -n path/to/backup/$1.tar.gz
 }
 
 docker compose up -d --quiet-pull
+
 sleep 5
 
 docker compose exec backup backup
@@ -21,7 +24,7 @@ sleep 5
 expect_running_containers "3"
 
 download_az "test"
-tar -xvf ./local/test.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db
+tar -xvf "$LOCAL_DIR/test.tar.gz "-C /tmp && test -f /tmp/backup/app_data/offen.db
 
 pass "Found relevant files in untared remote backups."
 
@@ -33,8 +36,7 @@ sleep 5
 docker compose exec backup backup
 
 download_az "test"
-test -f ./local/test.tar.gz
-
+test -f "$LOCAL_DIR/test.tar.gz"
 pass "Remote backups have not been deleted."
 
 # The third part of this test checks if old backups get deleted when the retention
@@ -62,5 +64,3 @@ test ! -f ./local/test-old.tar.gz
 test -f ./local/test.tar.gz
 
 pass "Old remote backup has been pruned, new one is still present."
-
-docker compose down --volumes
