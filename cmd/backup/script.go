@@ -28,6 +28,7 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage/webdav"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/caarlos0/env/v9"
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
 	"github.com/docker/docker/api/types"
@@ -35,7 +36,6 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
-	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
 	"github.com/otiai10/copy"
 	"golang.org/x/sync/errgroup"
@@ -89,7 +89,10 @@ func newScript() (*script, error) {
 		return nil
 	})
 
-	if err := envconfig.Process("", s.c); err != nil {
+	envOptions := env.Options{
+		UseFieldNameByDefault: true,
+	}
+	if err := env.ParseWithOptions(s.c, envOptions); err != nil {
 		return nil, fmt.Errorf("newScript: failed to process configuration values: %w", err)
 	}
 
