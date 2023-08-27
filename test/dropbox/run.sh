@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 . ../util.sh
 current_test=$(basename $(pwd))
 
-export SPEC_FILE=$(mktemp)
+export SPEC_FILE=$(mktemp -d)/user_v2.yaml
 cp user_v2.yaml $SPEC_FILE
 sed -i 's/SERVER_MODIFIED_1/'"$(date "+%Y-%m-%dT%H:%M:%SZ")/g" $SPEC_FILE
 sed -i 's/SERVER_MODIFIED_2/'"$(date "+%Y-%m-%dT%H:%M:%SZ" -d "14 days ago")/g" $SPEC_FILE

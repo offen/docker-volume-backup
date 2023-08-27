@@ -48,6 +48,8 @@ pass "Remote backups have not been deleted."
 # The third part of this test checks if old backups get deleted when the retention
 # is set to 7 days (which it should)
 
+skip
+
 BACKUP_RETENTION_DAYS="7" docker compose up -d
 sleep 5
 

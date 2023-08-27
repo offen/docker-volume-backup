@@ -9,7 +9,7 @@ services:
     ports:
       - 8080:8080
     volumes:
-      - ${SPEC_FILE:-./user_v2_ready.yaml}:/etc/openapi/user_v2.yaml
+      - ${SPEC_FILE:-./user_v2.yaml}:/etc/openapi/user_v2.yaml
 
   oauth2_mock:
     image: ghcr.io/navikt/mock-oauth2-server:1.0.0
