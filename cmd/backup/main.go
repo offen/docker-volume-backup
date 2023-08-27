@@ -15,7 +15,7 @@ func main() {
 	}
 
 	unlock, err := s.lock("/var/lock/dockervolumebackup.lock")
-	defer unlock()
+	defer s.must(unlock())
 	s.must(err)
 
 	defer func() {
@@ -34,7 +34,6 @@ func main() {
 		if err := s.runHooks(nil); err != nil {
 			s.logger.Error(
 				fmt.Sprintf(
-
 					"Backup procedure ran successfully, but an error ocurred calling the registered hooks: %v",
 					err,
 				),

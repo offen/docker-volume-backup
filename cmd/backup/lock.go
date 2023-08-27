@@ -18,7 +18,7 @@ import (
 func (s *script) lock(lockfile string) (func() error, error) {
 	start := time.Now()
 	defer func() {
-		s.stats.LockedTime = time.Now().Sub(start)
+		s.stats.LockedTime = time.Since(start)
 	}()
 
 	retry := time.NewTicker(5 * time.Second)

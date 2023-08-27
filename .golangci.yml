@@ -1,0 +1,8 @@
+linters:
+  # Enable specific linter
+  # https://golangci-lint.run/usage/linters/#enabled-by-default
+  enable:
+    - staticcheck
+    - govet
+output:
+  format: github-actions

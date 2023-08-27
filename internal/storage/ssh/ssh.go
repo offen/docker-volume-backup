@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -46,7 +45,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 	}
 
 	if _, err := os.Stat(opts.IdentityFile); err == nil {
-		key, err := ioutil.ReadFile(opts.IdentityFile)
+		key, err := os.ReadFile(opts.IdentityFile)
 		if err != nil {
 			return nil, errors.New("NewStorageBackend: error reading the private key")
 		}
