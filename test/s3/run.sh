@@ -42,7 +42,7 @@ pass "Remote backups have not been deleted."
 BACKUP_RETENTION_DAYS="7" docker compose up -d
 sleep 5
 
-echo "## Create first backup with no prune"
+info "Create first backup with no prune"
 docker compose exec backup backup
 
 docker run --rm \
@@ -50,7 +50,7 @@ docker run --rm \
   alpine \
   ash -c 'touch -d@$(( $(date +%s) - 1209600 )) /minio_data/backup/test-hostnametoken-old.tar.gz'
 
-echo "## Create second backup and prune"
+info "Create second backup and prune"
 docker compose exec backup backup
 
 docker run --rm \

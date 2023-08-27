@@ -57,12 +57,12 @@ pass "Local backups have not been deleted."
 BACKUP_RETENTION_DAYS="7" docker compose up -d
 sleep 5
 
-echo "## Create first backup with no prune"
+info "Create first backup with no prune"
 docker compose exec backup backup
 
 touch -r ./local/test-hostnametoken.tar.gz -d "14 days ago" ./local/test-hostnametoken-old.tar.gz
 
-echo "## Create second backup and prune"
+info "Create second backup and prune"
 docker compose exec backup backup
 
 test ! -f ./local/test-hostnametoken-old.tar.gz

@@ -6,8 +6,9 @@ cd "$(dirname "$0")"
 . ../util.sh
 current_test=$(basename $(pwd))
 
-sudo sed -i 's/SERVER_MODIFIED_1/'"$(date "+%Y-%m-%dT%H:%M:%SZ")/g" user_v2.yaml
-sudo sed -i 's/SERVER_MODIFIED_2/'"$(date "+%Y-%m-%dT%H:%M:%SZ" -d "14 days ago")/g" user_v2.yaml
+cp user_v2.yaml user_v2_ready.yaml
+sudo sed -i 's/SERVER_MODIFIED_1/'"$(date "+%Y-%m-%dT%H:%M:%SZ")/g" user_v2_ready.yaml
+sudo sed -i 's/SERVER_MODIFIED_2/'"$(date "+%Y-%m-%dT%H:%M:%SZ" -d "14 days ago")/g" user_v2_ready.yaml
 
 docker compose up -d --quiet-pull
 sleep 5
@@ -45,7 +46,7 @@ fi
 BACKUP_RETENTION_DAYS="7" docker compose up -d
 sleep 5
 
-echo "## Create second backup and prune"
+info "Create second backup and prune"
 logs=$(docker compose exec -T backup backup)
 
 echo "$logs"

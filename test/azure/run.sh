@@ -43,7 +43,7 @@ pass "Remote backups have not been deleted."
 BACKUP_RETENTION_DAYS="7" docker compose up -d
 sleep 5
 
-echo "## Create first backup with no prune"
+info "Create first backup with no prune"
 docker compose exec backup backup
 
 sudo date --set="14 days ago"
@@ -53,10 +53,10 @@ docker compose run --rm az_cli \
 
 sudo date --set="14 days"
 
-echo "## Create second backup and prune"
+info "Create second backup and prune"
 docker compose exec backup backup
 
-echo "## Download first backup which should be pruned"
+info "Download first backup which should be pruned"
 download_az "test-old" || true
 test ! -f ./local/test-old.tar.gz
 test -f ./local/test.tar.gz
