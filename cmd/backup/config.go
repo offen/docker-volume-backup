@@ -25,7 +25,7 @@ type Config struct {
 	AwsStorageClass               string
 	AwsAccessKeyID                string `env:"AWS_ACCESS_KEY_ID"`
 	AwsAccessKeyIDFile            string `env:"AWS_ACCESS_KEY_ID_FILE,file"`
-	AwsSecretAccessKey            string
+	AwsSecretAccessKey            string `env:"AWS_SECRET_ACCESS_KEY"`
 	AwsSecretAccessKeyFile        string `env:"AWS_SECRET_ACCESS_KEY_FILE,file"`
 	AwsIamRoleEndpoint            string
 	AwsPartSize                   int64
@@ -42,7 +42,8 @@ type Config struct {
 	BackupFromSnapshot            bool
 	BackupExcludeRegexp           RegexpDecoder
 	BackupSkipBackendsFromPrune   []string
-	GpgPassphrase                 string
+	GpgPassphrase                 string   `env:"GPG_PASSPHRASE"`
+	GpgPassphraseFile             string   `env:"GPG_PASSPHRASE_FILE,file"`
 	NotificationURLs              []string `env:"NOTIFICATION_URLS"`
 	NotificationLevel             string   `envDefault:"error"`
 	EmailNotificationRecipient    string
@@ -51,17 +52,21 @@ type Config struct {
 	EmailSMTPPort                 int    `env:"EMAIL_SMTP_PORT" envDefault:"587"`
 	EmailSMTPUsername             string `env:"EMAIL_SMTP_USERNAME"`
 	EmailSMTPPassword             string `env:"EMAIL_SMTP_PASSWORD"`
+	EmailSMTPPasswordFile         string `env:"EMAIL_SMTP_PASSWORD_FILE,file"`
 	WebdavUrl                     string
 	WebdavUrlInsecure             bool
 	WebdavPath                    string `envDefault:"/"`
 	WebdavUsername                string
-	WebdavPassword                string
+	WebdavPassword                string `env:"WEBDAV_PASSWORD"`
+	WebdavPasswordFile            string `env:"WEBDAV_PASSWORD_FILE,file"`
 	SSHHostName                   string `env:"SSH_HOST_NAME"`
 	SSHPort                       string `env:"SSH_PORT" envDefault:"22"`
 	SSHUser                       string `env:"SSH_USER"`
 	SSHPassword                   string `env:"SSH_PASSWORD"`
+	SSHPasswordFile               string `env:"SSH_PASSWORD_FILE,file"`
 	SSHIdentityFile               string `env:"SSH_IDENTITY_FILE" envDefault:"/root/.ssh/id_rsa"`
 	SSHIdentityPassphrase         string `env:"SSH_IDENTITY_PASSPHRASE"`
+	SSHIdentityPassphraseFile     string `env:"SSH_IDENTITY_PASSPHRASE_FILE,file"`
 	SSHRemotePath                 string `env:"SSH_REMOTE_PATH"`
 	ExecLabel                     string
 	ExecForwardOutput             bool
@@ -73,11 +78,24 @@ type Config struct {
 	AzureStorageEndpoint          string `envDefault:"https://{{ .AccountName }}.blob.core.windows.net/"`
 	DropboxEndpoint               string `envDefault:"https://api.dropbox.com/"`
 	DropboxOAuth2Endpoint         string `env:"DROPBOX_OAUTH2_ENDPOINT" envDefault:"https://api.dropbox.com/"`
-	DropboxRefreshToken           string
-	DropboxAppKey                 string
-	DropboxAppSecret              string
+	DropboxRefreshToken           string `env:"DROPBOX_REFRESH_TOKEN"`
+	DropboxRefreshTokenFile       string `env:"DROPBOX_REFRESH_TOKEN_FILE,file"`
+	DropboxAppKey                 string `env:"DROPBOX_APP_KEY"`
+	DropboxAppKeyFile             string `env:"DROPBOX_APP_KEY_FILE,file"`
+	DropboxAppSecret              string `env:"DROPBOX_APP_SECRET"`
+	DropboxAppSecretFile          string `env:"DROPBOX_APP_SECRET_FILE,file"`
 	DropboxRemotePath             string
 	DropboxConcurrencyLevel       NaturalNumber `envDefault:"6"`
+}
+
+func (c *Config) getSecret(preferred string, fallback string) string {
+	if preferred != "" {
+		return preferred
+	}
+	if fallback != "" {
+		return fallback
+	}
+	return ""
 }
 
 type CompressionType string
