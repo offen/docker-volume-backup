@@ -8,7 +8,7 @@ current_test=$(basename $(pwd))
 
 mkdir -p ./local
 
-docker compose up -d
+docker compose up -d --quiet-pull
 sleep 30 # mariadb likes to take a bit before responding
 
 docker compose exec backup backup

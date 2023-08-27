@@ -14,6 +14,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
+	"strings"
 	"text/template"
 	"time"
 
@@ -591,6 +593,12 @@ func (s *script) pruneBackups() error {
 	for _, backend := range s.storages {
 		b := backend
 		eg.Go(func() error {
+			if skipPrune(b.Name(), s.c.BackupSkipBackendsFromPrune) {
+				s.logger.Info(
+					fmt.Sprintf("Skipping pruning for backend `%s`.", b.Name()),
+				)
+				return nil
+			}
 			stats, err := b.Prune(deadline, s.c.BackupPruningPrefix)
 			if err != nil {
 				return err
@@ -621,4 +629,15 @@ func (s *script) must(err error) {
 		)
 		panic(err)
 	}
+}
+
+// skipPrune returns true if the given backend name is contained in the
+// list of skipped backends.
+func skipPrune(name string, skippedBackends []string) bool {
+	return slices.ContainsFunc(
+		skippedBackends,
+		func(b string) bool {
+			return strings.EqualFold(b, name) // ignore case on both sides
+		},
+	)
 }

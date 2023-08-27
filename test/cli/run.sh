@@ -13,7 +13,7 @@ docker volume create app_data
 # correctly. It is not supposed to hold any data.
 docker volume create empty_data
 
-docker run -d \
+docker run -d -q \
   --name minio \
   --network test_network \
   --env MINIO_ROOT_USER=test \
@@ -25,7 +25,7 @@ docker run -d \
 
 docker exec minio mkdir -p /data/backup
 
-docker run -d \
+docker run -d -q \
   --name offen \
   --network test_network \
   -v app_data:/var/opt/offen/ \
@@ -33,7 +33,7 @@ docker run -d \
 
 sleep 10
 
-docker run --rm \
+docker run --rm -q \
   --network test_network \
   -v app_data:/backup/app_data \
   -v empty_data:/backup/empty_data \
@@ -48,7 +48,7 @@ docker run --rm \
   --entrypoint backup \
   offen/docker-volume-backup:${TEST_VERSION:-canary}
 
-docker run --rm \
+docker run --rm -q \
   -v backup_data:/data alpine \
   ash -c 'tar -xvf /data/backup/test.tar.gz && test -f /backup/app_data/offen.db && test -d /backup/empty_data'
 

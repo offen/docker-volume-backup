@@ -24,7 +24,7 @@ openssl x509 -req -passin pass:test \
 
 openssl x509 -in minio.crt -noout -text
 
-docker compose up -d
+docker compose up -d --quiet-pull
 sleep 5
 
 docker compose exec backup backup

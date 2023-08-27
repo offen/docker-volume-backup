@@ -6,7 +6,7 @@ cd $(dirname $0)
 . ../util.sh
 current_test=$(basename $(pwd))
 
-docker compose up -d
+docker compose up -d --quiet-pull
 
 user_name=testuser
 docker exec user-alpine-1 adduser --disabled-password "$user_name"

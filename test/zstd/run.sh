@@ -11,7 +11,7 @@ docker volume create app_data
 
 mkdir -p local
 
-docker run -d \
+docker run -d -q \
   --name offen \
   --network test_network \
   -v app_data:/var/opt/offen/ \
@@ -19,7 +19,7 @@ docker run -d \
 
 sleep 10
 
-docker run --rm \
+docker run --rm -q \
   --network test_network \
   -v app_data:/backup/app_data \
   -v ./local:/archive \
