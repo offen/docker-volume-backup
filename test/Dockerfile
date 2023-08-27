@@ -5,6 +5,7 @@ RUN apk add \
   curl \
   gpg \
   jq \
+  moreutils \
   tar \
   zstd \
   --no-cache
