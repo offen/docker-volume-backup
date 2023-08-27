@@ -140,14 +140,21 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.AwsS3BucketName != "" {
-		accessKeyID, err := s.c.resolveSecret(s.c.AwsAccessKeyID, s.c.AwsAccessKeyIDFile)
-		if err != nil {
-			return nil, fmt.Errorf("newScript: error resolving AwsAccessKeyID: %w", err)
+		var accessKeyID string
+		var secretAccessKey string
+
+		if s.c.AwsAccessKeyIDFile != "" {
+			accessKeyID = s.c.AwsAccessKeyIDFile
+		} else {
+			accessKeyID = s.c.AwsAccessKeyID
 		}
-		secretAccessKey, err := s.c.resolveSecret(s.c.AwsSecretAccessKey, s.c.AwsSecretAccessKeyFile)
-		if err != nil {
-			return nil, fmt.Errorf("newScript: error resolving AwsSecretAccessKey: %w", err)
+
+		if s.c.AwsSecretAccessKeyFile != "" {
+			secretAccessKey = s.c.AwsSecretAccessKeyFile
+		} else {
+			secretAccessKey = s.c.AwsSecretAccessKey
 		}
+
 		s3Config := s3.Config{
 			Endpoint:         s.c.AwsEndpoint,
 			AccessKeyID:      accessKeyID,
