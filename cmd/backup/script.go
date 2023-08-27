@@ -28,7 +28,6 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage/webdav"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
-	"github.com/caarlos0/env/v9"
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
 	"github.com/docker/docker/api/types"
@@ -36,6 +35,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
+	"github.com/johnstairs/pathenvconfig"
 	"github.com/leekchan/timeutil"
 	"github.com/otiai10/copy"
 	"golang.org/x/sync/errgroup"
@@ -89,12 +89,11 @@ func newScript() (*script, error) {
 		return nil
 	})
 
-	envOptions := env.Options{
-		UseFieldNameByDefault: true,
-	}
-	if err := env.ParseWithOptions(s.c, envOptions); err != nil {
+	if err := pathenvconfig.Process("", s.c); err != nil {
 		return nil, fmt.Errorf("newScript: failed to process configuration values: %w", err)
 	}
+
+	fmt.Printf("Using configuration: %+v\n", s.c) // Debug
 
 	s.file = path.Join("/tmp", s.c.BackupFilename)
 
@@ -140,13 +139,10 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.AwsS3BucketName != "" {
-		accessKeyID := s.c.getSecret(s.c.AwsAccessKeyIDFile, s.c.AwsAccessKeyID)
-		secretAccessKey := s.c.getSecret(s.c.AwsSecretAccessKeyFile, s.c.AwsSecretAccessKey)
-
 		s3Config := s3.Config{
 			Endpoint:         s.c.AwsEndpoint,
-			AccessKeyID:      accessKeyID,
-			SecretAccessKey:  secretAccessKey,
+			AccessKeyID:      s.c.AwsAccessKeyID,
+			SecretAccessKey:  s.c.AwsSecretAccessKey,
 			IamRoleEndpoint:  s.c.AwsIamRoleEndpoint,
 			EndpointProto:    s.c.AwsEndpointProto,
 			EndpointInsecure: s.c.AwsEndpointInsecure,
@@ -164,13 +160,11 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.WebdavUrl != "" {
-		webdavPassword := s.c.getSecret(s.c.WebdavPasswordFile, s.c.WebdavPassword)
-
 		webDavConfig := webdav.Config{
 			URL:         s.c.WebdavUrl,
 			URLInsecure: s.c.WebdavUrlInsecure,
 			Username:    s.c.WebdavUsername,
-			Password:    webdavPassword,
+			Password:    s.c.WebdavPassword,
 			RemotePath:  s.c.WebdavPath,
 		}
 		if webdavBackend, err := webdav.NewStorageBackend(webDavConfig, logFunc); err != nil {
@@ -181,16 +175,13 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.SSHHostName != "" {
-		sshPassword := s.c.getSecret(s.c.SSHPasswordFile, s.c.SSHPassword)
-		sshIdentityPassphrase := s.c.getSecret(s.c.SSHIdentityPassphraseFile, s.c.SSHIdentityPassphrase)
-
 		sshConfig := ssh.Config{
 			HostName:           s.c.SSHHostName,
 			Port:               s.c.SSHPort,
 			User:               s.c.SSHUser,
-			Password:           sshPassword,
+			Password:           s.c.SSHPassword,
 			IdentityFile:       s.c.SSHIdentityFile,
-			IdentityPassphrase: sshIdentityPassphrase,
+			IdentityPassphrase: s.c.SSHIdentityPassphrase,
 			RemotePath:         s.c.SSHRemotePath,
 		}
 		if sshBackend, err := ssh.NewStorageBackend(sshConfig, logFunc); err != nil {
@@ -225,16 +216,12 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.DropboxRefreshToken != "" && s.c.DropboxAppKey != "" && s.c.DropboxAppSecret != "" {
-		dropboxRefreshToken := s.c.getSecret(s.c.DropboxRefreshTokenFile, s.c.DropboxRefreshToken)
-		dropboxAppKey := s.c.getSecret(s.c.DropboxAppKeyFile, s.c.DropboxAppKey)
-		dropboxAppSecret := s.c.getSecret(s.c.DropboxAppSecretFile, s.c.DropboxAppSecret)
-
 		dropboxConfig := dropbox.Config{
 			Endpoint:         s.c.DropboxEndpoint,
 			OAuth2Endpoint:   s.c.DropboxOAuth2Endpoint,
-			RefreshToken:     dropboxRefreshToken,
-			AppKey:           dropboxAppKey,
-			AppSecret:        dropboxAppSecret,
+			RefreshToken:     s.c.DropboxRefreshToken,
+			AppKey:           s.c.DropboxAppKey,
+			AppSecret:        s.c.DropboxAppSecret,
 			RemotePath:       s.c.DropboxRemotePath,
 			ConcurrencyLevel: s.c.DropboxConcurrencyLevel.Int(),
 		}
@@ -246,12 +233,10 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.EmailNotificationRecipient != "" {
-		smtpPassword := s.c.getSecret(s.c.EmailSMTPPasswordFile, s.c.EmailSMTPPassword)
-
 		emailURL := fmt.Sprintf(
 			"smtp://%s:%s@%s:%d/?from=%s&to=%s",
 			s.c.EmailSMTPUsername,
-			smtpPassword,
+			s.c.EmailSMTPPassword,
 			s.c.EmailSMTPHost,
 			s.c.EmailSMTPPort,
 			s.c.EmailNotificationSender,
@@ -512,8 +497,7 @@ func (s *script) createArchive() error {
 // In case no passphrase is given it returns early, leaving the backup file
 // untouched.
 func (s *script) encryptArchive() error {
-	gpgPassphrase := s.c.getSecret(s.c.GpgPassphraseFile, s.c.GpgPassphrase)
-	if gpgPassphrase == "" {
+	if s.c.GpgPassphrase == "" {
 		return nil
 	}
 
@@ -535,7 +519,7 @@ func (s *script) encryptArchive() error {
 	defer outFile.Close()
 
 	_, name := path.Split(s.file)
-	dst, err := openpgp.SymmetricallyEncrypt(outFile, []byte(gpgPassphrase), &openpgp.FileHints{
+	dst, err := openpgp.SymmetricallyEncrypt(outFile, []byte(s.c.GpgPassphrase), &openpgp.FileHints{
 		IsBinary: true,
 		FileName: name,
 	}, nil)

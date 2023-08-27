@@ -16,86 +16,66 @@ import (
 // Config holds all configuration values that are expected to be set
 // by users.
 type Config struct {
-	AwsS3BucketName               string `env:"AWS_S3_BUCKET_NAME"`
-	AwsS3Path                     string `env:"AWS_S3_PATH"`
-	AwsEndpoint                   string `envDefault:"s3.amazonaws.com"`
-	AwsEndpointProto              string `envDefault:"https"`
+	AwsS3BucketName               string
+	AwsS3Path                     string
+	AwsEndpoint                   string `default:"s3.amazonaws.com"`
+	AwsEndpointProto              string
 	AwsEndpointInsecure           bool
-	AwsEndpointCACert             CertDecoder `env:"AWS_ENDPOINT_CA_CERT"`
+	AwsEndpointCACert             CertDecoder
 	AwsStorageClass               string
-	AwsAccessKeyID                string `env:"AWS_ACCESS_KEY_ID"`
-	AwsAccessKeyIDFile            string `env:"AWS_ACCESS_KEY_ID_FILE,file"`
-	AwsSecretAccessKey            string `env:"AWS_SECRET_ACCESS_KEY"`
-	AwsSecretAccessKeyFile        string `env:"AWS_SECRET_ACCESS_KEY_FILE,file"`
+	AwsAccessKeyID                string
+	AwsSecretAccessKey            string
 	AwsIamRoleEndpoint            string
 	AwsPartSize                   int64
-	BackupCompression             CompressionType `envDefault:"gz"`
-	BackupSources                 string          `envDefault:"/backup"`
-	BackupFilename                string          `envDefault:"backup-%Y-%m-%dT%H-%M-%S.{{ .Extension }}"`
+	BackupCompression             CompressionType `default:"gz"`
+	BackupSources                 string          `default:"/backup"`
+	BackupFilename                string          `default:"backup-%Y-%m-%dT%H-%M-%S.{{ .Extension }}"`
 	BackupFilenameExpand          bool
 	BackupLatestSymlink           string
-	BackupArchive                 string        `envDefault:"/archive"`
-	BackupRetentionDays           int32         `envDefault:"-1"`
-	BackupPruningLeeway           time.Duration `envDefault:"1m"`
+	BackupArchive                 string        `default:"/archive"`
+	BackupRetentionDays           int32         `default:"-1"`
+	BackupPruningLeeway           time.Duration `default:"1m"`
 	BackupPruningPrefix           string
-	BackupStopContainerLabel      string `envDefault:"true"`
+	BackupStopContainerLabel      string `default:"true"`
 	BackupFromSnapshot            bool
 	BackupExcludeRegexp           RegexpDecoder
 	BackupSkipBackendsFromPrune   []string
-	GpgPassphrase                 string   `env:"GPG_PASSPHRASE"`
-	GpgPassphraseFile             string   `env:"GPG_PASSPHRASE_FILE,file"`
-	NotificationURLs              []string `env:"NOTIFICATION_URLS"`
-	NotificationLevel             string   `envDefault:"error"`
+	GpgPassphrase                 string
+	NotificationURLs              []string
+	NotificationLevel             string `default:"error"`
 	EmailNotificationRecipient    string
-	EmailNotificationSender       string `envDefault:"noreply@nohost"`
-	EmailSMTPHost                 string `env:"EMAIL_SMTP_HOST"`
-	EmailSMTPPort                 int    `env:"EMAIL_SMTP_PORT" envDefault:"587"`
-	EmailSMTPUsername             string `env:"EMAIL_SMTP_USERNAME"`
-	EmailSMTPPassword             string `env:"EMAIL_SMTP_PASSWORD"`
-	EmailSMTPPasswordFile         string `env:"EMAIL_SMTP_PASSWORD_FILE,file"`
+	EmailNotificationSender       string `default:"noreply@nohost"`
+	EmailSMTPHost                 string
+	EmailSMTPPort                 int `default:"587"`
+	EmailSMTPUsername             string
+	EmailSMTPPassword             string
 	WebdavUrl                     string
 	WebdavUrlInsecure             bool
-	WebdavPath                    string `envDefault:"/"`
+	WebdavPath                    string `default:"/"`
 	WebdavUsername                string
-	WebdavPassword                string `env:"WEBDAV_PASSWORD"`
-	WebdavPasswordFile            string `env:"WEBDAV_PASSWORD_FILE,file"`
-	SSHHostName                   string `env:"SSH_HOST_NAME"`
-	SSHPort                       string `env:"SSH_PORT" envDefault:"22"`
-	SSHUser                       string `env:"SSH_USER"`
-	SSHPassword                   string `env:"SSH_PASSWORD"`
-	SSHPasswordFile               string `env:"SSH_PASSWORD_FILE,file"`
-	SSHIdentityFile               string `env:"SSH_IDENTITY_FILE" envDefault:"/root/.ssh/id_rsa"`
-	SSHIdentityPassphrase         string `env:"SSH_IDENTITY_PASSPHRASE"`
-	SSHIdentityPassphraseFile     string `env:"SSH_IDENTITY_PASSPHRASE_FILE,file"`
-	SSHRemotePath                 string `env:"SSH_REMOTE_PATH"`
+	WebdavPassword                string
+	SSHHostName                   string
+	SSHPort                       string `default:"22"`
+	SSHUser                       string
+	SSHPassword                   string
+	SSHIdentityFile               string `default:"/root/.ssh/id_rsa"`
+	SSHIdentityPassphrase         string
+	SSHRemotePath                 string
 	ExecLabel                     string
 	ExecForwardOutput             bool
-	LockTimeout                   time.Duration `envDefault:"60m"`
+	LockTimeout                   time.Duration `default:"60m"`
 	AzureStorageAccountName       string
 	AzureStoragePrimaryAccountKey string
 	AzureStorageContainerName     string
 	AzureStoragePath              string
-	AzureStorageEndpoint          string `envDefault:"https://{{ .AccountName }}.blob.core.windows.net/"`
-	DropboxEndpoint               string `envDefault:"https://api.dropbox.com/"`
-	DropboxOAuth2Endpoint         string `env:"DROPBOX_OAUTH2_ENDPOINT" envDefault:"https://api.dropbox.com/"`
-	DropboxRefreshToken           string `env:"DROPBOX_REFRESH_TOKEN"`
-	DropboxRefreshTokenFile       string `env:"DROPBOX_REFRESH_TOKEN_FILE,file"`
-	DropboxAppKey                 string `env:"DROPBOX_APP_KEY"`
-	DropboxAppKeyFile             string `env:"DROPBOX_APP_KEY_FILE,file"`
-	DropboxAppSecret              string `env:"DROPBOX_APP_SECRET"`
-	DropboxAppSecretFile          string `env:"DROPBOX_APP_SECRET_FILE,file"`
+	AzureStorageEndpoint          string `default:"https://{{ .AccountName }}.blob.core.windows.net/"`
+	DropboxEndpoint               string `default:"https://api.dropbox.com/"`
+	DropboxOAuth2Endpoint         string `default:"https://api.dropbox.com/"`
+	DropboxRefreshToken           string
+	DropboxAppKey                 string
+	DropboxAppSecret              string
 	DropboxRemotePath             string
-	DropboxConcurrencyLevel       NaturalNumber `envDefault:"6"`
-}
-
-func (c *Config) getSecret(preferred string, fallback string) string {
-	if preferred != "" {
-		return preferred
-	}
-	if fallback != "" {
-		return fallback
-	}
-	return ""
+	DropboxConcurrencyLevel       NaturalNumber `default:"6"`
 }
 
 type CompressionType string
