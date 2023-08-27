@@ -62,3 +62,4 @@ fi
 
 
 docker compose down --volumes
+rm user_v2_ready.yaml

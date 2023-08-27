@@ -594,7 +594,9 @@ func (s *script) pruneBackups() error {
 		b := backend
 		eg.Go(func() error {
 			if skipPrune(b.Name(), s.c.BackupSkipBackendsFromPrune) {
-				s.logger.Info("Skipping pruning for backend `%s`.", b.Name())
+				s.logger.Info(
+					fmt.Sprintf("Skipping pruning for backend `%s`.", b.Name()),
+				)
 				return nil
 			}
 			stats, err := b.Prune(deadline, s.c.BackupPruningPrefix)
