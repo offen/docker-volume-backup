@@ -54,12 +54,12 @@ sleep 5
 info "Create first backup with no prune"
 docker compose exec backup backup
 
-sudo date --set="14 days ago"
+date --set="14 days ago"
 
 docker compose run --rm az_cli \
     az storage blob upload -f /dump/test.tar.gz -c test-container -n path/to/backup/test-old.tar.gz
 
-sudo date --set="14 days"
+date --set="14 days"
 
 info "Create second backup and prune"
 docker compose exec backup backup
