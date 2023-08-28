@@ -9,6 +9,7 @@ require (
 	github.com/cosiner/argv v0.1.0
 	github.com/docker/docker v24.0.5+incompatible
 	github.com/gofrs/flock v0.8.1
+	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.16.7
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.62
@@ -22,7 +23,6 @@ require (
 
 require (
 	github.com/cloudflare/circl v1.3.3 // indirect
-	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
@@ -43,7 +43,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/johnstairs/pathenvconfig v0.2.1
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/kr/fs v0.1.0 // indirect

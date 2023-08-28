@@ -16,72 +16,84 @@ import (
 // Config holds all configuration values that are expected to be set
 // by users.
 type Config struct {
-	AwsS3BucketName               string
-	AwsS3Path                     string
-	AwsEndpoint                   string `default:"s3.amazonaws.com"`
-	AwsEndpointProto              string
-	AwsEndpointInsecure           bool
-	AwsEndpointCACert             CertDecoder
-	AwsStorageClass               string
-	AwsAccessKeyID                string
-	AwsSecretAccessKey            string
-	AwsIamRoleEndpoint            string
-	AwsPartSize                   int64
-	BackupCompression             CompressionType `default:"gz"`
-	BackupSources                 string          `default:"/backup"`
-	BackupFilename                string          `default:"backup-%Y-%m-%dT%H-%M-%S.{{ .Extension }}"`
-	BackupFilenameExpand          bool
-	BackupLatestSymlink           string
-	BackupArchive                 string        `default:"/archive"`
-	BackupRetentionDays           int32         `default:"-1"`
-	BackupPruningLeeway           time.Duration `default:"1m"`
-	BackupPruningPrefix           string
-	BackupStopContainerLabel      string `default:"true"`
-	BackupFromSnapshot            bool
-	BackupExcludeRegexp           RegexpDecoder
-	BackupSkipBackendsFromPrune   []string
-	GpgPassphrase                 string
-	NotificationURLs              []string
-	NotificationLevel             string `default:"error"`
-	EmailNotificationRecipient    string
-	EmailNotificationSender       string `default:"noreply@nohost"`
-	EmailSMTPHost                 string
-	EmailSMTPPort                 int `default:"587"`
-	EmailSMTPUsername             string
-	EmailSMTPPassword             string
-	WebdavUrl                     string
-	WebdavUrlInsecure             bool
-	WebdavPath                    string `default:"/"`
-	WebdavUsername                string
-	WebdavPassword                string
-	SSHHostName                   string
-	SSHPort                       string `default:"22"`
-	SSHUser                       string
-	SSHPassword                   string
-	SSHIdentityFile               string `default:"/root/.ssh/id_rsa"`
-	SSHIdentityPassphrase         string
-	SSHRemotePath                 string
-	ExecLabel                     string
-	ExecForwardOutput             bool
-	LockTimeout                   time.Duration `default:"60m"`
-	AzureStorageAccountName       string
-	AzureStoragePrimaryAccountKey string
-	AzureStorageContainerName     string
-	AzureStoragePath              string
-	AzureStorageEndpoint          string `default:"https://{{ .AccountName }}.blob.core.windows.net/"`
-	DropboxEndpoint               string `default:"https://api.dropbox.com/"`
-	DropboxOAuth2Endpoint         string `default:"https://api.dropbox.com/"`
-	DropboxRefreshToken           string
-	DropboxAppKey                 string
-	DropboxAppSecret              string
-	DropboxRemotePath             string
-	DropboxConcurrencyLevel       NaturalNumber `default:"6"`
+	AwsS3BucketName               string          `split_words:"true"`
+	AwsS3Path                     string          `split_words:"true"`
+	AwsEndpoint                   string          `split_words:"true" default:"s3.amazonaws.com"`
+	AwsEndpointProto              string          `split_words:"true" default:"https"`
+	AwsEndpointInsecure           bool            `split_words:"true"`
+	AwsEndpointCACert             CertDecoder     `envconfig:"AWS_ENDPOINT_CA_CERT"`
+	AwsStorageClass               string          `split_words:"true"`
+	AwsAccessKeyID                string          `envconfig:"AWS_ACCESS_KEY_ID"`
+	AwsAccessKeyIDFile            string          `envconfig:"AWS_ACCESS_KEY_ID_FILE"`
+	AwsSecretAccessKey            string          `split_words:"true"`
+	AwsSecretAccessKeyFile        string          `split_words:"true"`
+	AwsIamRoleEndpoint            string          `split_words:"true"`
+	AwsPartSize                   int64           `split_words:"true"`
+	BackupCompression             CompressionType `split_words:"true" default:"gz"`
+	BackupSources                 string          `split_words:"true" default:"/backup"`
+	BackupFilename                string          `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.{{ .Extension }}"`
+	BackupFilenameExpand          bool            `split_words:"true"`
+	BackupLatestSymlink           string          `split_words:"true"`
+	BackupArchive                 string          `split_words:"true" default:"/archive"`
+	BackupRetentionDays           int32           `split_words:"true" default:"-1"`
+	BackupPruningLeeway           time.Duration   `split_words:"true" default:"1m"`
+	BackupPruningPrefix           string          `split_words:"true"`
+	BackupStopContainerLabel      string          `split_words:"true" default:"true"`
+	BackupFromSnapshot            bool            `split_words:"true"`
+	BackupExcludeRegexp           RegexpDecoder   `split_words:"true"`
+	BackupSkipBackendsFromPrune   []string        `split_words:"true"`
+	GpgPassphrase                 string          `split_words:"true"`
+	NotificationURLs              []string        `envconfig:"NOTIFICATION_URLS"`
+	NotificationLevel             string          `split_words:"true" default:"error"`
+	EmailNotificationRecipient    string          `split_words:"true"`
+	EmailNotificationSender       string          `split_words:"true" default:"noreply@nohost"`
+	EmailSMTPHost                 string          `envconfig:"EMAIL_SMTP_HOST"`
+	EmailSMTPPort                 int             `envconfig:"EMAIL_SMTP_PORT" default:"587"`
+	EmailSMTPUsername             string          `envconfig:"EMAIL_SMTP_USERNAME"`
+	EmailSMTPPassword             string          `envconfig:"EMAIL_SMTP_PASSWORD"`
+	WebdavUrl                     string          `split_words:"true"`
+	WebdavUrlInsecure             bool            `split_words:"true"`
+	WebdavPath                    string          `split_words:"true" default:"/"`
+	WebdavUsername                string          `split_words:"true"`
+	WebdavPassword                string          `split_words:"true"`
+	SSHHostName                   string          `split_words:"true"`
+	SSHPort                       string          `split_words:"true" default:"22"`
+	SSHUser                       string          `split_words:"true"`
+	SSHPassword                   string          `split_words:"true"`
+	SSHIdentityFile               string          `split_words:"true" default:"/root/.ssh/id_rsa"`
+	SSHIdentityPassphrase         string          `split_words:"true"`
+	SSHRemotePath                 string          `split_words:"true"`
+	ExecLabel                     string          `split_words:"true"`
+	ExecForwardOutput             bool            `split_words:"true"`
+	LockTimeout                   time.Duration   `split_words:"true" default:"60m"`
+	AzureStorageAccountName       string          `split_words:"true"`
+	AzureStoragePrimaryAccountKey string          `split_words:"true"`
+	AzureStorageContainerName     string          `split_words:"true"`
+	AzureStoragePath              string          `split_words:"true"`
+	AzureStorageEndpoint          string          `split_words:"true" default:"https://{{ .AccountName }}.blob.core.windows.net/"`
+	DropboxEndpoint               string          `split_words:"true" default:"https://api.dropbox.com/"`
+	DropboxOAuth2Endpoint         string          `envconfig:"DROPBOX_OAUTH2_ENDPOINT" default:"https://api.dropbox.com/"`
+	DropboxRefreshToken           string          `split_words:"true"`
+	DropboxAppKey                 string          `split_words:"true"`
+	DropboxAppSecret              string          `split_words:"true"`
+	DropboxRemotePath             string          `split_words:"true"`
+	DropboxConcurrencyLevel       NaturalNumber   `split_words:"true" default:"6"`
+}
+
+func (c *Config) resolveSecret(envVar string, secretPath string) (string, error) {
+	if secretPath == "" {
+		return envVar, nil
+	}
+	data, err := os.ReadFile(secretPath)
+	if err != nil {
+		return "", fmt.Errorf("resolveSecret: error reading secret path: %w", err)
+	}
+	return string(data), nil
 }
 
 type CompressionType string
 
-func (c *CompressionType) UnmarshalText(text []byte) error {
-	v := string(text)
+func (c *CompressionType) Decode(v string) error {
 	switch v {
 	case "gz", "zst":
 		*c = CompressionType(v)
@@ -99,8 +111,7 @@ type CertDecoder struct {
 	Cert *x509.Certificate
 }
 
-func (c *CertDecoder) UnmarshalText(text []byte) error {
-	v := string(text)
+func (c *CertDecoder) Decode(v string) error {
 	if v == "" {
 		return nil
 	}
@@ -121,8 +132,7 @@ type RegexpDecoder struct {
 	Re *regexp.Regexp
 }
 
-func (r *RegexpDecoder) UnmarshalText(text []byte) error {
-	v := string(text)
+func (r *RegexpDecoder) Decode(v string) error {
 	if v == "" {
 		return nil
 	}
@@ -136,8 +146,7 @@ func (r *RegexpDecoder) UnmarshalText(text []byte) error {
 
 type NaturalNumber int
 
-func (n *NaturalNumber) UnmarshalText(text []byte) error {
-	v := string(text)
+func (n *NaturalNumber) Decode(v string) error {
 	asInt, err := strconv.Atoi(v)
 	if err != nil {
 		return fmt.Errorf("config: error converting %s to int", v)
