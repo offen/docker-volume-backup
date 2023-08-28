@@ -26,4 +26,4 @@ if [ ! -f "./local/app_data/offen.db" ]; then
   fail "Could not find expected file in untared archive."
 fi
 
-docker compose down --volumes
+docker compose down --volumes --timeout 3

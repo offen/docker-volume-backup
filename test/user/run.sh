@@ -25,6 +25,6 @@ if [ "$(cat ./backup/data/whoami.txt)" != "$user_name" ]; then
 fi
 pass "Found expected user."
 
-docker compose down --volumes
+docker compose down --volumes --timeout 3
 sudo rm -rf ./local
 

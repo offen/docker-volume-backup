@@ -40,4 +40,4 @@ docker run --rm \
 
 pass "Found relevant files in untared remote backups."
 
-docker compose down --volumes
+docker compose down --volumes --timeout 3
