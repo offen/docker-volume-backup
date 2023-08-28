@@ -57,7 +57,9 @@ info "Create backup with no prune for both backends"
 docker compose exec -e BACKUP_SKIP_BACKENDS_FROM_PRUNE="s3,local" backup backup
 
 info "Check if old backup has NOT been pruned (local)"
-test -f ./local/test-hostnametoken-old.tar.gz
+if [ ! -f ./local/test-hostnametoken-old.tar.gz ]; then
+  fail "Backdated file has not been deleted"
+fi
 
 info "Check if old backup has NOT been pruned (s3)"
 docker run --rm \

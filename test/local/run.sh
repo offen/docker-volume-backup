@@ -65,7 +65,12 @@ touch -r "$LOCAL_DIR/test-hostnametoken.tar.gz" -d "14 days ago" "$LOCAL_DIR/tes
 info "Create second backup and prune"
 docker compose exec backup backup
 
-test ! -f "$LOCAL_DIR/test-hostnametoken-old.tar.gz"
-test -f "$LOCAL_DIR/test-hostnametoken.tar.gz"
+if [ -f "$LOCAL_DIR/test-hostnametoken-old.tar.gz" ]; then
+  fail "Backdated file has not been deleted."
+fi
+
+if [ ! -f "$LOCAL_DIR/test-hostnametoken.tar.gz" ]; then
+  fail "Recent file has been deleted."
+fi
 
 pass "Old remote backup has been pruned, new one is still present."
