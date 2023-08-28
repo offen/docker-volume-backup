@@ -54,7 +54,7 @@ for dir in $(find $find_args | sort); do
   done
 
   docker exec $sandbox /bin/sh -c "docker load -i /cache/image.tar.gz"
-  docker exec -e TEST_VERSION=$IMAGE_TAG $sandbox /bin/sh -c "/bin/sh /code/test/$test"
+  docker exec -e TEST_VERSION=$IMAGE_TAG $sandbox /bin/sh -c "/code/test/$test"
 
   docker rm $(docker stop $sandbox)
   docker volume rm $sandbox
