@@ -24,9 +24,7 @@ type Config struct {
 	AwsEndpointCACert             CertDecoder     `envconfig:"AWS_ENDPOINT_CA_CERT"`
 	AwsStorageClass               string          `split_words:"true"`
 	AwsAccessKeyID                string          `envconfig:"AWS_ACCESS_KEY_ID"`
-	AwsAccessKeyIDFile            string          `envconfig:"AWS_ACCESS_KEY_ID_FILE"`
 	AwsSecretAccessKey            string          `split_words:"true"`
-	AwsSecretAccessKeyFile        string          `split_words:"true"`
 	AwsIamRoleEndpoint            string          `split_words:"true"`
 	AwsPartSize                   int64           `split_words:"true"`
 	BackupCompression             CompressionType `split_words:"true" default:"gz"`
@@ -78,17 +76,6 @@ type Config struct {
 	DropboxAppSecret              string          `split_words:"true"`
 	DropboxRemotePath             string          `split_words:"true"`
 	DropboxConcurrencyLevel       NaturalNumber   `split_words:"true" default:"6"`
-}
-
-func (c *Config) resolveSecret(envVar string, secretPath string) (string, error) {
-	if secretPath == "" {
-		return envVar, nil
-	}
-	data, err := os.ReadFile(secretPath)
-	if err != nil {
-		return "", fmt.Errorf("resolveSecret: error reading secret path: %w", err)
-	}
-	return string(data), nil
 }
 
 type CompressionType string
