@@ -15,8 +15,8 @@ finish () {
   if [ ! -z $(docker ps -aq --filter=name=$sandbox) ]; then
     docker rm -f $(docker stop $sandbox)
   fi
-  if [ ! -z $(docker volume ls -q --filter=name=$sandbox) ]; then
-    docker rm -f $(docker stop $sandbox)
+  if [ ! -z $(docker volume ls -q --filter=name="^${sandbox}\$") ]; then
+    docker volume rm $sandbox
   fi
 }
 
@@ -41,17 +41,24 @@ for dir in $(find $find_args | sort); do
   echo ""
 
   test="${dir}/run.sh"
-  docker run --name "$name" --detach \
+  docker_run_args="--name "$sandbox" --detach \
     --privileged \
-    --name $sandbox \
     -v $(dirname $(pwd)):/code \
     -v $tarball:/cache/image.tar.gz \
-    -v $sandbox:/var/lib/docker \
-    offen/docker-volume-backup:test-sandbox
+    -v $sandbox:/var/lib/docker"
+
+  if [ -z "$NO_IMAGE_CACHE" ]; then
+    docker_run_args="$docker_run_args \
+    -v "${sandbox}_image":/var/lib/docker/image \
+    -v "${sandbox}_overlay2":/var/lib/docker/overlay2"
+  fi
+
+  docker run $docker_run_args offen/docker-volume-backup:test-sandbox
 
   until docker exec $sandbox /bin/sh -c 'docker info' > /dev/null 2>&1; do
     sleep 0.5
   done
+  sleep 0.5
 
   docker exec $sandbox /bin/sh -c "docker load -i /cache/image.tar.gz"
   docker exec -e TEST_VERSION=$IMAGE_TAG $sandbox /bin/sh -c "/code/test/$test"

@@ -39,7 +39,15 @@ Setting this value lets you run tests against different existing images, so you 
 IMAGE_TAG=v2.30.0 ./test.sh
 ```
 
-By default, tests look for an image tagged `canary`.
+#### `NO_IMAGE_CACHE`
+
+When set, images from remote registries will not be cached and shared between sandbox containers.
+
+```sh
+NO_IMAGE_CACHE=1 ./test.sh
+```
+
+By default, two local images are created that persist the image data and provide it to containers at runtime.
 
 ## Understanding the test setup
 
