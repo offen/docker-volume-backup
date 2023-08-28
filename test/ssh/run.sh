@@ -26,7 +26,7 @@ pass "Found relevant files in decrypted and untared remote backups."
 
 # The second part of this test checks if backups get deleted when the retention
 # is set to 0 days (which it should not as it would mean all backups get deleted)
-BACKUP_RETENTION_DAYS="0" docker compose up -d
+BACKUP_RETENTION_DAYS="0" docker compose up -d --timeout 3
 sleep 5
 
 docker compose exec backup backup
@@ -41,7 +41,7 @@ pass "Remote backups have not been deleted."
 # The third part of this test checks if old backups get deleted when the retention
 # is set to 7 days (which it should)
 
-BACKUP_RETENTION_DAYS="7" docker compose up -d
+BACKUP_RETENTION_DAYS="7" docker compose up -d --timeout 3
 sleep 5
 
 info "Create first backup with no prune"
@@ -64,5 +64,5 @@ docker run --rm \
 
 pass "Old remote backup has been pruned, new one is still present."
 
-docker compose down --volumes
+docker compose down --volumes --timeout 3
 rm -f id_rsa id_rsa.pub
