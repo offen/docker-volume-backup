@@ -2,7 +2,11 @@
 
 set -e
 
+MATCH_PATTERN=$1
+IMAGE_TAG=${IMAGE_TAG:-canary}
+
 sandbox="docker_volume_backup_test_sandbox"
+tarball="$(mktemp -d)/image.tar.gz"
 
 trap finish EXIT INT TERM
 
@@ -11,10 +15,10 @@ finish () {
   if [ ! -z $(docker ps -aq --filter=name=$sandbox) ]; then
     docker rm -f $(docker stop $sandbox)
   fi
+  if [ ! -z $(docker volume ls -q --filter=name=$sandbox) ]; then
+    docker rm -f $(docker stop $sandbox)
+  fi
 }
-
-MATCH_PATTERN=$1
-IMAGE_TAG=${IMAGE_TAG:-canary}
 
 docker build -t offen/docker-volume-backup:test-sandbox .
 
@@ -22,7 +26,6 @@ if [ ! -z "$BUILD_IMAGE" ]; then
   docker build -t offen/docker-volume-backup:$IMAGE_TAG $(dirname $(pwd))
 fi
 
-tarball="$(mktemp -d)/image.tar.gz"
 docker save offen/docker-volume-backup:$IMAGE_TAG -o $tarball
 
 find_args="-mindepth 1 -maxdepth 1 -type d"
@@ -43,6 +46,7 @@ for dir in $(find $find_args | sort); do
     --name $sandbox \
     -v $(dirname $(pwd)):/code \
     -v $tarball:/cache/image.tar.gz \
+    -v $sandbox:/var/lib/docker \
     offen/docker-volume-backup:test-sandbox
 
   until docker exec $sandbox /bin/sh -c 'docker info' > /dev/null 2>&1; do
@@ -53,6 +57,7 @@ for dir in $(find $find_args | sort); do
   docker exec -e TEST_VERSION=$IMAGE_TAG $sandbox /bin/sh -c "/bin/sh /code/test/$test"
 
   docker rm $(docker stop $sandbox)
+  docker volume rm $sandbox
   echo ""
   echo "$test passed"
   echo ""
