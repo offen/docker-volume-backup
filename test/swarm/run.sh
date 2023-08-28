@@ -29,6 +29,7 @@ sleep 5
 expect_running_containers "5"
 
 docker stack rm test_stack
+sleep 1
 docker swarm leave --force
 
 sleep 10
