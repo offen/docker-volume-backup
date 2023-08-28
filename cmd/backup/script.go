@@ -35,8 +35,8 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
-	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
+	"github.com/offen/envconfig"
 	"github.com/otiai10/copy"
 	"golang.org/x/sync/errgroup"
 )
@@ -89,6 +89,18 @@ func newScript() (*script, error) {
 		return nil
 	})
 
+	envconfig.Lookup = func(key string) (string, bool) {
+		location, ok := os.LookupEnv(key + "_FILE")
+		if ok {
+			contents, err := os.ReadFile(location)
+			if err != nil {
+				s.logger.Warn(fmt.Sprintf("Failed to read %s! Falling back to %s", location, key))
+				return os.LookupEnv(key)
+			}
+			return string(contents), true
+		}
+		return os.LookupEnv(key)
+	}
 	if err := envconfig.Process("", s.c); err != nil {
 		return nil, fmt.Errorf("newScript: failed to process configuration values: %w", err)
 	}
