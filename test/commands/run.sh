@@ -29,7 +29,7 @@ if [ -f ./backup/data/post.txt ]; then
 fi
 pass "Did not find unexpected file."
 
-docker compose down --volumes --timeout 3
+docker compose down --volumes
 sudo rm -rf ./local
 
 

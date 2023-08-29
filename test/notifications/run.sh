@@ -22,9 +22,9 @@ if [ "$NUM_MESSAGES" != 0 ]; then
 fi
 pass "No notifications were sent when not configured."
 
-docker compose down --timeout 3
+docker compose down
 
-NOTIFICATION_URLS="gotify://gotify/${GOTIFY_TOKEN}?disableTLS=true" docker compose up -d --timeout 3
+NOTIFICATION_URLS="gotify://gotify/${GOTIFY_TOKEN}?disableTLS=true" docker compose up -d
 
 docker compose exec backup backup
 
@@ -47,4 +47,4 @@ if [ "$MESSAGE_BODY" != "Backing up /tmp/test.tar.gz succeeded." ]; then
 fi
 pass "Custom notification body was used."
 
-docker compose down --volumes --timeout 3
+docker compose down --volumes

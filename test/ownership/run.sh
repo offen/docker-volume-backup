@@ -27,4 +27,4 @@ for file in $(sudo find $tmp_dir/backup/postgres); do
 done
 pass "All files and directories in backup preserved their ownership."
 
-docker compose down --volumes --timeout 3
+docker compose down --volumes

@@ -29,7 +29,7 @@ docker run --rm \
 
 # Skip s3 backend from prune
 
-docker compose up -d --timeout 3
+docker compose up -d
 sleep 5
 
 info "Create backup with no prune for s3 backend"
@@ -50,7 +50,7 @@ pass "Old remote backup has been pruned locally, skipped S3 backend is untouched
 
 touch -r ./local/test-hostnametoken.tar.gz -d "14 days ago" ./local/test-hostnametoken-old.tar.gz
 
-docker compose up -d --timeout 3
+docker compose up -d
 sleep 5
 
 info "Create backup with no prune for both backends"
@@ -67,4 +67,4 @@ docker run --rm \
 
 pass "Skipped all backends while pruning."
 
-docker compose down --volumes --timeout 3
+docker compose down --volumes

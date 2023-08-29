@@ -30,4 +30,4 @@ if [ ! -L ./local/test-latest.tar.gz.gpg ]; then
   fail "Could not find local symlink to latest encrypted backup."
 fi
 
-docker compose down --volumes --timeout 3
+docker compose down --volumes

@@ -13,7 +13,7 @@ docker compose up -d --quiet-pull
 # sleep until a backup is guaranteed to have happened on the 1 minute schedule
 sleep 100
 
-docker compose down --volumes --timeout 3
+docker compose down --volumes
 
 if [ ! -f ./local/conf.tar.gz ]; then
   fail "Config from file was not used."
