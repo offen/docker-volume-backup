@@ -9,10 +9,10 @@ require (
 	github.com/cosiner/argv v0.1.0
 	github.com/docker/docker v24.0.5+incompatible
 	github.com/gofrs/flock v0.8.1
-	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.16.7
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.62
+	github.com/offen/envconfig v1.5.0
 	github.com/otiai10/copy v1.11.0
 	github.com/pkg/sftp v1.13.6
 	github.com/studio-b12/gowebdav v0.9.0

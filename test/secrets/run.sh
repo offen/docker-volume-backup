@@ -31,6 +31,16 @@ pass "Found relevant files in untared backup."
 sleep 5
 expect_running_containers "5"
 
+docker exec -e AWS_ACCESS_KEY_ID=test $(docker ps -q -f name=backup) backup \
+  && fail "Backup should have failed due to duplicate env variables."
+
+pass "Backup failed due to duplicate env variables."
+
+docker exec -e AWS_ACCESS_KEY_ID_FILE=/tmp/nonexistant $(docker ps -q -f name=backup) backup \
+  && fail "Backup should have failed due to non existing file env variable."
+
+pass "Backup failed due to non existing file env variable."
+
 docker stack rm test_stack
 
 docker secret rm minio_root_password

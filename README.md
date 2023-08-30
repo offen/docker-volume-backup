@@ -139,6 +139,9 @@ Documentation references Docker Hub, but all examples will work using ghcr.io ju
 ## Configuration reference
 
 Backup targets, schedule and retention are configured in environment variables.
+
+Note: You can use any environment variable from below also with a `_FILE` suffix to be able to load the value from a file. This is usually useful when using [Docker Secrets](https://docs.docker.com/engine/swarm/secrets/) or similar.
+
 You can populate below template according to your requirements and use it as your `env_file`:
 
 ```ini
@@ -232,14 +235,6 @@ You can populate below template according to your requirements and use it as you
 
 # AWS_ACCESS_KEY_ID="<xxx>"
 # AWS_SECRET_ACCESS_KEY="<xxx>"
-
-# It is possible to provide the keys in files, allowing to hide the sensitive data.
-# These values have a higher priority than the ones above, meaning if both are set
-# the values from the files will be used.
-# This option is most useful with Docker [secrets](https://docs.docker.com/engine/swarm/secrets/).
-
-# AWS_ACCESS_KEY_ID_FILE="/path/to/file"
-# AWS_SECRET_ACCESS_KEY_FILE="/path/to/file"
 
 # Instead of providing static credentials, you can also use IAM instance profiles
 # or similar to provide authentication. Some possible configuration options on AWS:

@@ -35,8 +35,8 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
-	"github.com/kelseyhightower/envconfig"
 	"github.com/leekchan/timeutil"
+	"github.com/offen/envconfig"
 	"github.com/otiai10/copy"
 	"golang.org/x/sync/errgroup"
 )
@@ -89,6 +89,28 @@ func newScript() (*script, error) {
 		return nil
 	})
 
+	envconfig.Lookup = func(key string) (string, bool) {
+		value, okValue := os.LookupEnv(key)
+		location, okFile := os.LookupEnv(key + "_FILE")
+
+		switch {
+		case okValue && !okFile: // only value
+			return value, true
+		case !okValue && okFile: // only file
+			contents, err := os.ReadFile(location)
+			if err != nil {
+				s.must(fmt.Errorf("newScript: failed to read %s! Error: %s", location, err))
+				return "", false
+			}
+			return string(contents), true
+		case okValue && okFile: // both
+			s.must(fmt.Errorf("newScript: both %s and %s are set!", key, key+"_FILE"))
+			return "", false
+		default: // neither, ignore
+			return "", false
+		}
+	}
+
 	if err := envconfig.Process("", s.c); err != nil {
 		return nil, fmt.Errorf("newScript: failed to process configuration values: %w", err)
 	}
@@ -137,18 +159,10 @@ func newScript() (*script, error) {
 	}
 
 	if s.c.AwsS3BucketName != "" {
-		accessKeyID, err := s.c.resolveSecret(s.c.AwsAccessKeyID, s.c.AwsAccessKeyIDFile)
-		if err != nil {
-			return nil, fmt.Errorf("newScript: error resolving AwsAccessKeyID: %w", err)
-		}
-		secretAccessKey, err := s.c.resolveSecret(s.c.AwsSecretAccessKey, s.c.AwsSecretAccessKeyFile)
-		if err != nil {
-			return nil, fmt.Errorf("newScript: error resolving AwsSecretAccessKey: %w", err)
-		}
 		s3Config := s3.Config{
 			Endpoint:         s.c.AwsEndpoint,
-			AccessKeyID:      accessKeyID,
-			SecretAccessKey:  secretAccessKey,
+			AccessKeyID:      s.c.AwsAccessKeyID,
+			SecretAccessKey:  s.c.AwsSecretAccessKey,
 			IamRoleEndpoint:  s.c.AwsIamRoleEndpoint,
 			EndpointProto:    s.c.AwsEndpointProto,
 			EndpointInsecure: s.c.AwsEndpointInsecure,
