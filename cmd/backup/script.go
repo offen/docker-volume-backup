@@ -90,17 +90,27 @@ func newScript() (*script, error) {
 	})
 
 	envconfig.Lookup = func(key string) (string, bool) {
-		location, ok := os.LookupEnv(key + "_FILE")
-		if ok {
+		value, okValue := os.LookupEnv(key)
+		location, okFile := os.LookupEnv(key + "_FILE")
+
+		switch {
+		case okValue && !okFile: // only value
+			return value, true
+		case !okValue && okFile: // only file
 			contents, err := os.ReadFile(location)
 			if err != nil {
-				s.logger.Error(fmt.Sprintf("Failed to read %s!", location))
+				s.must(fmt.Errorf("newScript: failed to read %s! Error: %s", location, err))
 				return "", false
 			}
 			return string(contents), true
+		case okValue && okFile: // both
+			s.must(fmt.Errorf("newScript: both %s and %s are set!", key, key+"_FILE"))
+			return "", false
+		default: // neither, ignore
+			return "", false
 		}
-		return os.LookupEnv(key)
 	}
+
 	if err := envconfig.Process("", s.c); err != nil {
 		return nil, fmt.Errorf("newScript: failed to process configuration values: %w", err)
 	}
