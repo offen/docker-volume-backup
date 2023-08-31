@@ -68,5 +68,3 @@ docker run --rm \
   ash -c 'test -f /minio_data/backup/test-hostnametoken-old.tar.gz'
 
 pass "Skipped all backends while pruning."
-
-docker compose down --volumes

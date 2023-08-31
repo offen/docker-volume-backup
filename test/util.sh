@@ -26,3 +26,20 @@ expect_running_containers () {
   fi
   pass "$1 containers running."
 }
+
+docker() {
+  case $1 in
+    compose)
+      shift
+      case $1 in
+        up)
+          shift
+          command docker compose up --timeout 3 "$@";;
+        *)
+          command docker compose "$@";;
+      esac
+      ;;
+    *)
+      command docker "$@";;
+  esac
+}
