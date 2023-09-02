@@ -8,7 +8,6 @@ package main
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"fmt"
 	"io"
 	"os"
@@ -16,10 +15,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/klauspost/pgzip"
+
 	"github.com/klauspost/compress/zstd"
 )
 
-func createArchive(files []string, inputFilePath, outputFilePath string, compression string) error {
+func createArchive(files []string, inputFilePath, outputFilePath string, compression string, compressionConcurrency int) error {
 	inputFilePath = stripTrailingSlashes(inputFilePath)
 	inputFilePath, outputFilePath, err := makeAbsolute(inputFilePath, outputFilePath)
 	if err != nil {
@@ -29,7 +30,7 @@ func createArchive(files []string, inputFilePath, outputFilePath string, compres
 		return fmt.Errorf("createArchive: error creating output file path: %w", err)
 	}
 
-	if err := compress(files, outputFilePath, filepath.Dir(inputFilePath), compression); err != nil {
+	if err := compress(files, outputFilePath, filepath.Dir(inputFilePath), compression, compressionConcurrency); err != nil {
 		return fmt.Errorf("createArchive: error creating archive: %w", err)
 	}
 
@@ -53,7 +54,7 @@ func makeAbsolute(inputFilePath, outputFilePath string) (string, string, error) 
 	return inputFilePath, outputFilePath, err
 }
 
-func compress(paths []string, outFilePath, subPath string, algo string) error {
+func compress(paths []string, outFilePath, subPath string, algo string, concurrency int) error {
 	file, err := os.Create(outFilePath)
 	var compressWriter io.WriteCloser
 	if err != nil {
@@ -63,7 +64,11 @@ func compress(paths []string, outFilePath, subPath string, algo string) error {
 	prefix := path.Dir(outFilePath)
 	switch algo {
 	case "gz":
-		compressWriter = gzip.NewWriter(file)
+		w := pgzip.NewWriter(file)
+		if err := w.SetConcurrency(1<<16, concurrency); err != nil {
+			return fmt.Errorf("compress: error setting concurrency: %w", err)
+		}
+		compressWriter = w
 	case "zst":
 		compressWriter, err = zstd.NewWriter(file)
 		if err != nil {

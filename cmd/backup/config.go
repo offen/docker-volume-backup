@@ -28,6 +28,7 @@ type Config struct {
 	AwsIamRoleEndpoint            string          `split_words:"true"`
 	AwsPartSize                   int64           `split_words:"true"`
 	BackupCompression             CompressionType `split_words:"true" default:"gz"`
+	BackupCompressionConcurrency  NaturalNumber   `split_words:"true" default:"1"`
 	BackupSources                 string          `split_words:"true" default:"/backup"`
 	BackupFilename                string          `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.{{ .Extension }}"`
 	BackupFilenameExpand          bool            `split_words:"true"`

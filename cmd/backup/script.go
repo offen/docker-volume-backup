@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"text/template"
@@ -503,7 +504,12 @@ func (s *script) createArchive() error {
 		return fmt.Errorf("createArchive: error walking filesystem tree: %w", err)
 	}
 
-	if err := createArchive(filesEligibleForBackup, backupSources, tarFile, s.c.BackupCompression.String()); err != nil {
+	concurrency := s.c.BackupCompressionConcurrency.Int()
+	if concurrency == 0 {
+		concurrency = runtime.GOMAXPROCS(0)
+	}
+
+	if err := createArchive(filesEligibleForBackup, backupSources, tarFile, s.c.BackupCompression.String(), concurrency); err != nil {
 		return fmt.Errorf("createArchive: error compressing backup folder: %w", err)
 	}
 
