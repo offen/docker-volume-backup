@@ -25,7 +25,7 @@ docker run --rm -q \
   -v $LOCAL_DIR:/archive \
   -v /var/run/docker.sock:/var/run/docker.sock \
   --env BACKUP_COMPRESSION=gz \
-  --env BACKUP_COMPRESSION_CONCURRENCY=0 \
+  --env GZIP_PARALLELISM=0 \
   --env BACKUP_FILENAME='test.{{ .Extension }}' \
   --entrypoint backup \
   offen/docker-volume-backup:${TEST_VERSION:-canary}

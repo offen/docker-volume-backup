@@ -504,7 +504,7 @@ func (s *script) createArchive() error {
 		return fmt.Errorf("createArchive: error walking filesystem tree: %w", err)
 	}
 
-	concurrency := s.c.BackupCompressionConcurrency.Int()
+	concurrency := s.c.GzipParallelism.Int()
 	if concurrency == 0 {
 		concurrency = runtime.GOMAXPROCS(0)
 	}
