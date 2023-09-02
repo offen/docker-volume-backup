@@ -5,7 +5,7 @@ services:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
     restart: always
     volumes:
-      - ./local:/archive
+      - ${LOCAL_DIR:-./local}:/archive
       - app_data:/backup/app_data:ro
       - ./01backup.env:/etc/dockervolumebackup/conf.d/01backup.env
       - ./02backup.env:/etc/dockervolumebackup/conf.d/02backup.env

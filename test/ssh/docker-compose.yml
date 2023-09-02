@@ -8,7 +8,7 @@ services:
       - PGID=1000
       - USER_NAME=test
     volumes:
-      - ./id_rsa.pub:/config/.ssh/authorized_keys
+      - ${KEY_DIR:-.}/id_rsa.pub:/config/.ssh/authorized_keys
       - ssh_backup_data:/tmp
 
   backup:
@@ -30,7 +30,7 @@ services:
       SSH_REMOTE_PATH: /tmp
       SSH_IDENTITY_PASSPHRASE: test1234
     volumes:
-      - ./id_rsa:/root/.ssh/id_rsa
+      - ${KEY_DIR:-.}/id_rsa:/root/.ssh/id_rsa
       - app_data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock
 

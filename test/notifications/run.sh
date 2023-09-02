@@ -6,7 +6,7 @@ cd $(dirname $0)
 . ../util.sh
 current_test=$(basename $(pwd))
 
-mkdir -p local
+export LOCAL_DIR=$(mktemp -d)
 
 docker compose up -d --quiet-pull
 sleep 5
@@ -46,5 +46,3 @@ if [ "$MESSAGE_BODY" != "Backing up /tmp/test.tar.gz succeeded." ]; then
   fail "Unexpected notification body $MESSAGE_BODY"
 fi
 pass "Custom notification body was used."
-
-docker compose down --volumes

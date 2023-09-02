@@ -6,23 +6,25 @@ cd "$(dirname "$0")"
 . ../util.sh
 current_test=$(basename $(pwd))
 
-openssl genrsa -des3 -passout pass:test -out rootCA.key 4096
+export CERT_DIR=$(mktemp -d)
+
+openssl genrsa -des3 -passout pass:test -out "$CERT_DIR/rootCA.key" 4096
 openssl req -passin pass:test \
   -subj "/C=DE/ST=BE/O=IntegrationTest, Inc." \
-  -x509 -new -key rootCA.key -sha256 -days 1 -out rootCA.crt
+  -x509 -new -key "$CERT_DIR/rootCA.key" -sha256 -days 1 -out "$CERT_DIR/rootCA.crt"
 
-openssl genrsa -out minio.key 4096
-openssl req -new -sha256 -key minio.key \
+openssl genrsa -out "$CERT_DIR/minio.key" 4096
+openssl req -new -sha256 -key "$CERT_DIR/minio.key" \
   -subj "/C=DE/ST=BE/O=IntegrationTest, Inc./CN=minio" \
-  -out minio.csr
+  -out "$CERT_DIR/minio.csr"
 
 openssl x509 -req -passin pass:test \
-  -in minio.csr \
-  -CA rootCA.crt -CAkey rootCA.key -CAcreateserial \
+  -in "$CERT_DIR/minio.csr" \
+  -CA "$CERT_DIR/rootCA.crt" -CAkey "$CERT_DIR/rootCA.key" -CAcreateserial \
   -extfile san.cnf \
-  -out minio.crt -days 1 -sha256
+  -out "$CERT_DIR/minio.crt" -days 1 -sha256
 
-openssl x509 -in minio.crt -noout -text
+openssl x509 -in "$CERT_DIR/minio.crt" -noout -text
 
 docker compose up -d --quiet-pull
 sleep 5
@@ -39,5 +41,3 @@ docker run --rm \
   ash -c 'tar -xvf /minio_data/backup/test.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db'
 
 pass "Found relevant files in untared remote backups."
-
-docker compose down --volumes

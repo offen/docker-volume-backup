@@ -12,7 +12,7 @@ services:
       NOTIFICATION_URLS: ${NOTIFICATION_URLS}
       EXTRA_VALUE: extra-value
     volumes:
-      - ./local:/archive
+      - ${LOCAL_DIR:-./local}:/archive
       - app_data:/backup/app_data:ro
       - ./notifications.tmpl:/etc/dockervolumebackup/notifications.d/notifications.tmpl
 

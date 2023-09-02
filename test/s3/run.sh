@@ -59,5 +59,3 @@ docker run --rm \
   ash -c 'test ! -f /minio_data/backup/test-hostnametoken-old.tar.gz && test -f /minio_data/backup/test-hostnametoken.tar.gz'
 
 pass "Old remote backup has been pruned, new one is still present."
-
-docker compose down --volumes

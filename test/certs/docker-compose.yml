@@ -12,8 +12,8 @@ services:
     entrypoint: /bin/ash -c 'mkdir -p /data/backup && minio server --certs-dir "/certs" --address ":443" /data'
     volumes:
       - minio_backup_data:/data
-      - ./minio.crt:/certs/public.crt
-      - ./minio.key:/certs/private.key
+      - ${CERT_DIR:-.}/minio.crt:/certs/public.crt
+      - ${CERT_DIR:-.}/minio.key:/certs/private.key
 
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
@@ -33,7 +33,7 @@ services:
     volumes:
       - app_data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./rootCA.crt:/root/minio-rootCA.crt
+      - ${CERT_DIR:-.}/rootCA.crt:/root/minio-rootCA.crt
 
   offen:
     image: offen/offen:latest

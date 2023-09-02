@@ -11,7 +11,7 @@ services:
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
       GPG_PASSPHRASE: 1234#$$ecret
     volumes:
-      - ./local:/archive
+      - ${LOCAL_DIR:-./local}:/archive
       - app_data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock
 

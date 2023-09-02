@@ -6,7 +6,9 @@ cd "$(dirname "$0")"
 . ../util.sh
 current_test=$(basename $(pwd))
 
-ssh-keygen -t rsa -m pem -b 4096 -N "test1234" -f id_rsa -C "docker-volume-backup@local"
+export KEY_DIR=$(mktemp -d)
+
+ssh-keygen -t rsa -m pem -b 4096 -N "test1234" -f "$KEY_DIR/id_rsa" -C "docker-volume-backup@local"
 
 docker compose up -d --quiet-pull
 sleep 5
@@ -63,6 +65,3 @@ docker run --rm \
   ash -c 'test ! -f /ssh_data/test-hostnametoken-old.tar.gz && test -f /ssh_data/test-hostnametoken.tar.gz'
 
 pass "Old remote backup has been pruned, new one is still present."
-
-docker compose down --volumes
-rm -f id_rsa id_rsa.pub

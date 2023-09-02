@@ -2,19 +2,19 @@ version: '3'
 
 services:
   storage:
-    image: mcr.microsoft.com/azure-storage/azurite
+    image: mcr.microsoft.com/azure-storage/azurite:3.26.0
     volumes:
-      - azurite_backup_data:/data
+      - ${DATA_DIR:-./data}:/data
     command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --location /data
     healthcheck:
-        test: nc 127.0.0.1 10000 -z
-        interval: 1s
-        retries: 30
+      test: nc 127.0.0.1 10000 -z
+      interval: 1s
+      retries: 30
 
   az_cli:
-    image: mcr.microsoft.com/azure-cli
+    image: mcr.microsoft.com/azure-cli:2.51.0
     volumes:
-      - ./local:/dump
+      - ${LOCAL_DIR:-./local}:/dump
     command:
       - /bin/sh
       - -c
@@ -53,6 +53,4 @@ services:
       - app_data:/var/opt/offen
 
 volumes:
-  azurite_backup_data:
-    name: azurite_backup_data
   app_data:

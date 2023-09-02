@@ -15,16 +15,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build Docker Image
-        env:
-          DOCKER_BUILDKIT: '1'
-        run: docker build . -t offen/docker-volume-backup:test
-
       - name: Run Tests
         working-directory: ./test
         run: |
-          # Stop the buildx container so the tests can make assertions
-          # about the number of running containers
-          docker rm -f $(docker ps -aq)
-          export GPG_TTY=$(tty)
-          ./test.sh test
+          BUILD_IMAGE=1 ./test.sh
