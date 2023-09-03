@@ -28,6 +28,7 @@ type Config struct {
 	AwsIamRoleEndpoint            string          `split_words:"true"`
 	AwsPartSize                   int64           `split_words:"true"`
 	BackupCompression             CompressionType `split_words:"true" default:"gz"`
+	GzipParallelism               WholeNumber     `split_words:"true" default:"1"`
 	BackupSources                 string          `split_words:"true" default:"/backup"`
 	BackupFilename                string          `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.{{ .Extension }}"`
 	BackupFilenameExpand          bool            `split_words:"true"`
@@ -131,6 +132,7 @@ func (r *RegexpDecoder) Decode(v string) error {
 	return nil
 }
 
+// NaturalNumber is a type that can be used to decode a positive, non-zero natural number
 type NaturalNumber int
 
 func (n *NaturalNumber) Decode(v string) error {
@@ -146,5 +148,24 @@ func (n *NaturalNumber) Decode(v string) error {
 }
 
 func (n *NaturalNumber) Int() int {
+	return int(*n)
+}
+
+// WholeNumber is a type that can be used to decode a positive whole number, including zero
+type WholeNumber int
+
+func (n *WholeNumber) Decode(v string) error {
+	asInt, err := strconv.Atoi(v)
+	if err != nil {
+		return fmt.Errorf("config: error converting %s to int", v)
+	}
+	if asInt < 0 {
+		return fmt.Errorf("config: expected a whole, positive number, including zero. Got %d", asInt)
+	}
+	*n = WholeNumber(asInt)
+	return nil
+}
+
+func (n *WholeNumber) Int() int {
 	return int(*n)
 }

@@ -35,6 +35,9 @@ docker() {
         up)
           shift
           command docker compose up --timeout 3 "$@";;
+        down)
+          shift
+          command docker compose down --timeout 3 "$@";;
         *)
           command docker compose "$@";;
       esac

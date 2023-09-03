@@ -159,6 +159,13 @@ You can populate below template according to your requirements and use it as you
 
 # BACKUP_COMPRESSION="gz"
 
+# Parallelism level for "gz" (Gzip) compression.
+# Defines how many blocks of data are concurrently processed.
+# Higher values result in faster compression. No effect on decompression
+# Default = 1. Setting this to 0 will use all available threads.
+
+# GZIP_PARALLELISM=1
+
 # The name of the backup file including the extension.
 # Format verbs will be replaced as in `strftime`. Omitting them
 # will result in the same filename for every backup run, which means previous

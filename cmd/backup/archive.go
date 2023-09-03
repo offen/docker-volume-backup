@@ -8,18 +8,20 @@ package main
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
+
+	"github.com/klauspost/pgzip"
 
 	"github.com/klauspost/compress/zstd"
 )
 
-func createArchive(files []string, inputFilePath, outputFilePath string, compression string) error {
+func createArchive(files []string, inputFilePath, outputFilePath string, compression string, compressionConcurrency int) error {
 	inputFilePath = stripTrailingSlashes(inputFilePath)
 	inputFilePath, outputFilePath, err := makeAbsolute(inputFilePath, outputFilePath)
 	if err != nil {
@@ -29,7 +31,7 @@ func createArchive(files []string, inputFilePath, outputFilePath string, compres
 		return fmt.Errorf("createArchive: error creating output file path: %w", err)
 	}
 
-	if err := compress(files, outputFilePath, filepath.Dir(inputFilePath), compression); err != nil {
+	if err := compress(files, outputFilePath, filepath.Dir(inputFilePath), compression, compressionConcurrency); err != nil {
 		return fmt.Errorf("createArchive: error creating archive: %w", err)
 	}
 
@@ -53,26 +55,17 @@ func makeAbsolute(inputFilePath, outputFilePath string) (string, string, error) 
 	return inputFilePath, outputFilePath, err
 }
 
-func compress(paths []string, outFilePath, subPath string, algo string) error {
+func compress(paths []string, outFilePath, subPath string, algo string, concurrency int) error {
 	file, err := os.Create(outFilePath)
-	var compressWriter io.WriteCloser
 	if err != nil {
 		return fmt.Errorf("compress: error creating out file: %w", err)
 	}
 
 	prefix := path.Dir(outFilePath)
-	switch algo {
-	case "gz":
-		compressWriter = gzip.NewWriter(file)
-	case "zst":
-		compressWriter, err = zstd.NewWriter(file)
-		if err != nil {
-			return fmt.Errorf("compress: zstd error: %w", err)
-		}
-	default:
-		return fmt.Errorf("compress: unsupported compression algorithm: %s", algo)
+	compressWriter, err := getCompressionWriter(file, algo, concurrency)
+	if err != nil {
+		return fmt.Errorf("compress: error getting compression writer: %w", err)
 	}
-
 	tarWriter := tar.NewWriter(compressWriter)
 
 	for _, p := range paths {
@@ -97,6 +90,34 @@ func compress(paths []string, outFilePath, subPath string, algo string) error {
 	}
 
 	return nil
+}
+
+func getCompressionWriter(file *os.File, algo string, concurrency int) (io.WriteCloser, error) {
+	switch algo {
+	case "gz":
+		w, err := pgzip.NewWriterLevel(file, 5)
+		if err != nil {
+			return nil, fmt.Errorf("getCompressionWriter: gzip error: %w", err)
+		}
+
+		if concurrency == 0 {
+			concurrency = runtime.GOMAXPROCS(0)
+		}
+
+		if err := w.SetConcurrency(1<<20, concurrency); err != nil {
+			return nil, fmt.Errorf("getCompressionWriter: error setting concurrency: %w", err)
+		}
+
+		return w, nil
+	case "zst":
+		compressWriter, err := zstd.NewWriter(file)
+		if err != nil {
+			return nil, fmt.Errorf("getCompressionWriter: zstd error: %w", err)
+		}
+		return compressWriter, nil
+	default:
+		return nil, fmt.Errorf("getCompressionWriter: unsupported compression algorithm: %s", algo)
+	}
 }
 
 func writeTarball(path string, tarWriter *tar.Writer, prefix string) error {

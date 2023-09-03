@@ -503,7 +503,7 @@ func (s *script) createArchive() error {
 		return fmt.Errorf("createArchive: error walking filesystem tree: %w", err)
 	}
 
-	if err := createArchive(filesEligibleForBackup, backupSources, tarFile, s.c.BackupCompression.String()); err != nil {
+	if err := createArchive(filesEligibleForBackup, backupSources, tarFile, s.c.BackupCompression.String(), s.c.GzipParallelism.Int()); err != nil {
 		return fmt.Errorf("createArchive: error compressing backup folder: %w", err)
 	}
 
