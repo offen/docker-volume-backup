@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/klauspost/pgzip"
@@ -56,31 +57,15 @@ func makeAbsolute(inputFilePath, outputFilePath string) (string, string, error) 
 
 func compress(paths []string, outFilePath, subPath string, algo string, concurrency int) error {
 	file, err := os.Create(outFilePath)
-	var compressWriter io.WriteCloser
 	if err != nil {
 		return fmt.Errorf("compress: error creating out file: %w", err)
 	}
 
 	prefix := path.Dir(outFilePath)
-	switch algo {
-	case "gz":
-		w, err := pgzip.NewWriterLevel(file, 5)
-		if err != nil {
-			return fmt.Errorf("compress: gzip error: %w", err)
-		}
-		if err := w.SetConcurrency(1<<20, concurrency); err != nil {
-			return fmt.Errorf("compress: error setting concurrency: %w", err)
-		}
-		compressWriter = w
-	case "zst":
-		compressWriter, err = zstd.NewWriter(file)
-		if err != nil {
-			return fmt.Errorf("compress: zstd error: %w", err)
-		}
-	default:
-		return fmt.Errorf("compress: unsupported compression algorithm: %s", algo)
+	compressWriter, err := getCompressionWriter(file, algo, concurrency)
+	if err != nil {
+		return fmt.Errorf("compress: error getting compression writer: %w", err)
 	}
-
 	tarWriter := tar.NewWriter(compressWriter)
 
 	for _, p := range paths {
@@ -105,6 +90,34 @@ func compress(paths []string, outFilePath, subPath string, algo string, concurre
 	}
 
 	return nil
+}
+
+func getCompressionWriter(file *os.File, algo string, concurrency int) (io.WriteCloser, error) {
+	switch algo {
+	case "gz":
+		w, err := pgzip.NewWriterLevel(file, 5)
+		if err != nil {
+			return nil, fmt.Errorf("getCompressionWriter: gzip error: %w", err)
+		}
+
+		if concurrency == 0 {
+			concurrency = runtime.GOMAXPROCS(0)
+		}
+
+		if err := w.SetConcurrency(1<<20, concurrency); err != nil {
+			return nil, fmt.Errorf("getCompressionWriter: error setting concurrency: %w", err)
+		}
+
+		return w, nil
+	case "zst":
+		compressWriter, err := zstd.NewWriter(file)
+		if err != nil {
+			return nil, fmt.Errorf("getCompressionWriter: zstd error: %w", err)
+		}
+		return compressWriter, nil
+	default:
+		return nil, fmt.Errorf("getCompressionWriter: unsupported compression algorithm: %s", algo)
+	}
 }
 
 func writeTarball(path string, tarWriter *tar.Writer, prefix string) error {

@@ -132,6 +132,7 @@ func (r *RegexpDecoder) Decode(v string) error {
 	return nil
 }
 
+// NaturalNumber is a type that can be used to decode a positive, non-zero natural number
 type NaturalNumber int
 
 func (n *NaturalNumber) Decode(v string) error {
@@ -150,6 +151,7 @@ func (n *NaturalNumber) Int() int {
 	return int(*n)
 }
 
+// WholeNumber is a type that can be used to decode a positive whole number, including zero
 type WholeNumber int
 
 func (n *WholeNumber) Decode(v string) error {
@@ -158,7 +160,7 @@ func (n *WholeNumber) Decode(v string) error {
 		return fmt.Errorf("config: error converting %s to int", v)
 	}
 	if asInt < 0 {
-		return fmt.Errorf("config: expected a natural number, got %d", asInt)
+		return fmt.Errorf("config: expected a whole, positive number, including zero. Got %d", asInt)
 	}
 	*n = WholeNumber(asInt)
 	return nil
