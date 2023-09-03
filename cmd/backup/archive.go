@@ -64,8 +64,11 @@ func compress(paths []string, outFilePath, subPath string, algo string, concurre
 	prefix := path.Dir(outFilePath)
 	switch algo {
 	case "gz":
-		w := pgzip.NewWriter(file)
-		if err := w.SetConcurrency(1<<16, concurrency); err != nil {
+		w, err := pgzip.NewWriterLevel(file, 5)
+		if err != nil {
+			return fmt.Errorf("compress: gzip error: %w", err)
+		}
+		if err := w.SetConcurrency(1<<20, concurrency); err != nil {
 			return fmt.Errorf("compress: error setting concurrency: %w", err)
 		}
 		compressWriter = w
