@@ -1,0 +1,34 @@
+title: docker-volume-backup
+description: Documentation for the offen/docker-volume-backup Docker image.
+theme: just-the-docs
+
+url: https://offen.github.io/docker-volume-backup/
+
+callouts_level: quiet
+callouts:
+  highlight:
+    color: yellow
+  important:
+    title: Important
+    color: blue
+  new:
+    title: New
+    color: green
+  note:
+    title: Note
+    color: purple
+  warning:
+    title: Warning
+    color: red
+
+aux_links:
+  'GitHub Repository':
+    - https://github.com/offen/docker-volume-backup
+
+nav_external_links:
+  - title: GitHub Repository
+    url: https://github.com/offen/docker-volume-backup
+
+footer_content: >-
+  Copyright &copy; 2021 Offen Authors and contributors.
+  Distributed under the <a href="https://github.com/offen/docker-volume-backup/tree/main/LICENSE">MPL-2.0 License.</a>
