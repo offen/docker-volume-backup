@@ -18,7 +18,7 @@ You can work around this by either updating `docker-compose` or unquoting your c
 You can populate below template according to your requirements and use it as your `env_file`:
 
 {% raw %}
-```ini
+```
 ########### BACKUP SCHEDULE
 
 # Backups run on the given cron schedule in `busybox` flavor. If no
