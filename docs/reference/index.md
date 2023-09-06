@@ -11,7 +11,7 @@ Backup targets, schedule and retention are configured using environment variable
 {: .note }
 You can use any environment variable from below also with a `_FILE` suffix to be able to load the value from a file. This is usually useful when using [Docker Secrets](https://docs.docker.com/engine/swarm/secrets/) or similar.
 
-{: .important }
+{: .warning }
 In case you encouter double quoted values in your runtime configuration you might still be using an [older version of `docker-compose`][compose-issue].
 You can work around this by either updating `docker-compose` or unquoting your configuration values.
 

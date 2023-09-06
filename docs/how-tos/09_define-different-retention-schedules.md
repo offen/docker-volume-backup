@@ -36,4 +36,5 @@ BACKUP_FILENAME="monthly-backup-%Y-%m-%dT%H-%M-%S.tar.gz"
 BACKUP_CRON_EXPRESSION="0 4 1 * *"
 ```
 
-Note that while it's possible to define colliding cron schedules for each of these configurations, you might need to adjust the value for `LOCK_TIMEOUT` in case your backups are large and might take longer than an hour.
+{: .note }
+While it's possible to define colliding cron schedules for each of these configurations, you might need to adjust the value for `LOCK_TIMEOUT` in case your backups are large and might take longer than an hour.

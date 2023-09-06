@@ -1,7 +1,7 @@
 ---
 title: Run custom commands during the backup lifecycle
 layout: default
-nav_order: 4
+nav_order: 5
 parent: How Tos
 ---
 
@@ -34,6 +34,7 @@ volumes:
   backup_data:
 ```
 
+{: .note }
 Due to Docker limitations, you currently cannot use any kind of redirection in these commands unless you pass the command to `/bin/sh -c` or similar.
 I.e. instead of using `echo "ok" > ok.txt` you will need to use `/bin/sh -c 'echo "ok" > ok.txt'`.
 
@@ -65,7 +66,7 @@ volumes:
 
 
 The backup procedure is guaranteed to wait for all `pre` or `post` commands to finish before proceeding.
-However there are no guarantees about the order in which they are run, which could also happen concurrently.
+However, there are no guarantees about the order in which they are run, which could also happen concurrently.
 
 By default the backup command is executed by the user provided by the container's image.
 It is possible to specify a custom user that is used to run commands in dedicated labels with the format `docker-volume-backup.[step]-[pre|post].user`:

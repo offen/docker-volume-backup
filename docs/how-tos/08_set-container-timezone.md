@@ -2,7 +2,7 @@
 title: Set the timezone the container runs in
 layout: default
 parent: How Tos
-nav_order: 7
+nav_order: 8
 ---
 
 # Set the timezone the container runs in

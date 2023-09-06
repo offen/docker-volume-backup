@@ -1,15 +1,11 @@
 ---
-title: Set up notifications
+title: Receive notifications
 layout: default
-nav_order: 3
+nav_order: 4
 parent: How Tos
 ---
 
-# Set up notifications
-{:.no_toc}
-
-1. TOC
-{:toc}
+# Receive notifications
 
 ## Send email notifications on failed backup runs
 
@@ -31,12 +27,24 @@ Refer to the documentation of [shoutrrr][shoutrrr-docs] to find out about option
 
 [shoutrrr-docs]: https://containrrr.dev/shoutrrr/0.7/services/overview/
 
+{: .note }
+If you also want notifications on successful executions, set `NOTIFICATION_LEVEL` to `info`.
+
 ## Customize notifications
 
-The title and body of the notifications can be easily tailored to your needs using [go templates](https://pkg.go.dev/text/template).
-Templates must be mounted inside the container in `/etc/dockervolumebackup/notifications.d/`: any file inside this directory will be parsed.
+The title and body of the notifications can be tailored to your needs using [Go templates](https://pkg.go.dev/text/template).
+Template sources must be mounted inside the container in `/etc/dockervolumebackup/notifications.d/`: any file inside this directory will be parsed.
+
+```yml
+services:
+  backup:
+    image: offen/docker-volume-backup:v2
+    volumes:
+      - ./customized.template:/etc/dockervolumebackup/notifications.d/01.template
+```
 
 The files have to define [nested templates](https://pkg.go.dev/text/template#hdr-Nested_template_definitions) in order to override the original values. An example:
+
 {% raw %}
 ```
 {{ define "title_success" -}}
@@ -54,15 +62,18 @@ The files have to define [nested templates](https://pkg.go.dev/text/template#hdr
 ```
 {% endraw %}
 
-Overridable template names are: `title_success`, `body_success`, `title_failure`, `body_failure`.
+Template names that can be overridden are:
+  - `title_success` (the title used for a successful execution)
+  - `body_success` (the body used for a successful execution)
+  - `title_failure` (the title used for a failed execution)
+  - `body_failure` (the body used for a failed execution)
 
 ## Notification templates reference
 
-In order to customize title and body of notifications you'll have to write a [go template](https://pkg.go.dev/text/template) and mount it inside the `/etc/dockervolumebackup/notifications.d/` directory.
-
-Configuration, data about the backup run and helper functions will be passed to this template, this page documents them fully.
+Configuration, data about the backup run and helper functions will be passed to these templates, this page documents them fully.
 
 ### Data
+
 Here is a list of all data passed to the template:
 
 * `Config`: this object holds the configuration that has been passed to the script. The field names are the name of the recognized environment variables converted in PascalCase. (e.g. `BACKUP_STOP_CONTAINER_LABEL` becomes `BackupStopContainerLabel`)
@@ -97,11 +108,11 @@ Some formatting and helper functions are also available:
 * `formatBytesDec`: formats an amount of bytes using powers of 1000 (e.g. `7055258` bytes will be `7.1 MB`)
 * `env`: returns the value of the environment variable of the given key if set
 
-## Use special characters in notification URLs
+## Special characters in notification URLs
 
 The value given to `NOTIFICATION_URLS` is a comma separated list of URLs.
-If such a URL contains special characters (e.g. commas) it needs to be URL encoded.
-To get an encoded version of your URL, you can use the CLI tool provided by `shoutrrr` (which is the library used for sending notifications):
+If such a URL contains special characters (e.g. commas) these need to be URL encoded.
+To obtain an encoded version of your URL, you can use the CLI tool provided by `shoutrrr` (which is the library used for sending notifications):
 
 ```
 docker run --rm -ti containrrr/shoutrrr generate [service]

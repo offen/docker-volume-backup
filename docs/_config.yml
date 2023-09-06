@@ -31,4 +31,5 @@ nav_external_links:
 
 footer_content: >-
   Copyright &copy; 2021 Offen Authors and contributors.
-  Distributed under the <a href="https://github.com/offen/docker-volume-backup/tree/main/LICENSE">MPL-2.0 License.</a>
+  Distributed under the <a href="https://github.com/offen/docker-volume-backup/tree/main/LICENSE">MPL-2.0 License.</a><br>
+  Something missing, unclear or not working? Open <a href="https://github.com/offen/docker-volume-backup/issues">an issue</a>.

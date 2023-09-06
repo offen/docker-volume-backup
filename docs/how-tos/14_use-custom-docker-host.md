@@ -8,6 +8,7 @@ nav_order: 14
 # Use a custom Docker host
 
 If you are interfacing with Docker via TCP, set `DOCKER_HOST` to the correct URL.
+
 ```ini
 DOCKER_HOST=tcp://docker_socket_proxy:2375
 ```
