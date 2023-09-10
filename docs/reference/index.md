@@ -12,7 +12,7 @@ Backup targets, schedule and retention are configured using environment variable
 You can use any environment variable from below also with a `_FILE` suffix to be able to load the value from a file. This is usually useful when using [Docker Secrets](https://docs.docker.com/engine/swarm/secrets/) or similar.
 
 {: .warning }
-In case you encouter double quoted values in your runtime configuration you might still be using an [older version of `docker-compose`][compose-issue].
+In case you encounter double quoted values in your runtime configuration you might still be using an [older version of `docker-compose`][compose-issue].
 You can work around this by either updating `docker-compose` or unquoting your configuration values.
 
 You can populate below template according to your requirements and use it as your `env_file`:
@@ -72,7 +72,7 @@ You can populate below template according to your requirements and use it as you
 # as documented below instead.
 # ************************************************************************
 # Whether to copy the content of backup folder before creating the tar archive.
-# In the rare scenario where the content of the source backup volume is continously
+# In the rare scenario where the content of the source backup volume is continuously
 # updating, but we do not wish to stop the container while performing the backup,
 # this setting can be used to ensure the integrity of the tar.gz file.
 
@@ -395,7 +395,7 @@ You can populate below template according to your requirements and use it as you
 # message on failure and all prior log output.
 
 # The recipient(s) of the notification. Supply a comma separated list
-# of adresses if you want to notify multiple recipients. If this is
+# of addresses if you want to notify multiple recipients. If this is
 # not set, no emails will be sent.
 
 # EMAIL_NOTIFICATION_RECIPIENT="you@example.com"

@@ -8,7 +8,7 @@ nav_order: 1
 # Stop containers during backup
 
 In many cases, it will be desirable to stop the services that are consuming the volume you want to backup in order to ensure data integrity.
-This image can automatically stop and restart containers and services (in case you are running Docker in Swarm mode).
+This image can automatically stop and restart containers and services.
 By default, any container that is labeled `docker-volume-backup.stop-during-backup=true` will be stopped before the backup is being taken and restarted once it has finished.
 
 In case you need more fine grained control about which containers should be stopped (e.g. when backing up multiple volumes on different schedules), you can set the `BACKUP_STOP_CONTAINER_LABEL` environment variable and then use the same value for labeling:

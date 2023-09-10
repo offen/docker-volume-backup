@@ -7,7 +7,7 @@ nav_order: 10
 
 # Handle file uploads using third party tools
 
-If you want to use a non-supported storage backend, or want to use a third party (e.g. rsync, rclone) tool for file uploads, you can build a Docker image containing the required binaries off this one, and call through to these in lifecycle hooks.
+If you want to use an unsupported storage backend, or want to use a third party (e.g. rsync, rclone) tool for file uploads, you can build a Docker image containing the required binaries off this one, and call through to these in lifecycle hooks.
 
 For example, if you wanted to use `rsync`, define your Docker image like this:
 
@@ -40,5 +40,5 @@ volumes:
   app_data:
 ```
 
-
+{: .note }
 Commands will be invoked with the filepath of the tar archive passed as `COMMAND_RUNTIME_BACKUP_FILEPATH`.
