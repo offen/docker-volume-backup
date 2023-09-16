@@ -13,9 +13,13 @@ FROM alpine:3.18
 
 WORKDIR /root
 
+RUN addgroup -g 10001 -S nonroot \
+  && adduser -u 10000 -S -G nonroot -h /home/nonroot nonroot \
+  && chmod a+rw /var/lock
+
 RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /app/cmd/backup/backup /usr/bin/backup
-COPY --chmod=755 ./entrypoint.sh /root/
+COPY --chmod=755 ./entrypoint.sh /usr/bin
 
-ENTRYPOINT ["/root/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/entrypoint.sh"]
