@@ -6,6 +6,11 @@ cd $(dirname $0)
 . ../util.sh
 current_test=$(basename $(pwd))
 
+export BASE_VERSION="${TEST_VERSION:-canary}"
+export TEST_VERSION="${TEST_VERSION:-canary}-with-nonroot"
+
+docker build . -t offen/docker-volume-backup:$TEST_VERSION --build-arg version=$BASE_VERSION
+
 docker network create test_network
 docker volume create backup_data
 docker volume create app_data
