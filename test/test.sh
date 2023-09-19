@@ -63,6 +63,7 @@ for dir in $(find $find_args | sort); do
     fi
 
     if [ "$(docker inspect $sandbox --format '{{ .State.Running }}')" = "false" ]; then
+      docker rm $sandbox
       docker run $docker_run_args offen/docker-volume-backup:test-sandbox
     fi
 
