@@ -49,16 +49,27 @@ for dir in $(find $find_args | sort); do
 
   if [ -z "$NO_IMAGE_CACHE" ]; then
     docker_run_args="$docker_run_args \
-    -v "${sandbox}_image":/var/lib/docker/image \
-    -v "${sandbox}_overlay2":/var/lib/docker/overlay2"
+      -v "${sandbox}_image":/var/lib/docker/image \
+      -v "${sandbox}_overlay2":/var/lib/docker/overlay2"
   fi
 
   docker run $docker_run_args offen/docker-volume-backup:test-sandbox
 
+  retry_counter=0
   until docker exec $sandbox /bin/sh -c 'docker info' > /dev/null 2>&1; do
+    if [ $retry_counter -gt 20 ]; then
+      echo "Gave up waiting for Docker daemon to become ready after 20 attempts"
+      exit 1
+    fi
+
+    if [ "$(docker inspect $sandbox --format '{{ .State.Running }}')" = "false" ]; then
+      docker rm $sandbox
+      docker run $docker_run_args offen/docker-volume-backup:test-sandbox
+    fi
+
     sleep 0.5
+    retry_counter=$((retry_counter+1))
   done
-  sleep 0.5
 
   docker exec $sandbox /bin/sh -c "docker load -i /cache/image.tar.gz"
   docker exec -e TEST_VERSION=$IMAGE_TAG $sandbox /bin/sh -c "/code/test/$test"
