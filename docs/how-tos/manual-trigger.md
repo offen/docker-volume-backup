@@ -1,5 +1,5 @@
 ---
-title: Trigger a backp manually
+title: Trigger a backup manually
 layout: default
 parent: How Tos
 nav_order: 8
