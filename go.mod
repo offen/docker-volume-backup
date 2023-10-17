@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.4.0
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.1.0
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.2.0
 	github.com/containrrr/shoutrrr v0.7.1
 	github.com/cosiner/argv v0.1.0
 	github.com/docker/docker v24.0.5+incompatible
