@@ -57,9 +57,11 @@ services:
     volumes:
       - data:/backup/my-app-backup:ro
       # Mounting the Docker socket allows the script to stop and restart
-      # the container during backup. You can omit this if you don't want
-      # to stop the container. In case you need to proxy the socket, you can
-      # also provide a location by setting `DOCKER_HOST` in the container
+      # the container during backup and to access the container labels to
+      # specify custom commands. You can omit this if you don't want to
+      # stop the container or run custom commands. In case you need to
+      # proxy the socket, you can also provide a location by setting
+      # `DOCKER_HOST` in the container
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # If you mount a local directory or volume to `/archive` a local
       # copy of the backup will be stored there. You can override the
