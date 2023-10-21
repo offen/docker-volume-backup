@@ -16,6 +16,10 @@ Such commands are defined by specifying the command in a `docker-volume-backup.[
 - `copy` (the tar archive is copied to all configured storages)
 - `prune` (existing backups are pruned based on the defined ruleset - optional)
 
+{: .note }
+So that the `docker-volume-backup` container can access the labels on other containers, it is necessary that the docker socket is mounted into
+the `docker-volume-backup` container as shown in the Quickstart example.
+
 Taking a database dump using `mysqldump` would look like this:
 
 ```yml
@@ -38,7 +42,9 @@ volumes:
 Due to Docker limitations, you currently cannot use any kind of redirection in these commands unless you pass the command to `/bin/sh -c` or similar.
 I.e. instead of using `echo "ok" > ok.txt` you will need to use `/bin/sh -c 'echo "ok" > ok.txt'`.
 
-If you need fine grained control about which container's commands are run, you can use the `EXEC_LABEL` configuration on your `docker-volume-backup` container:
+If you have more than one `docker-volume-backup` container (possibly across several docker-compose environments) to backup or you are using
+multiple backup schedules, you will need to use `EXEC_LABEL` in the configuration and a `docker-volume-backup.exec-label` label on each
+container using custom commands to ensure that the commands are only run by the correct `docker-volume-backup` instance.
 
 ```yml
 version: '3'
