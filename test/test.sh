@@ -65,10 +65,12 @@ for dir in $(find $find_args | sort); do
     if [ "$(docker inspect $sandbox --format '{{ .State.Running }}')" = "false" ]; then
       docker rm $sandbox
       docker run $docker_run_args offen/docker-volume-backup:test-sandbox
+      echo "Recreated sandbox"
     fi
 
     sleep 0.5
     retry_counter=$((retry_counter+1))
+    echo "Retrying, attempt $retry_counter"
   done
 
   docker exec $sandbox /bin/sh -c "docker load -i /cache/image.tar.gz"
