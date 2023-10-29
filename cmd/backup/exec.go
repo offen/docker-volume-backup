@@ -51,7 +51,7 @@ func (s *script) exec(containerRef string, command string, user string) ([]byte,
 		outputDone <- err
 	}()
 
-	if <-outputDone != nil {
+	if err := <-outputDone; err != nil {
 		return nil, nil, fmt.Errorf("exec: error demultiplexing output: %w", err)
 	}
 
