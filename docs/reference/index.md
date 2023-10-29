@@ -9,7 +9,9 @@ nav_order: 2
 Backup targets, schedule and retention are configured using environment variables.
 
 {: .note }
-You can use any environment variable from below also with a `_FILE` suffix to be able to load the value from a file. This is usually useful when using [Docker Secrets](https://docs.docker.com/engine/swarm/secrets/) or similar.
+You can use any environment variable from below also with a `_FILE` suffix to be able to load the value from a file.
+This is typically useful when using [Docker Secrets](https://docs.docker.com/engine/swarm/secrets/) or similar.
+Note that secrets will not be trimmed of leading or trailing whitespace.
 
 {: .warning }
 In case you encounter double quoted values in your runtime configuration you might still be using an [older version of `docker-compose`][compose-issue].
