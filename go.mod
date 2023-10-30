@@ -7,7 +7,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.2.0
 	github.com/containrrr/shoutrrr v0.7.1
 	github.com/cosiner/argv v0.1.0
-	github.com/docker/docker v24.0.5+incompatible
+	github.com/docker/docker v24.0.7+incompatible
 	github.com/gofrs/flock v0.8.1
 	github.com/klauspost/compress v1.17.2
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
