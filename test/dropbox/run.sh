@@ -50,7 +50,7 @@ info "Create second backup and prune"
 logs=$(docker compose exec -T backup backup)
 
 echo "$logs"
-if echo "$logs" | grep -q "Pruned 1 out of 2 backups as their age exceeded the configured retention period"; then
+if echo "$logs" | grep -q "Pruned 1 out of 2 backups as they were older"; then
   pass "Old remote backup has been pruned, new one is still present."
 elif echo "$logs" | grep -q "ERROR"; then
   fail "Pruning failed, errors reported: $logs"
