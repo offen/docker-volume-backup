@@ -172,11 +172,11 @@ func newScript() (*script, error) {
 			CACert:           s.c.AwsEndpointCACert.Cert,
 			PartSize:         s.c.AwsPartSize,
 		}
-		if s3Backend, err := s3.NewStorageBackend(s3Config, logFunc); err != nil {
+		s3Backend, err := s3.NewStorageBackend(s3Config, logFunc)
+		if err != nil {
 			return nil, fmt.Errorf("newScript: error creating s3 storage backend: %w", err)
-		} else {
-			s.storages = append(s.storages, s3Backend)
 		}
+		s.storages = append(s.storages, s3Backend)
 	}
 
 	if s.c.WebdavUrl != "" {
@@ -187,11 +187,11 @@ func newScript() (*script, error) {
 			Password:    s.c.WebdavPassword,
 			RemotePath:  s.c.WebdavPath,
 		}
-		if webdavBackend, err := webdav.NewStorageBackend(webDavConfig, logFunc); err != nil {
+		webdavBackend, err := webdav.NewStorageBackend(webDavConfig, logFunc)
+		if err != nil {
 			return nil, fmt.Errorf("newScript: error creating webdav storage backend: %w", err)
-		} else {
-			s.storages = append(s.storages, webdavBackend)
 		}
+		s.storages = append(s.storages, webdavBackend)
 	}
 
 	if s.c.SSHHostName != "" {
@@ -204,11 +204,11 @@ func newScript() (*script, error) {
 			IdentityPassphrase: s.c.SSHIdentityPassphrase,
 			RemotePath:         s.c.SSHRemotePath,
 		}
-		if sshBackend, err := ssh.NewStorageBackend(sshConfig, logFunc); err != nil {
+		sshBackend, err := ssh.NewStorageBackend(sshConfig, logFunc)
+		if err != nil {
 			return nil, fmt.Errorf("newScript: error creating ssh storage backend: %w", err)
-		} else {
-			s.storages = append(s.storages, sshBackend)
 		}
+		s.storages = append(s.storages, sshBackend)
 	}
 
 	if _, err := os.Stat(s.c.BackupArchive); !os.IsNotExist(err) {

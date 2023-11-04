@@ -127,12 +127,12 @@ func (b *azureBlobStorage) Prune(deadline time.Time, pruningPrefix string) (*sto
 		}
 	}
 
-	stats := storage.PruneStats{
+	stats := &storage.PruneStats{
 		Total:  totalCount,
 		Pruned: uint(len(matches)),
 	}
 
-	if err := b.DoPrune(b.Name(), len(matches), int(totalCount), func() error {
+	pruneErr := b.DoPrune(b.Name(), len(matches), int(totalCount), deadline, func() error {
 		wg := sync.WaitGroup{}
 		wg.Add(len(matches))
 		var errs []error
@@ -152,9 +152,7 @@ func (b *azureBlobStorage) Prune(deadline time.Time, pruningPrefix string) (*sto
 			return errors.Join(errs...)
 		}
 		return nil
-	}); err != nil {
-		return &stats, err
-	}
+	})
 
-	return &stats, nil
+	return stats, pruneErr
 }

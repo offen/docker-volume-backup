@@ -174,16 +174,14 @@ func (b *sshStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.P
 		Pruned: uint(len(matches)),
 	}
 
-	if err := b.DoPrune(b.Name(), len(matches), len(candidates), func() error {
+	pruneErr := b.DoPrune(b.Name(), len(matches), len(candidates), deadline, func() error {
 		for _, match := range matches {
 			if err := b.sftpClient.Remove(filepath.Join(b.DestinationPath, match)); err != nil {
 				return fmt.Errorf("(*sshStorage).Prune: error removing file: %w", err)
 			}
 		}
 		return nil
-	}); err != nil {
-		return stats, err
-	}
+	})
 
-	return stats, nil
+	return stats, pruneErr
 }
