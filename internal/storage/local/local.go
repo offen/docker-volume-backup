@@ -116,7 +116,7 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 		Pruned: uint(len(matches)),
 	}
 
-	if err := b.DoPrune(b.Name(), len(matches), len(candidates), func() error {
+	pruneErr := b.DoPrune(b.Name(), len(matches), len(candidates), deadline, func() error {
 		var removeErrors []error
 		for _, match := range matches {
 			if err := os.Remove(match); err != nil {
@@ -131,11 +131,9 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 			)
 		}
 		return nil
-	}); err != nil {
-		return stats, err
-	}
+	})
 
-	return stats, nil
+	return stats, pruneErr
 }
 
 // copy creates a copy of the file located at `dst` at `src`.

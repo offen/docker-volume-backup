@@ -167,7 +167,7 @@ func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.Pr
 		Pruned: uint(len(matches)),
 	}
 
-	if err := b.DoPrune(b.Name(), len(matches), lenCandidates, func() error {
+	pruneErr := b.DoPrune(b.Name(), len(matches), lenCandidates, deadline, func() error {
 		objectsCh := make(chan minio.ObjectInfo)
 		go func() {
 			for _, match := range matches {
@@ -186,9 +186,7 @@ func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.Pr
 			return errors.Join(removeErrors...)
 		}
 		return nil
-	}); err != nil {
-		return stats, err
-	}
+	})
 
-	return stats, nil
+	return stats, pruneErr
 }

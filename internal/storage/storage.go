@@ -4,6 +4,7 @@
 package storage
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -17,7 +18,6 @@ type Backend interface {
 // StorageBackend is a generic type of storage. Everything here are common properties of all storage types.
 type StorageBackend struct {
 	DestinationPath string
-	RetentionDays   int
 	Log             Log
 }
 
@@ -39,16 +39,21 @@ type PruneStats struct {
 
 // DoPrune holds general control flow that applies to any kind of storage.
 // Callers can pass in a thunk that performs the actual deletion of files.
-func (b *StorageBackend) DoPrune(context string, lenMatches, lenCandidates int, doRemoveFiles func() error) error {
+func (b *StorageBackend) DoPrune(context string, lenMatches, lenCandidates int, deadline time.Time, doRemoveFiles func() error) error {
 	if lenMatches != 0 && lenMatches != lenCandidates {
 		if err := doRemoveFiles(); err != nil {
 			return err
 		}
+
+		formattedDeadline, err := deadline.Local().MarshalText()
+		if err != nil {
+			return fmt.Errorf("(*StorageBackend).DoPrune: error marshaling deadline: %w", err)
+		}
 		b.Log(LogLevelInfo, context,
-			"Pruned %d out of %d backups as their age exceeded the configured retention period of %d days.",
+			"Pruned %d out of %d backups as they were older than the given deadline of %s.",
 			lenMatches,
 			lenCandidates,
-			b.RetentionDays,
+			string(formattedDeadline),
 		)
 	} else if lenMatches != 0 && lenMatches == lenCandidates {
 		b.Log(LogLevelWarning, context, "The current configuration would delete all %d existing backups.", lenMatches)
