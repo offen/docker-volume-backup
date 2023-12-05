@@ -9,7 +9,7 @@ require (
 	github.com/cosiner/argv v0.1.0
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/gofrs/flock v0.8.1
-	github.com/klauspost/compress v1.17.3
+	github.com/klauspost/compress v1.17.4
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.65
 	github.com/offen/envconfig v1.5.0
