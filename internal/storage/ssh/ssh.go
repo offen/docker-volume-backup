@@ -82,10 +82,10 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 	}
 
 	sftpClient, err := sftp.NewClient(sshClient,
-																		sftp.UseConcurrentReads(true),
-																		sftp.UseConcurrentWrites(true),
-																		sftp.MaxConcurrentRequestsPerFile(64),
-									 )
+		sftp.UseConcurrentReads(true),
+		sftp.UseConcurrentWrites(true),
+		sftp.MaxConcurrentRequestsPerFile(64),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("NewStorageBackend: error creating sftp client: %w", err)
 	}
