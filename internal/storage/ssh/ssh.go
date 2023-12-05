@@ -81,7 +81,11 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		return nil, err
 	}
 
-	sftpClient, err := sftp.NewClient(sshClient)
+	sftpClient, err := sftp.NewClient(sshClient,
+		sftp.UseConcurrentReads(true),
+		sftp.UseConcurrentWrites(true),
+		sftp.MaxConcurrentRequestsPerFile(64),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("NewStorageBackend: error creating sftp client: %w", err)
 	}
@@ -117,7 +121,7 @@ func (b *sshStorage) Copy(file string) error {
 	}
 	defer destination.Close()
 
-	chunk := make([]byte, 1000000)
+	chunk := make([]byte, 1e9)
 	for {
 		num, err := source.Read(chunk)
 		if err == io.EOF {
