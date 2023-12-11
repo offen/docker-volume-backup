@@ -9,7 +9,7 @@ RUN go mod download
 WORKDIR /app/cmd/backup
 RUN go build -o backup .
 
-FROM alpine:3.18
+FROM alpine:3.19
 
 WORKDIR /root
 
