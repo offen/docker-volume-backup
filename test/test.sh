@@ -56,7 +56,7 @@ for dir in $(find $find_args | sort); do
   docker run $docker_run_args offen/docker-volume-backup:test-sandbox
 
   retry_counter=0
-  until docker exec $sandbox /bin/sh -c 'docker info' > /dev/null 2>&1; do
+  until timeout 5 docker exec $sandbox /bin/sh -c 'docker info' > /dev/null 2>&1; do
     echo "retry counter at $retry_counter"
     if [ $retry_counter -gt 20 ]; then
       echo "Gave up waiting for Docker daemon to become ready after 20 attempts"
