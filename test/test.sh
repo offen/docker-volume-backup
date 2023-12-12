@@ -57,25 +57,18 @@ for dir in $(find $find_args | sort); do
 
   retry_counter=0
   until timeout 5 docker exec $sandbox /bin/sh -c 'docker info' > /dev/null 2>&1; do
-    echo "retry counter at $retry_counter"
     if [ $retry_counter -gt 20 ]; then
       echo "Gave up waiting for Docker daemon to become ready after 20 attempts"
       exit 1
     fi
 
-    docker inspect $sandbox --format '{{ .State.Running }}'
     if [ "$(docker inspect $sandbox --format '{{ .State.Running }}')" = "false" ]; then
-      echo "sandbox not running, trying to recreate"
       docker rm $sandbox
-      echo "removed sandbox"
       docker run $docker_run_args offen/docker-volume-backup:test-sandbox
-      echo "created sandbox"
     fi
 
-    echo "sleeping a bit"
     sleep 0.5
     retry_counter=$((retry_counter+1))
-    echo "incremented retry counter after sleeping"
   done
 
   docker exec $sandbox /bin/sh -c "docker load -i /cache/image.tar.gz"
