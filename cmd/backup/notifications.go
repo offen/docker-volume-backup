@@ -86,7 +86,7 @@ var templateHelpers = template.FuncMap{
 		return formatBytes(bytes, false)
 	},
 	"env":          os.Getenv,
-	"toJSON":       toJSON,
+	"toJson":       toJson,
 	"toPrettyJson": toPrettyJson,
 }
 
@@ -110,7 +110,7 @@ func formatBytes(b uint64, decimal bool) string {
 	return fmt.Sprintf(format, float64(b)/float64(div), "kMGTPE"[exp])
 }
 
-func toJSON(v interface{}) string {
+func toJson(v interface{}) string {
 	var bytes []byte
 	var err error
 	if bytes, err = json.Marshal(v); err != nil {
