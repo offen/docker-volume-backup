@@ -108,6 +108,7 @@ Some formatting and helper functions are also available:
 * `formatBytesDec`: formats an amount of bytes using powers of 1000 (e.g. `7055258` bytes will be `7.1 MB`)
 * `env`: returns the value of the environment variable of the given key if set
 * `toJSON`: converting object to JSON
+* `toPrettyJson`: converting object to pretty JSON
 
 ## Special characters in notification URLs
 
