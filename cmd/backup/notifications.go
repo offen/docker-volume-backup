@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -84,7 +85,9 @@ var templateHelpers = template.FuncMap{
 	"formatBytesBin": func(bytes uint64) string {
 		return formatBytes(bytes, false)
 	},
-	"env": os.Getenv,
+	"env":          os.Getenv,
+	"toJson":       toJson,
+	"toPrettyJson": toPrettyJson,
 }
 
 // formatBytes converts an amount of bytes in a human-readable representation
@@ -105,4 +108,22 @@ func formatBytes(b uint64, decimal bool) string {
 		exp++
 	}
 	return fmt.Sprintf(format, float64(b)/float64(div), "kMGTPE"[exp])
+}
+
+func toJson(v interface{}) string {
+	var bytes []byte
+	var err error
+	if bytes, err = json.Marshal(v); err != nil {
+		return fmt.Sprintf("failed to marshal JSON in notification template: %v", err)
+	}
+	return string(bytes)
+}
+
+func toPrettyJson(v interface{}) string {
+	var bytes []byte
+	var err error
+	if bytes, err = json.MarshalIndent(v, "", "  "); err != nil {
+		return fmt.Sprintf("failed to marshal indent JSON in notification template: %v", err)
+	}
+	return string(bytes)
 }
