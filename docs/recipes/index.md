@@ -177,7 +177,7 @@ volumes:
 
 ## Backing up to Dropbox
 
-See [Dropbox Setup](#setup-dropbox-storage-backend) on how to get the appropriate environment values.
+See [Dropbox Setup](../how-tos/set-up-dropbox.md) on how to get the appropriate environment values.
 
 ```yml
 version: '3'
