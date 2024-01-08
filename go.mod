@@ -22,7 +22,7 @@ require (
 )
 
 require (
-	github.com/cloudflare/circl v1.3.3 // indirect
+	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
