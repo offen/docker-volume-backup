@@ -41,11 +41,11 @@ services:
 
   offen:
     image: offen/offen:latest
-    labels:
-      - docker-volume-backup.stop-during-backup=true
     healthcheck:
       disable: true
     deploy:
+      labels:
+        - docker-volume-backup.stop-during-backup=true
       replicas: 2
       restart_policy:
         condition: on-failure
@@ -54,11 +54,11 @@ services:
     image: postgres:14-alpine
     environment:
       POSTGRES_PASSWORD: example
-    labels:
-      - docker-volume-backup.stop-during-backup=true
     volumes:
       - pg_data:/var/lib/postgresql/data
     deploy:
+      labels:
+        - docker-volume-backup.stop-during-backup=true
       restart_policy:
         condition: on-failure
 

@@ -30,10 +30,10 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
+	"github.com/docker/cli/cli/command/service/progress"
 	"github.com/docker/docker/api/types"
 	ctr "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
 	"github.com/leekchan/timeutil"
 	"github.com/offen/envconfig"
@@ -318,14 +318,107 @@ func newScript() (*script, error) {
 	return s, nil
 }
 
-// stopContainers stops all Docker containers that are marked as to being
-// stopped during the backup and returns a function that can be called to
-// restart everything that has been stopped.
-func (s *script) stopContainers() (func() error, error) {
+type noopWriteCloser struct {
+	io.Writer
+}
+
+func (noopWriteCloser) Close() error {
+	return nil
+}
+
+func (s *script) stopContainersOrServices() (func() error, error) {
 	if s.cli == nil {
 		return noop, nil
 	}
 
+	dockerInfo, err := s.cli.Info(context.Background())
+	if err != nil {
+		return noop, fmt.Errorf("stopContainers: error getting docker info: %w", err)
+	}
+	isDockerSwarm := dockerInfo.Swarm.LocalNodeState != "inactive"
+	if isDockerSwarm {
+		return s.stopServices()
+	}
+	return s.stopContainers()
+
+}
+
+func (s *script) stopServices() (func() error, error) {
+	serviceLabel := fmt.Sprintf(
+		"docker-volume-backup.stop-during-backup=%s",
+		s.c.BackupStopContainerLabel,
+	)
+	allServices, err := s.cli.ServiceList(context.Background(), types.ServiceListOptions{})
+	if err != nil {
+		return noop, fmt.Errorf("stopServices: error querying services: %w", err)
+	}
+
+	matchingServices, err := s.cli.ServiceList(context.Background(), types.ServiceListOptions{
+		Filters: filters.NewArgs(filters.KeyValuePair{
+			Key:   "label",
+			Value: serviceLabel,
+		}),
+	})
+	if err != nil {
+		return noop, fmt.Errorf("stopServices: error querying services: %w", err)
+	}
+
+	s.logger.Info(
+		fmt.Sprintf(
+			"Scaling down %d services(s) labeled `%s` out of %d running services(s).",
+			len(matchingServices),
+			serviceLabel,
+			len(allServices),
+		),
+	)
+
+	var prevReplicas []uint64
+	for idx, service := range matchingServices {
+		var zero uint64
+		prevReplicas[idx] = *service.Spec.Mode.Replicated.Replicas
+		service.Spec.Mode.Replicated.Replicas = &zero
+		_, err := s.cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{})
+		if err != nil {
+			return noop, fmt.Errorf("stopServices: error scaling down services: %w", err)
+		}
+		if err := progress.ServiceProgress(context.Background(), s.cli, service.ID, &noopWriteCloser{io.Discard}); err != nil {
+			return noop, fmt.Errorf("stopServices: error converging service: %w", err)
+		}
+	}
+
+	s.stats.Containers = ContainersStats{
+		All:     uint(len(allServices)),
+		ToStop:  uint(len(matchingServices)),
+		Stopped: uint(len(matchingServices)),
+	}
+
+	return func() error {
+		for idx, service := range matchingServices {
+			fmt.Println("restarting", service.ID, service.PreviousSpec)
+			service.Spec.Mode.Replicated.Replicas = &prevReplicas[idx]
+			_, err := s.cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{})
+			if err != nil {
+				return fmt.Errorf("stopServices: error scaling up services: %w", err)
+			}
+			fmt.Println("tried to scale back servie", service.ID)
+			if err := progress.ServiceProgress(context.Background(), s.cli, service.ID, &noopWriteCloser{io.Discard}); err != nil {
+				return fmt.Errorf("stopServices: error converging service: %w", err)
+			}
+		}
+		s.logger.Info(
+			fmt.Sprintf(
+				"Restarted %d services(s).",
+				len(matchingServices),
+			),
+		)
+		return nil
+	}, nil
+}
+
+// stopContainers stops all Docker containers or services that are marked as to being
+// stopped during the backup and returns a function that can be called to
+// restart everything that has been stopped.
+func (s *script) stopContainers() (func() error, error) {
 	allContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err != nil {
 		return noop, fmt.Errorf("stopContainers: error querying for containers: %w", err)
@@ -385,39 +478,10 @@ func (s *script) stopContainers() (func() error, error) {
 	}
 
 	return func() error {
-		servicesRequiringUpdate := map[string]struct{}{}
-
 		var restartErrors []error
 		for _, container := range stoppedContainers {
-			if swarmServiceName, ok := container.Labels["com.docker.swarm.service.name"]; ok {
-				servicesRequiringUpdate[swarmServiceName] = struct{}{}
-				continue
-			}
 			if err := s.cli.ContainerStart(context.Background(), container.ID, types.ContainerStartOptions{}); err != nil {
 				restartErrors = append(restartErrors, err)
-			}
-		}
-
-		if len(servicesRequiringUpdate) != 0 {
-			services, _ := s.cli.ServiceList(context.Background(), types.ServiceListOptions{})
-			for serviceName := range servicesRequiringUpdate {
-				var serviceMatch swarm.Service
-				for _, service := range services {
-					if service.Spec.Name == serviceName {
-						serviceMatch = service
-						break
-					}
-				}
-				if serviceMatch.ID == "" {
-					return fmt.Errorf("stopContainers: couldn't find service with name %s", serviceName)
-				}
-				serviceMatch.Spec.TaskTemplate.ForceUpdate += 1
-				if _, err := s.cli.ServiceUpdate(
-					context.Background(), serviceMatch.ID,
-					serviceMatch.Version, serviceMatch.Spec, types.ServiceUpdateOptions{},
-				); err != nil {
-					restartErrors = append(restartErrors, err)
-				}
 			}
 		}
 
@@ -430,7 +494,7 @@ func (s *script) stopContainers() (func() error, error) {
 		}
 		s.logger.Info(
 			fmt.Sprintf(
-				"Restarted %d container(s) and the matching service(s).",
+				"Restarted %d container(s).",
 				len(stoppedContainers),
 			),
 		)
