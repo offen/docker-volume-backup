@@ -27,7 +27,7 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage/ssh"
 	"github.com/offen/docker-volume-backup/internal/storage/webdav"
 
-	"github.com/ProtonMail/go-crypto/openpgp"
+	openpgp "github.com/ProtonMail/go-crypto/openpgp/v2"
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
 	"github.com/docker/docker/api/types"
@@ -540,7 +540,6 @@ func (s *script) encryptArchive() error {
 
 	_, name := path.Split(s.file)
 	dst, err := openpgp.SymmetricallyEncrypt(outFile, []byte(s.c.GpgPassphrase), &openpgp.FileHints{
-		IsBinary: true,
 		FileName: name,
 	}, nil)
 	if err != nil {
