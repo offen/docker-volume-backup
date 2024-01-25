@@ -394,15 +394,6 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		}
 	}
 
-	var stopError error
-	if len(stopErrors) != 0 {
-		stopError = fmt.Errorf(
-			"stopContainers: %d error(s) stopping containers: %w",
-			len(stopErrors),
-			errors.Join(stopErrors...),
-		)
-	}
-
 	var scaledDownServices []swarm.Service
 	var scaleDownErrors []error
 	if isDockerSwarm {
@@ -430,6 +421,16 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		ToScaleDown:     uint(len(servicesToScaleDown)),
 		ScaledDown:      uint(len(scaledDownServices)),
 		ScaleDownErrors: uint(len(scaleDownErrors)),
+	}
+
+	var initialErr error
+	allErrors := append(stopErrors, scaleDownErrors...)
+	if len(allErrors) != 0 {
+		initialErr = fmt.Errorf(
+			"stopContainers: %d error(s) stopping containers: %w",
+			len(allErrors),
+			errors.Join(allErrors...),
+		)
 	}
 
 	return func() error {
@@ -469,21 +470,34 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 			}
 		}
 
-		if len(restartErrors) != 0 {
+		var scaleUpErrors []error
+		if isDockerSwarm {
+			for _, service := range servicesToScaleDown {
+				service.Spec.Mode.Replicated.Replicas = service.PreviousSpec.Mode.Replicated.Replicas
+				service.Spec.TaskTemplate.ForceUpdate += 1
+				if _, err := s.cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{}); err != nil {
+					scaleUpErrors = append(scaleUpErrors, err)
+				}
+			}
+		}
+
+		allErrors := append(restartErrors, scaleUpErrors...)
+		if len(allErrors) != 0 {
 			return fmt.Errorf(
 				"stopContainers: %d error(s) restarting containers and services: %w",
-				len(restartErrors),
-				errors.Join(restartErrors...),
+				len(allErrors),
+				errors.Join(allErrors...),
 			)
 		}
 		s.logger.Info(
 			fmt.Sprintf(
-				"Restarted %d container(s) and the matching service(s).",
+				"Restarted %d container(s) and %d service(s).",
 				len(stoppedContainers),
+				len(scaledDownServices),
 			),
 		)
 		return nil
-	}, stopError
+	}, initialErr
 }
 
 // createArchive creates a tar archive of the configured backup location and
