@@ -326,6 +326,12 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		return noop, nil
 	}
 
+	dockerInfo, err := s.cli.Info(context.Background())
+	if err != nil {
+		return noop, fmt.Errorf("stopContainers: error getting docker info: %w", err)
+	}
+	isDockerSwarm := dockerInfo.Swarm.LocalNodeState != "inactive"
+
 	matchLabel := fmt.Sprintf(
 		"docker-volume-backup.stop-during-backup=%s",
 		s.c.BackupStopContainerLabel,
@@ -345,18 +351,22 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		return noop, fmt.Errorf("stopContainers: error querying for containers to stop: %w", err)
 	}
 
-	allServices, err := s.cli.ServiceList(context.Background(), types.ServiceListOptions{})
-	if err != nil {
-		return noop, fmt.Errorf("stopContainers: error querying for services: %w", err)
-	}
-	servicesToScaleDown, err := s.cli.ServiceList(context.Background(), types.ServiceListOptions{
-		Filters: filters.NewArgs(filters.KeyValuePair{
-			Key:   "label",
-			Value: matchLabel,
-		}),
-	})
-	if err != nil {
-		return noop, fmt.Errorf("stopContainers: error querying for services to scale down: %w", err)
+	var allServices []swarm.Service
+	var servicesToScaleDown []swarm.Service
+	if isDockerSwarm {
+		allServices, err = s.cli.ServiceList(context.Background(), types.ServiceListOptions{})
+		if err != nil {
+			return noop, fmt.Errorf("stopContainers: error querying for services: %w", err)
+		}
+		servicesToScaleDown, err = s.cli.ServiceList(context.Background(), types.ServiceListOptions{
+			Filters: filters.NewArgs(filters.KeyValuePair{
+				Key:   "label",
+				Value: matchLabel,
+			}),
+		})
+		if err != nil {
+			return noop, fmt.Errorf("stopContainers: error querying for services to scale down: %w", err)
+		}
 	}
 
 	if len(containersToStop) == 0 && len(servicesToScaleDown) == 0 {
@@ -393,10 +403,33 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		)
 	}
 
+	var scaledDownServices []swarm.Service
+	var scaleDownErrors []error
+	if isDockerSwarm {
+		for _, service := range servicesToScaleDown {
+			var zero uint64
+			service.Spec.Mode.Replicated.Replicas = &zero
+			service.Spec.TaskTemplate.ForceUpdate += 1
+			if _, err := s.cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{}); err != nil {
+				scaleDownErrors = append(scaleDownErrors, err)
+			} else {
+				scaledDownServices = append(scaledDownServices, service)
+			}
+		}
+	}
+
 	s.stats.Containers = ContainersStats{
-		All:     uint(len(allContainers)),
-		ToStop:  uint(len(containersToStop)),
-		Stopped: uint(len(stoppedContainers)),
+		All:        uint(len(allContainers)),
+		ToStop:     uint(len(containersToStop)),
+		Stopped:    uint(len(stoppedContainers)),
+		StopErrors: uint(len(stopErrors)),
+	}
+
+	s.stats.Services = ServicesStats{
+		All:             uint(len(allServices)),
+		ToScaleDown:     uint(len(servicesToScaleDown)),
+		ScaledDown:      uint(len(scaledDownServices)),
+		ScaleDownErrors: uint(len(scaleDownErrors)),
 	}
 
 	return func() error {
