@@ -44,7 +44,7 @@ func main() {
 	}()
 
 	s.must(s.withLabeledCommands(lifecyclePhaseArchive, func() error {
-		restartContainers, err := s.stopContainers()
+		restartContainers, err := s.stopContainersAndServices()
 		// The mechanism for restarting containers is not using hooks as it
 		// should happen as soon as possible (i.e. before uploading backups or
 		// similar).
