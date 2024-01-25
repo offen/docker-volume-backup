@@ -17,6 +17,15 @@ type ContainersStats struct {
 	StopErrors uint
 }
 
+// ServicesStats contains info about Swarm services that have been
+// operated upon
+type ServicesStats struct {
+	All             uint
+	ToScaleDown     uint
+	ScaledDown      uint
+	ScaleDownErrors uint
+}
+
 // BackupFileStats stats about the created backup file
 type BackupFileStats struct {
 	Name     string
@@ -40,6 +49,7 @@ type Stats struct {
 	LockedTime time.Duration
 	LogOutput  *bytes.Buffer
 	Containers ContainersStats
+	Services   ServicesStats
 	BackupFile BackupFileStats
 	Storages   map[string]StorageStats
 }
