@@ -35,8 +35,6 @@ services:
 
   offen:
     image: offen/offen:latest
-    healthcheck:
-      disable: true
     deploy:
       labels:
         - docker-volume-backup.stop-during-backup=true
