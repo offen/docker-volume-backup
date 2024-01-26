@@ -89,6 +89,11 @@ Here is a list of all data passed to the template:
     * `ToStop`: number of containers matched by the stop rule
     * `Stopped`: number of containers successfully stopped
     * `StopErrors`: number of containers that were unable to be stopped (equal to `ToStop - Stopped`)
+  * `Services`: object containing stats about the docker services (only populated when Docker is running in Swarm mode)
+    * `All`: total number of services
+    * `ToScaleDown`: number of containers matched by the scale down rule
+    * `ScaledDwon`: number of containers successfully scaled down
+    * `ScaleDownErrors`: number of containers that were unable to be stopped (equal to `ToScaleDown - ScaledDowm`)
   * `BackupFile`: object containing information about the backup file
     * `Name`: name of the backup file (e.g. `backup-2022-02-11T01-00-00.tar.gz`)
     * `FullPath`: full path of the backup file (e.g. `/archive/backup-2022-02-11T01-00-00.tar.gz`)
