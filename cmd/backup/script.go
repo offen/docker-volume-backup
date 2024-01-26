@@ -30,6 +30,7 @@ import (
 	openpgp "github.com/ProtonMail/go-crypto/openpgp/v2"
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
+	"github.com/docker/cli/cli/command/service/progress"
 	"github.com/docker/docker/api/types"
 	ctr "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -318,6 +319,14 @@ func newScript() (*script, error) {
 	return s, nil
 }
 
+type noopWriteCloser struct {
+	io.Writer
+}
+
+func (noopWriteCloser) Close() error {
+	return nil
+}
+
 // stopContainersAndServices stops all Docker containers that are marked as to being
 // stopped during the backup and returns a function that can be called to
 // restart everything that has been stopped.
@@ -363,6 +372,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				Key:   "label",
 				Value: matchLabel,
 			}),
+			Status: true,
 		})
 		if err != nil {
 			return noop, fmt.Errorf("stopContainers: error querying for services to scale down: %w", err)
@@ -398,10 +408,22 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 	var scaleDownErrors []error
 	if isDockerSwarm {
 		for _, service := range servicesToScaleDown {
-			var zero uint64
-			service.Spec.Mode.Replicated.Replicas = &zero
-			service.Spec.TaskTemplate.ForceUpdate += 1
-			if _, err := s.cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{}); err != nil {
+			var zero uint64 = 0
+			serviceMode := &service.Spec.Mode
+			switch {
+			case serviceMode.Replicated != nil:
+				serviceMode.Replicated.Replicas = &zero
+			default:
+				scaleDownErrors = append(scaleDownErrors, errors.New("Labeled service has to be in replicated mode"))
+				continue
+			}
+
+			_, err := s.cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{})
+			if err != nil {
+				scaleDownErrors = append(scaleDownErrors, err)
+			}
+
+			if err := progress.ServiceProgress(context.Background(), s.cli, service.ID, &noopWriteCloser{io.Discard}); err != nil {
 				scaleDownErrors = append(scaleDownErrors, err)
 			} else {
 				scaledDownServices = append(scaledDownServices, service)
@@ -473,9 +495,12 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		var scaleUpErrors []error
 		if isDockerSwarm {
 			for _, service := range servicesToScaleDown {
-				service.Spec.Mode.Replicated.Replicas = service.PreviousSpec.Mode.Replicated.Replicas
-				service.Spec.TaskTemplate.ForceUpdate += 1
-				if _, err := s.cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{}); err != nil {
+				updatedService, _, _ := s.cli.ServiceInspectWithRaw(context.Background(), service.ID, types.ServiceInspectOptions{})
+				updatedService.Spec.Mode.Replicated.Replicas = updatedService.PreviousSpec.Mode.Replicated.Replicas
+				if _, err := s.cli.ServiceUpdate(context.Background(), updatedService.ID, updatedService.Version, updatedService.Spec, types.ServiceUpdateOptions{}); err != nil {
+					scaleUpErrors = append(scaleUpErrors, err)
+				}
+				if err := progress.ServiceProgress(context.Background(), s.cli, updatedService.ID, &noopWriteCloser{io.Discard}); err != nil {
 					scaleUpErrors = append(scaleUpErrors, err)
 				}
 			}
