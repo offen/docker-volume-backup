@@ -21,6 +21,9 @@ func main() {
 	defer func() {
 		if pArg := recover(); pArg != nil {
 			if err, ok := pArg.(error); ok {
+				s.logger.Error(
+					fmt.Sprintf("Executing the script encountered a panic: %v", err),
+				)
 				if hookErr := s.runHooks(err); hookErr != nil {
 					s.logger.Error(
 						fmt.Sprintf("An error occurred calling the registered hooks: %s", hookErr),
