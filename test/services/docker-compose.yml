@@ -47,8 +47,6 @@ services:
       labels:
         - docker-volume-backup.stop-during-backup=true
       replicas: 2
-      restart_policy:
-        condition: on-failure
 
   pg:
     image: postgres:14-alpine
