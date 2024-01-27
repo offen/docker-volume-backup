@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 )
 
 var noop = func() error { return nil }
@@ -49,4 +50,32 @@ func (b *bufferingWriter) Write(p []byte) (n int, err error) {
 		return n, fmt.Errorf("(*bufferingWriter).Write: error writing to buffer: %w", err)
 	}
 	return b.writer.Write(p)
+}
+
+type noopWriteCloser struct {
+	io.Writer
+}
+
+func (noopWriteCloser) Close() error {
+	return nil
+}
+
+type handledSwarmService struct {
+	serviceID           string
+	initialReplicaCount uint64
+}
+
+type concurrentSlice[T any] struct {
+	val []T
+	sync.Mutex
+}
+
+func (c *concurrentSlice[T]) append(v T) {
+	c.Lock()
+	defer c.Unlock()
+	c.val = append(c.val, v)
+}
+
+func (c *concurrentSlice[T]) value() []T {
+	return c.val
 }
