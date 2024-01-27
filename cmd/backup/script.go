@@ -327,6 +327,11 @@ func (noopWriteCloser) Close() error {
 	return nil
 }
 
+type handledSwarmService struct {
+	serviceID           string
+	initialReplicaCount uint64
+}
+
 // stopContainersAndServices stops all Docker containers that are marked as to being
 // stopped during the backup and returns a function that can be called to
 // restart everything that has been stopped.
@@ -362,19 +367,25 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 	}
 
 	var allServices []swarm.Service
-	var servicesToScaleDown []swarm.Service
+	var servicesToScaleDown []handledSwarmService
 	if isDockerSwarm {
 		allServices, err = s.cli.ServiceList(context.Background(), types.ServiceListOptions{})
 		if err != nil {
 			return noop, fmt.Errorf("(*script).stopContainersAndServices: error querying for services: %w", err)
 		}
-		servicesToScaleDown, err = s.cli.ServiceList(context.Background(), types.ServiceListOptions{
+		matchingServices, err := s.cli.ServiceList(context.Background(), types.ServiceListOptions{
 			Filters: filters.NewArgs(filters.KeyValuePair{
 				Key:   "label",
 				Value: filterMatchLabel,
 			}),
 			Status: true,
 		})
+		for _, s := range matchingServices {
+			servicesToScaleDown = append(servicesToScaleDown, handledSwarmService{
+				serviceID:           s.ID,
+				initialReplicaCount: *s.Spec.Mode.Replicated.Replicas,
+			})
+		}
 		if err != nil {
 			return noop, fmt.Errorf("(*script).stopContainersAndServices: error querying for services to scale down: %w", err)
 		}
@@ -408,7 +419,15 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 	var scaledDownServices []swarm.Service
 	var scaleDownErrors []error
 	if isDockerSwarm {
-		for _, service := range servicesToScaleDown {
+		for _, svc := range servicesToScaleDown {
+			service, _, err := s.cli.ServiceInspectWithRaw(context.Background(), svc.serviceID, types.ServiceInspectOptions{})
+			if err != nil {
+				scaleDownErrors = append(
+					scaleDownErrors,
+					fmt.Errorf("(*script).stopContainersAndServices: error inspecting service %s: %w", svc.serviceID, err),
+				)
+				continue
+			}
 			var zero uint64 = 0
 			serviceMode := &service.Spec.Mode
 			switch {
@@ -422,7 +441,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				continue
 			}
 
-			_, err := s.cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{})
+			_, err = s.cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{})
 			if err != nil {
 				scaleDownErrors = append(scaleDownErrors, err)
 			}
@@ -502,31 +521,23 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 
 		var scaleUpErrors []error
 		if isDockerSwarm {
-			for _, service := range servicesToScaleDown {
-				updatedService, _, err := s.cli.ServiceInspectWithRaw(context.Background(), service.ID, types.ServiceInspectOptions{})
+			for _, svc := range servicesToScaleDown {
+				service, _, err := s.cli.ServiceInspectWithRaw(context.Background(), svc.serviceID, types.ServiceInspectOptions{})
 				if err != nil {
 					scaleUpErrors = append(scaleUpErrors, err)
 					continue
 				}
 
-				if updatedService.PreviousSpec == nil {
-					scaleUpErrors = append(
-						scaleUpErrors,
-						errors.New("(*script).stopContainersAndServices: service does not have PreviousSpec, cannot scale back up."),
-					)
-					continue
-				}
-
-				updatedService.Spec.Mode.Replicated.Replicas = updatedService.PreviousSpec.Mode.Replicated.Replicas
+				service.Spec.Mode.Replicated.Replicas = &svc.initialReplicaCount
 				if _, err := s.cli.ServiceUpdate(
 					context.Background(),
-					updatedService.ID,
-					updatedService.Version, updatedService.Spec,
+					service.ID,
+					service.Version, service.Spec,
 					types.ServiceUpdateOptions{},
 				); err != nil {
 					scaleUpErrors = append(scaleUpErrors, err)
 				}
-				if err := progress.ServiceProgress(context.Background(), s.cli, updatedService.ID, discardWriter); err != nil {
+				if err := progress.ServiceProgress(context.Background(), s.cli, service.ID, discardWriter); err != nil {
 					scaleUpErrors = append(scaleUpErrors, err)
 				}
 			}
