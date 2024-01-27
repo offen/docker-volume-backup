@@ -43,7 +43,7 @@ func scaleService(cli *client.Client, serviceID string, replicas uint64) ([]stri
 
 func awaitContainerCountForService(cli *client.Client, serviceID string, count int) error {
 	poll := time.NewTicker(time.Second)
-	timeout := time.NewTicker(5 * time.Minute)
+	timeout := time.NewTimer(5 * time.Minute)
 	defer timeout.Stop()
 	defer poll.Stop()
 
