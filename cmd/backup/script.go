@@ -395,6 +395,26 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		return noop, nil
 	}
 
+	if isDockerSwarm {
+		for _, container := range containersToStop {
+			if swarmServiceID, ok := container.Labels["com.docker.swarm.service.id"]; ok {
+				parentService, _, err := s.cli.ServiceInspectWithRaw(context.Background(), swarmServiceID, types.ServiceInspectOptions{})
+				if err != nil {
+					return noop, fmt.Errorf("(*script).stopContainersAndServices: error querying for parent service with ID %s: %w", swarmServiceID, err)
+				}
+				for label := range parentService.Spec.Labels {
+					if label == "docker-volume-backup.stop-during-backup" {
+						return noop, fmt.Errorf(
+							"(*script).stopContainersAndServices: container %s is labeled to stop but has parent service %s which is also labeled, cannot continue",
+							container.Names[0],
+							parentService.Spec.Name,
+						)
+					}
+				}
+			}
+		}
+	}
+
 	s.logger.Info(
 		fmt.Sprintf(
 			"Stopping %d out of %d running container(s) and scaling down %d out of %d active service(s) as they were labeled %s.",
