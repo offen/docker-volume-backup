@@ -441,9 +441,16 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				continue
 			}
 
-			_, err = s.cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{})
+			response, err := s.cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{})
 			if err != nil {
 				scaleDownErrors = append(scaleDownErrors, err)
+				continue
+			}
+
+			for _, warning := range response.Warnings {
+				s.logger.Warn(
+					fmt.Sprintf("The Docker API returned a warning when scaling down service %s: %s", service.Spec.Name, warning),
+				)
 			}
 
 			if err := progress.ServiceProgress(context.Background(), s.cli, service.ID, discardWriter); err != nil {
@@ -529,13 +536,20 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				}
 
 				service.Spec.Mode.Replicated.Replicas = &svc.initialReplicaCount
-				if _, err := s.cli.ServiceUpdate(
+				response, err := s.cli.ServiceUpdate(
 					context.Background(),
 					service.ID,
 					service.Version, service.Spec,
 					types.ServiceUpdateOptions{},
-				); err != nil {
+				)
+				if err != nil {
 					scaleUpErrors = append(scaleUpErrors, err)
+					continue
+				}
+				for _, warning := range response.Warnings {
+					s.logger.Warn(
+						fmt.Sprintf("The Docker API returned a warning when scaling up service %s: %s", service.Spec.Name, warning),
+					)
 				}
 				if err := progress.ServiceProgress(context.Background(), s.cli, service.ID, discardWriter); err != nil {
 					scaleUpErrors = append(scaleUpErrors, err)
