@@ -42,22 +42,34 @@ func scaleService(cli *client.Client, serviceID string, replicas uint64) ([]stri
 }
 
 func awaitContainerCountForService(cli *client.Client, serviceID string, count int) error {
+	poll := time.NewTicker(time.Second)
+	timeout := time.NewTicker(5 * time.Minute)
+	defer timeout.Stop()
+	defer poll.Stop()
+
 	for {
-		containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{
-			Filters: filters.NewArgs(filters.KeyValuePair{
-				Key:   "label",
-				Value: fmt.Sprintf("com.docker.swarm.service.id=%s", serviceID),
-			}),
-		})
-		if err != nil {
-			return fmt.Errorf("awaitContainerCount: error listing containers: %w", err)
+		select {
+		case <-timeout.C:
+			return fmt.Errorf(
+				"awaitContainerCount: timed out after waiting 5 minutes for service %s to reach desired container count of %d",
+				serviceID,
+				count,
+			)
+		case <-poll.C:
+			containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{
+				Filters: filters.NewArgs(filters.KeyValuePair{
+					Key:   "label",
+					Value: fmt.Sprintf("com.docker.swarm.service.id=%s", serviceID),
+				}),
+			})
+			if err != nil {
+				return fmt.Errorf("awaitContainerCount: error listing containers: %w", err)
+			}
+			if len(containers) == count {
+				return nil
+			}
 		}
-		if len(containers) == count {
-			break
-		}
-		time.Sleep(time.Second)
 	}
-	return nil
 }
 
 // stopContainersAndServices stops all Docker containers that are marked as to being
