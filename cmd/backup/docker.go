@@ -229,46 +229,37 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 	}
 
 	return func() error {
-		servicesRequiringForceUpdate := map[string]struct{}{}
-
 		var restartErrors []error
+		matchedServices := map[string]bool{}
 		for _, container := range stoppedContainers {
-			// in case a container was part of a swarm service, teh service requires to
-			// be force updated instead of restarting the container as it would otherwise
-			// remain in a "completed" state
-			if swarmServiceName, ok := container.Labels["com.docker.swarm.service.name"]; ok {
-				servicesRequiringForceUpdate[swarmServiceName] = struct{}{}
-				continue
-			}
-			if err := s.cli.ContainerStart(context.Background(), container.ID, types.ContainerStartOptions{}); err != nil {
-				restartErrors = append(restartErrors, err)
-			}
-		}
-
-		if len(servicesRequiringForceUpdate) != 0 {
-			services, _ := s.cli.ServiceList(context.Background(), types.ServiceListOptions{})
-			for serviceName := range servicesRequiringForceUpdate {
-				var serviceMatch swarm.Service
-				for _, service := range services {
-					if service.Spec.Name == serviceName {
-						serviceMatch = service
-						break
-					}
+			if swarmServiceID, ok := container.Labels["com.docker.swarm.service.id"]; ok && isDockerSwarm {
+				if _, ok := matchedServices[swarmServiceID]; ok {
+					continue
 				}
-				if serviceMatch.ID == "" {
+				matchedServices[swarmServiceID] = true
+				// in case a container was part of a swarm service, the service requires to
+				// be force updated instead of restarting the container as it would otherwise
+				// remain in a "completed" state
+				service, _, err := s.cli.ServiceInspectWithRaw(context.Background(), swarmServiceID, types.ServiceInspectOptions{})
+				if err != nil {
 					restartErrors = append(
 						restartErrors,
-						fmt.Errorf("(*script).stopContainersAndServices: couldn't find service with name %s", serviceName),
+						fmt.Errorf("(*script).stopContainersAndServices: error looking up parent service: %w", err),
 					)
 					continue
 				}
-				serviceMatch.Spec.TaskTemplate.ForceUpdate += 1
+				service.Spec.TaskTemplate.ForceUpdate += 1
 				if _, err := s.cli.ServiceUpdate(
-					context.Background(), serviceMatch.ID,
-					serviceMatch.Version, serviceMatch.Spec, types.ServiceUpdateOptions{},
+					context.Background(), service.ID,
+					service.Version, service.Spec, types.ServiceUpdateOptions{},
 				); err != nil {
 					restartErrors = append(restartErrors, err)
 				}
+				continue
+			}
+
+			if err := s.cli.ContainerStart(context.Background(), container.ID, types.ContainerStartOptions{}); err != nil {
+				restartErrors = append(restartErrors, err)
 			}
 		}
 
@@ -297,7 +288,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		allErrors := append(restartErrors, scaleUpErrors.value()...)
 		if len(allErrors) != 0 {
 			return fmt.Errorf(
-				"stopContainers: %d error(s) restarting containers and services: %w",
+				"(*script).stopContainersAndServices: %d error(s) restarting containers and services: %w",
 				len(allErrors),
 				errors.Join(allErrors...),
 			)
