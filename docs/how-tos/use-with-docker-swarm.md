@@ -16,6 +16,10 @@ The mechanisms described in this page __do only apply when Docker is running in 
 
 Stopping and restarting containers during backup creation when running Docker in Swarm mode is supported in two ways.
 
+{: .important }
+Make sure you label your services and containers using only one of the describe approaches.
+In case the script encounters a container that is labeled and has a parent service that is also labeled, it will exit early.
+
 ### Scaling services down to zero before scaling back up
 
 When labeling a service in the `deploy` section, the following strategy for stopping and restarting will be used:
