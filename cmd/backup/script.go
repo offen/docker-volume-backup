@@ -478,6 +478,25 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 			} else {
 				scaledDownServices = append(scaledDownServices, service)
 			}
+
+			// progress.ServiceProgress returns too early, so we need to manually check
+			// whether all containers belonging to the service have actually been removed
+			for {
+				containers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
+					Filters: filters.NewArgs(filters.KeyValuePair{
+						Key:   "label",
+						Value: fmt.Sprintf("com.docker.swarm.service.id=%s", service.ID),
+					}),
+				})
+				if err != nil {
+					scaleDownErrors = append(scaleDownErrors, err)
+					break
+				}
+				if len(containers) == 0 {
+					break
+				}
+				time.Sleep(time.Second)
+			}
 		}
 	}
 
