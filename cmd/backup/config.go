@@ -38,6 +38,7 @@ type Config struct {
 	BackupPruningLeeway           time.Duration   `split_words:"true" default:"1m"`
 	BackupPruningPrefix           string          `split_words:"true"`
 	BackupStopContainerLabel      string          `split_words:"true" default:"true"`
+	BackupStopServiceTimeout      time.Duration   `split_words:"true" default:"5m"`
 	BackupFromSnapshot            bool            `split_words:"true"`
 	BackupExcludeRegexp           RegexpDecoder   `split_words:"true"`
 	BackupSkipBackendsFromPrune   []string        `split_words:"true"`

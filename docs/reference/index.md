@@ -326,6 +326,14 @@ You can populate below template according to your requirements and use it as you
 
 # BACKUP_STOP_CONTAINER_LABEL="service1"
 
+# When trying to scale down Docker Swarm services, give up after
+# the specified amount of time in case the service has not converged yet.
+# In case you need to adjust this timeout, supply a duration
+# value as per https://pkg.go.dev/time#ParseDuration to `BACKUP_STOP_SERVICE_TIMEOUT`.
+# Defaults to 5 minutes.
+
+# BACKUP_STOP_SERVICE_TIMEOUT="5m"
+
 ########### EXECUTING COMMANDS IN CONTAINERS PRE/POST BACKUP
 
 # It is possible to define commands to be run in any container before and after

@@ -41,9 +41,9 @@ func scaleService(cli *client.Client, serviceID string, replicas uint64) ([]stri
 	return response.Warnings, nil
 }
 
-func awaitContainerCountForService(cli *client.Client, serviceID string, count int) error {
+func awaitContainerCountForService(cli *client.Client, serviceID string, count int, timeoutAfter time.Duration) error {
 	poll := time.NewTicker(time.Second)
-	timeout := time.NewTimer(5 * time.Minute)
+	timeout := time.NewTimer(timeoutAfter)
 	defer timeout.Stop()
 	defer poll.Stop()
 
@@ -51,7 +51,8 @@ func awaitContainerCountForService(cli *client.Client, serviceID string, count i
 		select {
 		case <-timeout.C:
 			return fmt.Errorf(
-				"awaitContainerCount: timed out after waiting 5 minutes for service %s to reach desired container count of %d",
+				"awaitContainerCount: timed out after waiting %s for service %s to reach desired container count of %d",
+				timeoutAfter,
 				serviceID,
 				count,
 			)
@@ -196,7 +197,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				}
 				// progress.ServiceProgress returns too early, so we need to manually check
 				// whether all containers belonging to the service have actually been removed
-				if err := awaitContainerCountForService(s.cli, svc.serviceID, 0); err != nil {
+				if err := awaitContainerCountForService(s.cli, svc.serviceID, 0, s.c.BackupStopServiceTimeout); err != nil {
 					scaleDownErrors.append(err)
 				}
 			}(svc)
