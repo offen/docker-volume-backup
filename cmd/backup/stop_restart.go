@@ -170,23 +170,20 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		}
 	}
 
+	s.logger.Info(
+		fmt.Sprintf(
+			"Stopping %d out of %d running container(s) as they were labeled %s.",
+			len(containersToStop),
+			len(allContainers),
+			filterMatchLabel,
+		),
+	)
 	if isDockerSwarm {
 		s.logger.Info(
 			fmt.Sprintf(
-				"Stopping %d out of %d running container(s) and scaling down %d out of %d active service(s) as they were labeled %s.",
-				len(containersToStop),
-				len(allContainers),
+				"Scaling down %d out of %d active service(s) as they were labeled %s.",
 				len(servicesToScaleDown),
 				len(allServices),
-				filterMatchLabel,
-			),
-		)
-	} else {
-		s.logger.Info(
-			fmt.Sprintf(
-				"Stopping %d out of %d running container(s) as they were labeled %s.",
-				len(containersToStop),
-				len(allContainers),
 				filterMatchLabel,
 			),
 		)
@@ -320,19 +317,18 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				errors.Join(allErrors...),
 			)
 		}
+
+		s.logger.Info(
+			fmt.Sprintf(
+				"Restarted %d container(s).",
+				len(stoppedContainers),
+			),
+		)
 		if isDockerSwarm {
 			s.logger.Info(
 				fmt.Sprintf(
-					"Restarted %d container(s) and %d service(s).",
-					len(stoppedContainers),
+					"Scaled %d service(s) back up.",
 					len(scaledDownServices),
-				),
-			)
-		} else {
-			s.logger.Info(
-				fmt.Sprintf(
-					"Restarted %d container(s).",
-					len(stoppedContainers),
 				),
 			)
 		}
