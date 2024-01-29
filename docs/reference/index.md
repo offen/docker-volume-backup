@@ -316,15 +316,14 @@ You can populate below template according to your requirements and use it as you
 
 # GPG_PASSPHRASE="<xxx>"
 
-########### STOPPING CONTAINERS DURING BACKUP
+########### STOPPING CONTAINERS AND SERVICES DURING BACKUP
 
-# Containers can be stopped by applying a
-# `docker-volume-backup.stop-during-backup` label. By default, all containers
-# that are labeled with `true` will be stopped. If you need more fine grained
-# control (e.g. when running multiple containers based on this image), you can
-# override this default by specifying a different value here.
-
-# BACKUP_STOP_CONTAINER_LABEL="service1"
+# Containers or services can be stopped by applying a
+# `docker-volume-backup.stop-during-backup` label. By default, all containers and
+# services that are labeled with `true` will be stopped. If you need more fine
+# grained control (e.g. when running multiple containers based on this image),
+# you can override this default by specifying a different value here.
+# BACKUP_STOP_DURING_BACKUP_LABEL="service1"
 
 # When trying to scale down Docker Swarm services, give up after
 # the specified amount of time in case the service has not converged yet.

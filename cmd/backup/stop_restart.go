@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -87,9 +88,23 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 	}
 	isDockerSwarm := dockerInfo.Swarm.LocalNodeState != "inactive"
 
+	labelValue := s.c.BackupStopDuringBackupLabel
+	if s.c.BackupStopContainerLabel != "" {
+		s.logger.Warn(
+			"Using BACKUP_STOP_CONTAINER_LABEL has been deprecated and will be removed in the next major version.",
+		)
+		s.logger.Warn(
+			"Please use BACKUP_STOP_DURING_BACKUP_LABEL instead. Refer to the docs for an upgrade guide.",
+		)
+		if _, ok := os.LookupEnv("BACKUP_STOP_DURING_BACKUP_LABEL"); ok {
+			return noop, errors.New("(*script).stopContainersAndServices: both BACKUP_STOP_DURING_BACKUP_LABEL and BACKUP_STOP_CONTAINER_LABEL have been set, cannot continue")
+		}
+		labelValue = s.c.BackupStopContainerLabel
+	}
+
 	filterMatchLabel := fmt.Sprintf(
 		"docker-volume-backup.stop-during-backup=%s",
-		s.c.BackupStopContainerLabel,
+		labelValue,
 	)
 
 	allContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{})

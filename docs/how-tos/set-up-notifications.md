@@ -76,7 +76,7 @@ Configuration, data about the backup run and helper functions will be passed to 
 
 Here is a list of all data passed to the template:
 
-* `Config`: this object holds the configuration that has been passed to the script. The field names are the name of the recognized environment variables converted in PascalCase. (e.g. `BACKUP_STOP_CONTAINER_LABEL` becomes `BackupStopContainerLabel`)
+* `Config`: this object holds the configuration that has been passed to the script. The field names are the name of the recognized environment variables converted in PascalCase. (e.g. `BACKUP_STOP_DURING_BACKUP_LABEL` becomes `BackupStopDuringBackupLabel`)
 * `Error`: the error that made the backup fail. Only available in the `title_failure` and `body_failure` templates
 * `Stats`: objects that holds stats regarding script execution. In case of an unsuccessful run, some information may not be available.
   * `StartTime`: time when the script started execution

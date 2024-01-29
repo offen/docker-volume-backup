@@ -322,7 +322,7 @@ func (s *script) createArchive() error {
 			"Using BACKUP_FROM_SNAPSHOT has been deprecated and will be removed in the next major version.",
 		)
 		s.logger.Warn(
-			"Please use `archive-pre` and `archive-post` commands to prepare your backup sources. Refer to the README for an upgrade guide.",
+			"Please use `archive-pre` and `archive-post` commands to prepare your backup sources. Refer to the documentation for an upgrade guide.",
 		)
 		backupSources = filepath.Join("/tmp", s.c.BackupSources)
 		// copy before compressing guard against a situation where backup folder's content are still growing.
