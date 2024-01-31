@@ -24,7 +24,10 @@ func runBackup(c *Config) {
 	defer func() {
 		s.must(unlock())
 	}()
-	s.must(err)
+	if err != nil {
+		log.Println("Error during locking:", err)
+		return
+	}
 
 	defer func() {
 		if pArg := recover(); pArg != nil {
@@ -37,7 +40,7 @@ func runBackup(c *Config) {
 						fmt.Sprintf("An error occurred calling the registered hooks: %s", hookErr),
 					)
 				}
-				os.Exit(1)
+				return
 			}
 			panic(pArg)
 		}
@@ -49,7 +52,7 @@ func runBackup(c *Config) {
 					err,
 				),
 			)
-			os.Exit(1)
+			return
 		}
 		s.logger.Info("Finished running backup tasks.")
 	}()
@@ -94,7 +97,7 @@ func main() {
 				log.Println("Added cron job with schedule: ", c.BackupCronExpression)
 				_, err := cr.AddFunc(c.BackupCronExpression, func() { runBackup(c) })
 				if err != nil {
-					log.Println("Failed to create cron job with schedule: ", c.BackupCronExpression)
+					log.Println("Failed to create cron job with schedule:", c.BackupCronExpression)
 				}
 			}
 		} else {
@@ -102,7 +105,7 @@ func main() {
 				log.Println("Added cron job with schedule: ", c.BackupCronExpression)
 				_, err := cr.AddFunc(c.BackupCronExpression, func() { runBackup(c) })
 				if err != nil {
-					log.Println("Failed to create cron job with schedule: ", c.BackupCronExpression)
+					log.Println("Failed to create cron job with schedule:", c.BackupCronExpression)
 				}
 			}
 		}
