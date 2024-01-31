@@ -83,21 +83,27 @@ func main() {
 
 		cr := cron.New()
 
-		c, err := loadEnvVars()
-		if err != nil {
-			log.Println("Could not load config from environment variables")
-		} else {
-			log.Println("Added cron job with schedule: ", c.BackupCronExpression)
-			cr.AddFunc(c.BackupCronExpression, func() { runBackup(c) })
-		}
-
 		cs, err := loadEnvFiles(*envFolder)
 		if err != nil {
 			log.Println("Could not load config from environment files")
+
+			c, err := loadEnvVars()
+			if err != nil {
+				log.Println("Could not load config from environment variables")
+			} else {
+				log.Println("Added cron job with schedule: ", c.BackupCronExpression)
+				_, err := cr.AddFunc(c.BackupCronExpression, func() { runBackup(c) })
+				if err != nil {
+					log.Println("Failed to create cron job with schedule: ", c.BackupCronExpression)
+				}
+			}
 		} else {
 			for _, c := range cs {
 				log.Println("Added cron job with schedule: ", c.BackupCronExpression)
-				cr.AddFunc(c.BackupCronExpression, func() { runBackup(c) })
+				_, err := cr.AddFunc(c.BackupCronExpression, func() { runBackup(c) })
+				if err != nil {
+					log.Println("Failed to create cron job with schedule: ", c.BackupCronExpression)
+				}
 			}
 		}
 
