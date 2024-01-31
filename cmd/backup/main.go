@@ -4,12 +4,18 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"log"
 	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/robfig/cron/v3"
 )
 
-func main() {
-	s, err := newScript()
+func runBackup(c *Config) {
+	s, err := newScript(c)
 	if err != nil {
 		panic(err)
 	}
@@ -65,4 +71,57 @@ func main() {
 	s.must(s.withLabeledCommands(lifecyclePhaseProcess, s.encryptArchive)())
 	s.must(s.withLabeledCommands(lifecyclePhaseCopy, s.copyArchive)())
 	s.must(s.withLabeledCommands(lifecyclePhasePrune, s.pruneBackups)())
+}
+
+func main() {
+	var serve = flag.Bool("foreground", false, "run the backup in the foreground")
+	var envFolder = flag.String("env-folder", "/etc/dockervolumebackup/conf.d", "location of environment files")
+	flag.Parse()
+
+	if *serve {
+		log.Println("Running in the foreground instead of cron")
+
+		cr := cron.New()
+
+		c, err := loadEnvVars()
+		if err != nil {
+			log.Println("Could not load config from environment variables")
+		} else {
+			log.Println("Added cron job with schedule: ", c.BackupCronExpression)
+			cr.AddFunc(c.BackupCronExpression, func() { runBackup(c) })
+		}
+
+		cs, err := loadEnvFiles(*envFolder)
+		if err != nil {
+			log.Println("Could not load config from environment files")
+		} else {
+			for _, c := range cs {
+				log.Println("Added cron job with schedule: ", c.BackupCronExpression)
+				cr.AddFunc(c.BackupCronExpression, func() { runBackup(c) })
+			}
+		}
+
+		log.Println("Subscribed to interupt signals")
+		var quit = make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+
+		log.Println("Starting cron scheduler")
+		cr.Start()
+
+		log.Println("Application goes to sleep")
+		<-quit
+
+		log.Println("Interrupt arrived, stopping schedules")
+		ctx := cr.Stop()
+		<-ctx.Done()
+	} else {
+		log.Println("Executing one time backup")
+
+		c, err := loadEnvVars()
+		if err != nil {
+			log.Println("Could not load config from environment variables")
+		}
+
+		runBackup(c)
+	}
 }
