@@ -352,7 +352,7 @@ services:
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
       # Label the container using the `data_1` volume as `docker-volume-backup.stop-during-backup=service1`
-      BACKUP_STOP_CONTAINER_LABEL: service1
+      BACKUP_STOP_DURING_BACKUP_LABEL: service1
     volumes:
       - data_1:/backup/data-1-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -362,7 +362,7 @@ services:
       <<: *backup_environment
       # Label the container using the `data_2` volume as `docker-volume-backup.stop-during-backup=service2`
       BACKUP_CRON_EXPRESSION: "0 3 * * *"
-      BACKUP_STOP_CONTAINER_LABEL: service2
+      BACKUP_STOP_DURING_BACKUP_LABEL: service2
     volumes:
       - data_2:/backup/data-2-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro

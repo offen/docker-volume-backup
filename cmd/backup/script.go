@@ -5,8 +5,6 @@ package main
 
 import (
 	"bytes"
-	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -30,10 +28,6 @@ import (
 	openpgp "github.com/ProtonMail/go-crypto/openpgp/v2"
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
-	"github.com/docker/docker/api/types"
-	ctr "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
 	"github.com/leekchan/timeutil"
 	"github.com/offen/envconfig"
@@ -318,126 +312,6 @@ func newScript() (*script, error) {
 	return s, nil
 }
 
-// stopContainers stops all Docker containers that are marked as to being
-// stopped during the backup and returns a function that can be called to
-// restart everything that has been stopped.
-func (s *script) stopContainers() (func() error, error) {
-	if s.cli == nil {
-		return noop, nil
-	}
-
-	allContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{})
-	if err != nil {
-		return noop, fmt.Errorf("stopContainers: error querying for containers: %w", err)
-	}
-
-	containerLabel := fmt.Sprintf(
-		"docker-volume-backup.stop-during-backup=%s",
-		s.c.BackupStopContainerLabel,
-	)
-	containersToStop, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
-		Filters: filters.NewArgs(filters.KeyValuePair{
-			Key:   "label",
-			Value: containerLabel,
-		}),
-	})
-
-	if err != nil {
-		return noop, fmt.Errorf("stopContainers: error querying for containers to stop: %w", err)
-	}
-
-	if len(containersToStop) == 0 {
-		return noop, nil
-	}
-
-	s.logger.Info(
-		fmt.Sprintf(
-			"Stopping %d container(s) labeled `%s` out of %d running container(s).",
-			len(containersToStop),
-			containerLabel,
-			len(allContainers),
-		),
-	)
-
-	var stoppedContainers []types.Container
-	var stopErrors []error
-	for _, container := range containersToStop {
-		if err := s.cli.ContainerStop(context.Background(), container.ID, ctr.StopOptions{}); err != nil {
-			stopErrors = append(stopErrors, err)
-		} else {
-			stoppedContainers = append(stoppedContainers, container)
-		}
-	}
-
-	var stopError error
-	if len(stopErrors) != 0 {
-		stopError = fmt.Errorf(
-			"stopContainers: %d error(s) stopping containers: %w",
-			len(stopErrors),
-			errors.Join(stopErrors...),
-		)
-	}
-
-	s.stats.Containers = ContainersStats{
-		All:     uint(len(allContainers)),
-		ToStop:  uint(len(containersToStop)),
-		Stopped: uint(len(stoppedContainers)),
-	}
-
-	return func() error {
-		servicesRequiringUpdate := map[string]struct{}{}
-
-		var restartErrors []error
-		for _, container := range stoppedContainers {
-			if swarmServiceName, ok := container.Labels["com.docker.swarm.service.name"]; ok {
-				servicesRequiringUpdate[swarmServiceName] = struct{}{}
-				continue
-			}
-			if err := s.cli.ContainerStart(context.Background(), container.ID, types.ContainerStartOptions{}); err != nil {
-				restartErrors = append(restartErrors, err)
-			}
-		}
-
-		if len(servicesRequiringUpdate) != 0 {
-			services, _ := s.cli.ServiceList(context.Background(), types.ServiceListOptions{})
-			for serviceName := range servicesRequiringUpdate {
-				var serviceMatch swarm.Service
-				for _, service := range services {
-					if service.Spec.Name == serviceName {
-						serviceMatch = service
-						break
-					}
-				}
-				if serviceMatch.ID == "" {
-					return fmt.Errorf("stopContainers: couldn't find service with name %s", serviceName)
-				}
-				serviceMatch.Spec.TaskTemplate.ForceUpdate += 1
-				if _, err := s.cli.ServiceUpdate(
-					context.Background(), serviceMatch.ID,
-					serviceMatch.Version, serviceMatch.Spec, types.ServiceUpdateOptions{},
-				); err != nil {
-					restartErrors = append(restartErrors, err)
-				}
-			}
-		}
-
-		if len(restartErrors) != 0 {
-			return fmt.Errorf(
-				"stopContainers: %d error(s) restarting containers and services: %w",
-				len(restartErrors),
-				errors.Join(restartErrors...),
-			)
-		}
-		s.logger.Info(
-			fmt.Sprintf(
-				"Restarted %d container(s) and the matching service(s).",
-				len(stoppedContainers),
-			),
-		)
-		return nil
-	}, stopError
-}
-
 // createArchive creates a tar archive of the configured backup location and
 // saves it to disk.
 func (s *script) createArchive() error {
@@ -448,7 +322,7 @@ func (s *script) createArchive() error {
 			"Using BACKUP_FROM_SNAPSHOT has been deprecated and will be removed in the next major version.",
 		)
 		s.logger.Warn(
-			"Please use `archive-pre` and `archive-post` commands to prepare your backup sources. Refer to the README for an upgrade guide.",
+			"Please use `archive-pre` and `archive-post` commands to prepare your backup sources. Refer to the documentation for an upgrade guide.",
 		)
 		backupSources = filepath.Join("/tmp", s.c.BackupSources)
 		// copy before compressing guard against a situation where backup folder's content are still growing.
