@@ -15,7 +15,9 @@ func main() {
 	}
 
 	unlock, err := s.lock("/var/lock/dockervolumebackup.lock")
-	defer s.must(unlock())
+	defer func() {
+		s.must(unlock())
+	}()
 	s.must(err)
 
 	defer func() {
