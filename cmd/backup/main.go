@@ -14,20 +14,22 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-func runBackup(c *Config) {
+func runBackup(c *Config) *error {
 	s, err := newScript(c)
 	if err != nil {
-		panic(err)
+		return &err
 	}
 
 	unlock, err := s.lock("/var/lock/dockervolumebackup.lock")
-	defer func() {
-		s.must(unlock())
-	}()
 	if err != nil {
-		log.Println("Error during locking:", err)
-		return
+		return &err
 	}
+
+	var ret *error = nil
+	defer func() {
+		err = unlock()
+		ret = &err
+	}()
 
 	defer func() {
 		if pArg := recover(); pArg != nil {
@@ -74,6 +76,8 @@ func runBackup(c *Config) {
 	s.must(s.withLabeledCommands(lifecyclePhaseProcess, s.encryptArchive)())
 	s.must(s.withLabeledCommands(lifecyclePhaseCopy, s.copyArchive)())
 	s.must(s.withLabeledCommands(lifecyclePhasePrune, s.pruneBackups)())
+
+	return ret
 }
 
 func main() {
@@ -95,7 +99,12 @@ func main() {
 				log.Println("Could not load config from environment variables")
 			} else {
 				log.Println("Added cron job with schedule: ", c.BackupCronExpression)
-				_, err := cr.AddFunc(c.BackupCronExpression, func() { runBackup(c) })
+				_, err := cr.AddFunc(c.BackupCronExpression, func() {
+					err := *runBackup(c)
+					if err != nil {
+						log.Println("Unexpected error during backup:", err)
+					}
+				})
 				if err != nil {
 					log.Println("Failed to create cron job with schedule:", c.BackupCronExpression)
 				}
@@ -103,7 +112,12 @@ func main() {
 		} else {
 			for _, c := range cs {
 				log.Println("Added cron job with schedule: ", c.BackupCronExpression)
-				_, err := cr.AddFunc(c.BackupCronExpression, func() { runBackup(c) })
+				_, err := cr.AddFunc(c.BackupCronExpression, func() {
+					err := *runBackup(c)
+					if err != nil {
+						log.Println("Unexpected error during backup:", err)
+					}
+				})
 				if err != nil {
 					log.Println("Failed to create cron job with schedule:", c.BackupCronExpression)
 				}
@@ -131,6 +145,9 @@ func main() {
 			log.Println("Could not load config from environment variables")
 		}
 
-		runBackup(c)
+		err2 := *runBackup(c)
+		if err2 != nil {
+			log.Println("Unexpected error during backup:", err2)
+		}
 	}
 }
