@@ -14,7 +14,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-func runBackup(c *Config) error {
+func runBackup(c *Config) (ret error) {
 	s, err := newScript(c)
 	if err != nil {
 		return err
@@ -25,17 +25,13 @@ func runBackup(c *Config) error {
 		return err
 	}
 
-	runScript(s)
+	defer func() {
+		err = unlock()
+		if err != nil {
+			ret = err
+		}
+	}()
 
-	err = unlock()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func runScript(s *script) {
 	defer func() {
 		if pArg := recover(); pArg != nil {
 			if err, ok := pArg.(error); ok {
@@ -47,9 +43,14 @@ func runScript(s *script) {
 						fmt.Sprintf("An error occurred calling the registered hooks: %s", hookErr),
 					)
 				}
-				return
+				ret = err
+			} else {
+				s.logger.Error(
+					fmt.Sprintf("Executing the script encountered an unrecoverable panic: %v", err),
+				)
+
+				panic(pArg)
 			}
-			panic(pArg)
 		}
 
 		if err := s.runHooks(nil); err != nil {
@@ -59,7 +60,7 @@ func runScript(s *script) {
 					err,
 				),
 			)
-			return
+			ret = err
 		}
 		s.logger.Info("Finished running backup tasks.")
 	}()
@@ -81,6 +82,8 @@ func runScript(s *script) {
 	s.must(s.withLabeledCommands(lifecyclePhaseProcess, s.encryptArchive)())
 	s.must(s.withLabeledCommands(lifecyclePhaseCopy, s.copyArchive)())
 	s.must(s.withLabeledCommands(lifecyclePhasePrune, s.pruneBackups)())
+
+	return nil
 }
 
 func main() {
@@ -143,13 +146,15 @@ func main() {
 		c, err := loadEnvVars()
 		if err != nil {
 			logger.Info("could not load config from environment variables", "error", err)
-			return
+			os.Exit(1)
 		}
 
 		err = runBackup(c)
 		if err != nil {
 			logger.Info("unexpected error during backup", "error", err)
-			return
+			os.Exit(1)
 		}
 	}
+
+	os.Exit(0)
 }
