@@ -6,7 +6,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,23 +14,28 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-func runBackup(c *Config) *error {
+func runBackup(c *Config) error {
 	s, err := newScript(c)
 	if err != nil {
-		return &err
+		return err
 	}
 
 	unlock, err := s.lock("/var/lock/dockervolumebackup.lock")
 	if err != nil {
-		return &err
+		return err
 	}
 
-	var ret *error = nil
-	defer func() {
-		err = unlock()
-		ret = &err
-	}()
+	runScript(s)
 
+	err = unlock()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func runScript(s *script) {
 	defer func() {
 		if pArg := recover(); pArg != nil {
 			if err, ok := pArg.(error); ok {
@@ -76,78 +81,75 @@ func runBackup(c *Config) *error {
 	s.must(s.withLabeledCommands(lifecyclePhaseProcess, s.encryptArchive)())
 	s.must(s.withLabeledCommands(lifecyclePhaseCopy, s.copyArchive)())
 	s.must(s.withLabeledCommands(lifecyclePhasePrune, s.pruneBackups)())
-
-	return ret
 }
 
 func main() {
-	var serve = flag.Bool("foreground", false, "run the backup in the foreground")
-	var envFolder = flag.String("env-folder", "/etc/dockervolumebackup/conf.d", "location of environment files")
+	serve := flag.Bool("foreground", false, "run the backup in the foreground")
+	envFolder := flag.String("env-folder", "/etc/dockervolumebackup/conf.d", "location of environment files")
 	flag.Parse()
 
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 	if *serve {
-		log.Println("Running in the foreground instead of cron")
+		logger.Info("running in the foreground instead of cron")
 
 		cr := cron.New()
 
+		addJob := func(c *Config) {
+			logger.Info("added cron job", "schedule", c.BackupCronExpression)
+			_, err := cr.AddFunc(c.BackupCronExpression, func() {
+				err := runBackup(c)
+				if err != nil {
+					logger.Error("unexpected error during backup", "error", err)
+				}
+			})
+			if err != nil {
+				logger.Error("failed to create cron job", "schedule", c.BackupCronExpression)
+			}
+		}
+
 		cs, err := loadEnvFiles(*envFolder)
 		if err != nil {
-			log.Println("Could not load config from environment files")
+			logger.Warn("could not load config from environment files")
 
 			c, err := loadEnvVars()
 			if err != nil {
-				log.Println("Could not load config from environment variables")
+				logger.Error("could not load config from environment variables")
 			} else {
-				log.Println("Added cron job with schedule: ", c.BackupCronExpression)
-				_, err := cr.AddFunc(c.BackupCronExpression, func() {
-					err := *runBackup(c)
-					if err != nil {
-						log.Println("Unexpected error during backup:", err)
-					}
-				})
-				if err != nil {
-					log.Println("Failed to create cron job with schedule:", c.BackupCronExpression)
-				}
+				addJob(c)
 			}
 		} else {
 			for _, c := range cs {
-				log.Println("Added cron job with schedule: ", c.BackupCronExpression)
-				_, err := cr.AddFunc(c.BackupCronExpression, func() {
-					err := *runBackup(c)
-					if err != nil {
-						log.Println("Unexpected error during backup:", err)
-					}
-				})
-				if err != nil {
-					log.Println("Failed to create cron job with schedule:", c.BackupCronExpression)
-				}
+				addJob(c)
 			}
 		}
 
-		log.Println("Subscribed to interupt signals")
+		logger.Info("subscribed to interupt signals")
 		var quit = make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 
-		log.Println("Starting cron scheduler")
+		logger.Info("starting cron scheduler")
 		cr.Start()
 
-		log.Println("Application goes to sleep")
+		logger.Info("application goes to sleep")
 		<-quit
 
-		log.Println("Interrupt arrived, stopping schedules")
+		logger.Info("interrupt arrived, stopping schedules")
 		ctx := cr.Stop()
 		<-ctx.Done()
 	} else {
-		log.Println("Executing one time backup")
+		logger.Info("executing one time backup")
 
 		c, err := loadEnvVars()
 		if err != nil {
-			log.Println("Could not load config from environment variables")
+			logger.Info("could not load config from environment variables", "error", err)
+			return
 		}
 
-		err2 := *runBackup(c)
-		if err2 != nil {
-			log.Println("Unexpected error during backup:", err2)
+		err = runBackup(c)
+		if err != nil {
+			logger.Info("unexpected error during backup", "error", err)
+			return
 		}
 	}
 }
