@@ -113,11 +113,15 @@ func main() {
 
 		cs, err := loadEnvFiles(*envFolder)
 		if err != nil {
-			logger.Warn("could not load config from environment files")
+			if !os.IsNotExist(err) {
+				logger.Error("could not load config from environment files")
+				os.Exit(1)
+			}
 
 			c, err := loadEnvVars()
 			if err != nil {
 				logger.Error("could not load config from environment variables")
+				os.Exit(1)
 			} else {
 				addJob(c)
 			}

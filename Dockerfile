@@ -18,4 +18,4 @@ RUN apk add --no-cache ca-certificates
 COPY --from=builder /app/cmd/backup/backup /usr/bin/backup
 COPY --chmod=755 ./entrypoint.sh /root/
 
-ENTRYPOINT ["/root/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/backup", "--foreground"]
