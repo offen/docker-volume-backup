@@ -13,7 +13,24 @@ If you are interfacing with Docker via TCP, set `DOCKER_HOST` to the correct URL
 DOCKER_HOST=tcp://docker_socket_proxy:2375
 ```
 
-In case you are using [`docker-socket-proxy`][proxy], the following permissions are required:
+If you do this as you seek to restrict access to the Docker socket, this tool is potentially calling the following Docker APIs:
+
+| API | When |
+|-|-|
+| `Info` | always |
+| `ContainerExecCreate` | running commands from `exec-labels` |
+| `ContainerExecAttach` | running commands from `exec-labels` |
+| `ContainerExecInspect` | running commands from `exec-labels` |
+| `ContainerList` | always |
+  `ServiceList` | Docker engine is running in Swarm mode |
+| `ServiceInspect` | Docker engine is running in Swarm mode |
+| `ServiceUpdate` | Docker engine is running in Swarm mode and `stop-during-backup` is used |
+| `ConatinerStop` | `stop-during-backup` labels are applied to containers |
+| `ContainerStart` | `stop-during-backup` labels are applied to container |
+
+---
+
+In case you are using [`docker-socket-proxy`][proxy], this means following permissions are required:
 
 | Permission | When |
 |-|-|
