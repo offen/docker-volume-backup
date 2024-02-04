@@ -23,8 +23,6 @@ services:
       POST: ${ALLOW_POST:-1}
       TASKS: ${ALLOW_TASKS:-1}
       NODES: ${ALLOW_NODES:-1}
-      ALLOW_START: ${ALLOW_START:-1}
-      ALLOW_STOP: ${ALLOW_STOP:-1}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
