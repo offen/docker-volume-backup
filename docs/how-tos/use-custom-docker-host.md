@@ -36,13 +36,10 @@ In case you are using [`docker-socket-proxy`][proxy], this means following permi
 |-|-|
 | INFO | always required |
 | CONTAINERS | always required |
-| POST | required when using `stop-during-backup` labels |
+| POST | required when using `stop-during-backup` or `exec` labels |
 | EXEC | required when using `exec`-labeled commands |
-| SERVICES | required when running in Swarm mode |
-| NODES | required when using `stop-during-backup` and running in Swarm mode |
-| TASKS | required when using `stop-during-backup` and running in Swarm mode |
-| ALLOW_START | required when labeling containers `stop-during-backup` |
-| ALLOW_STOP | required when labeling containers `stop-during-backup` |
-
+| SERVICES | required when Docker Engine is running in Swarm mode |
+| NODES | required when labeling services `stop-during-backup` |
+| TASKS | required when labeling services `stop-during-backup` |
 
 [proxy]: https://github.com/Tecnativa/docker-socket-proxy
