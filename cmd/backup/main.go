@@ -86,79 +86,78 @@ func runBackup(c *Config) (ret error) {
 	return nil
 }
 
-func main() {
-	serve := flag.Bool("foreground", false, "run the backup in the foreground")
-	envFolder := flag.String("env-folder", "/etc/dockervolumebackup/conf.d", "location of environment files")
-	flag.Parse()
+func app(serve bool) error {
+	if serve {
+		cr := cron.New(
+			cron.WithParser(
+				cron.NewParser(
+					cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
+				),
+			),
+		)
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-
-	if *serve {
-		logger.Info("running in the foreground instead of cron")
-
-		cr := cron.New()
-
-		addJob := func(c *Config) {
-			logger.Info("added cron job", "schedule", c.BackupCronExpression)
+		addJob := func(c *Config) error {
 			_, err := cr.AddFunc(c.BackupCronExpression, func() {
 				err := runBackup(c)
 				if err != nil {
-					logger.Error("unexpected error during backup", "error", err)
+					slog.Error("unexpected error during backup", "error", err)
 				}
 			})
-			if err != nil {
-				logger.Error("failed to create cron job", "schedule", c.BackupCronExpression)
-			}
+			return err
 		}
 
-		cs, err := loadEnvFiles(*envFolder)
+		cs, err := loadEnvFiles("/etc/dockervolumebackup/conf.d")
 		if err != nil {
 			if !os.IsNotExist(err) {
-				logger.Error("could not load config from environment files")
-				os.Exit(1)
+				return fmt.Errorf("could not load config from environment files, error: %v", err)
 			}
 
 			c, err := loadEnvVars()
 			if err != nil {
-				logger.Error("could not load config from environment variables")
-				os.Exit(1)
+				return fmt.Errorf("could not load config from environment variables")
 			} else {
-				addJob(c)
+				err = addJob(c)
+				if err != nil {
+					return fmt.Errorf("could not add cron job, error: %v", err)
+				}
 			}
 		} else {
 			for _, c := range cs {
-				addJob(c)
+				err = addJob(c)
+				if err != nil {
+					return fmt.Errorf("could not add cron job, error: %v", err)
+				}
 			}
 		}
 
-		logger.Info("subscribed to interupt signals")
 		var quit = make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
-
-		logger.Info("starting cron scheduler")
 		cr.Start()
-
-		logger.Info("application goes to sleep")
 		<-quit
-
-		logger.Info("interrupt arrived, stopping schedules")
 		ctx := cr.Stop()
 		<-ctx.Done()
 	} else {
-		logger.Info("executing one time backup")
-
 		c, err := loadEnvVars()
 		if err != nil {
-			logger.Info("could not load config from environment variables", "error", err)
-			os.Exit(1)
+			return fmt.Errorf("could not load config from environment variables, error: %v", err)
 		}
 
 		err = runBackup(c)
 		if err != nil {
-			logger.Info("unexpected error during backup", "error", err)
-			os.Exit(1)
+			return fmt.Errorf("unexpected error during backup, error: %v", err)
 		}
 	}
 
-	os.Exit(0)
+	return nil
+}
+
+func main() {
+	serve := flag.Bool("foreground", false, "run the tool in the foreground")
+	flag.Parse()
+
+	err := app(*serve)
+	if err != nil {
+		slog.Error("ran into an issue during execution", "error", err)
+		os.Exit(1)
+	}
 }

@@ -5,7 +5,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/offen/envconfig"
 )
 
+// envProxy is a function that mimics os.LookupEnv but can read values from any other source
 type envProxy func(string) (string, bool)
 
 func loadConfig(lookup envProxy) (*Config, error) {
@@ -26,12 +26,10 @@ func loadConfig(lookup envProxy) (*Config, error) {
 		case !okValue && okFile: // only file
 			contents, err := os.ReadFile(location)
 			if err != nil {
-				slog.Error(fmt.Sprintf("failed to read %s", location), "error", err)
 				return "", false
 			}
 			return string(contents), true
 		case okValue && okFile: // both
-			slog.Error(fmt.Sprintf("both %s and %s are set!", key, key+"_FILE"))
 			return "", false
 		default: // neither, ignore
 			return "", false
@@ -40,37 +38,32 @@ func loadConfig(lookup envProxy) (*Config, error) {
 
 	var c = &Config{}
 	if err := envconfig.Process("", c); err != nil {
-		slog.Error("failed to process configuration values", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to process configuration values, error: %v", err)
 	}
 
 	return c, nil
 }
 
 func loadEnvVars() (*Config, error) {
-	slog.Info("loading config from environment variables")
 	return loadConfig(os.LookupEnv)
 }
 
-func loadEnvFiles(folder string) ([]*Config, error) {
-	slog.Info(fmt.Sprintf("loading config from environment files from directory %s", folder))
-
-	items, err := os.ReadDir(folder)
+func loadEnvFiles(directory string) ([]*Config, error) {
+	items, err := os.ReadDir(directory)
 	if err != nil {
-		slog.Error("failed to read files from env folder", "error", err)
-		return nil, err
+		if os.IsNotExist(err) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("failed to read files from env directory, error: %v", err)
 	}
 
 	var cs = make([]*Config, 0)
 	for _, item := range items {
-		if item.IsDir() {
-			slog.Info("skipping subdirectory")
-		} else {
-			p := filepath.Join(folder, item.Name())
+		if !item.IsDir() {
+			p := filepath.Join(directory, item.Name())
 			envFile, err := godotenv.Read(p)
 			if err != nil {
-				slog.Error(fmt.Sprintf("skipping subdirectory %s", p), "error", err)
-				return nil, err
+				return nil, fmt.Errorf("error reading config file %s, error: %v", p, err)
 			}
 			lookup := func(key string) (string, bool) {
 				val, ok := envFile[key]
@@ -78,8 +71,7 @@ func loadEnvFiles(folder string) ([]*Config, error) {
 			}
 			c, err := loadConfig(lookup)
 			if err != nil {
-				slog.Error(fmt.Sprintf("error loading config from file %s", p), "error", err)
-				return nil, err
+				return nil, fmt.Errorf("error loading config from file %s, error: %v", p, err)
 			}
 			cs = append(cs, c)
 		}
