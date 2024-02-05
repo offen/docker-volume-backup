@@ -10,7 +10,7 @@ require (
 	github.com/docker/cli v24.0.1+incompatible
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/gofrs/flock v0.8.1
-	github.com/klauspost/compress v1.17.5
+	github.com/klauspost/compress v1.17.6
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.66
 	github.com/offen/envconfig v1.5.0
