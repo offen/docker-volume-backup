@@ -13,5 +13,33 @@ If you are interfacing with Docker via TCP, set `DOCKER_HOST` to the correct URL
 DOCKER_HOST=tcp://docker_socket_proxy:2375
 ```
 
-In case you are using a socket proxy, it must support `GET` and `POST` requests to the `/containers` endpoint. If you are using Docker Swarm, it must also support the `/services` endpoint. If you are using pre/post backup commands, it must also support the `/exec` endpoint.
+If you do this as you seek to restrict access to the Docker socket, this tool is potentially calling the following Docker APIs:
 
+| API | When |
+|-|-|
+| `Info` | always |
+| `ContainerExecCreate` | running commands from `exec-labels` |
+| `ContainerExecAttach` | running commands from `exec-labels` |
+| `ContainerExecInspect` | running commands from `exec-labels` |
+| `ContainerList` | always |
+  `ServiceList` | Docker engine is running in Swarm mode |
+| `ServiceInspect` | Docker engine is running in Swarm mode |
+| `ServiceUpdate` | Docker engine is running in Swarm mode and `stop-during-backup` is used |
+| `ConatinerStop` | `stop-during-backup` labels are applied to containers |
+| `ContainerStart` | `stop-during-backup` labels are applied to container |
+
+---
+
+In case you are using [`docker-socket-proxy`][proxy], this means following permissions are required:
+
+| Permission | When |
+|-|-|
+| INFO | always required |
+| CONTAINERS | always required |
+| POST | required when using `stop-during-backup` or `exec` labels |
+| EXEC | required when using `exec`-labeled commands |
+| SERVICES | required when Docker Engine is running in Swarm mode |
+| NODES | required when labeling services `stop-during-backup` |
+| TASKS | required when labeling services `stop-during-backup` |
+
+[proxy]: https://github.com/Tecnativa/docker-socket-proxy

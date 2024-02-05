@@ -1,0 +1,40 @@
+# Copyright 2020-2021 - Offen Authors <hioffen@posteo.de>
+# SPDX-License-Identifier: Unlicense
+
+version: '3.8'
+
+services:
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    environment:
+      BACKUP_FILENAME: test.tar.gz
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      DOCKER_HOST: tcp://docker_socket_proxy:2375
+    volumes:
+      - pg_data:/backup/pg_data:ro
+      - ${LOCAL_DIR:-local}:/archive
+
+  docker_socket_proxy:
+    image: tecnativa/docker-socket-proxy:0.1
+    environment:
+      INFO: ${ALLOW_INFO:-1}
+      CONTAINERS: ${ALLOW_CONTAINERS:-1}
+      SERVICES: ${ALLOW_SERVICES:-1}
+      POST: ${ALLOW_POST:-1}
+      TASKS: ${ALLOW_TASKS:-1}
+      NODES: ${ALLOW_NODES:-1}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  pg:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_PASSWORD: example
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    deploy:
+      labels:
+        - docker-volume-backup.stop-during-backup=true
+
+volumes:
+  pg_data:
