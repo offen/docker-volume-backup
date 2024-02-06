@@ -23,9 +23,22 @@ You can populate below template according to your requirements and use it as you
 ```
 ########### BACKUP SCHEDULE
 
-# Backups run on the given cron schedule in `busybox` flavor. If no
-# value is set, `@daily` will be used. If you do not want the cron
-# to ever run, use `0 0 5 31 2 ?`.
+
+# A cron expression represents a set of times, using 5 or 6 space-separated fields.
+#
+# Field name   | Mandatory? | Allowed values  | Allowed special characters
+# ----------   | ---------- | --------------  | --------------------------
+# Seconds      | No         | 0-59            | * / , -
+# Minutes      | Yes        | 0-59            | * / , -
+# Hours        | Yes        | 0-23            | * / , -
+# Day of month | Yes        | 1-31            | * / , - ?
+# Month        | Yes        | 1-12 or JAN-DEC | * / , -
+# Day of week  | Yes        | 0-6 or SUN-SAT  | * / , - ?
+#
+# Month and Day-of-week field values are case insensitive.
+# "SUN", "Sun", and "sun" are equally accepted.
+# If no value is set, `@daily` will be used.
+# If you do not want the cron to ever run, use `0 0 5 31 2 ?`.
 
 # BACKUP_CRON_EXPRESSION="0 2 * * *"
 

@@ -14,7 +14,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-func runBackup(c *Config) (ret error) {
+func runScript(c *Config) (ret error) {
 	s, err := newScript(c)
 	if err != nil {
 		return err
@@ -86,66 +86,68 @@ func runBackup(c *Config) (ret error) {
 	return nil
 }
 
-func app(serve bool) error {
-	if serve {
-		cr := cron.New(
-			cron.WithParser(
-				cron.NewParser(
-					cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
-				),
+func runInForeground() error {
+	cr := cron.New(
+		cron.WithParser(
+			cron.NewParser(
+				cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
 			),
-		)
+		),
+	)
 
-		addJob := func(c *Config) error {
-			_, err := cr.AddFunc(c.BackupCronExpression, func() {
-				err := runBackup(c)
-				if err != nil {
-					slog.Error("unexpected error during backup", "error", err)
-				}
-			})
-			return err
-		}
-
-		cs, err := loadEnvFiles("/etc/dockervolumebackup/conf.d")
-		if err != nil {
-			if !os.IsNotExist(err) {
-				return fmt.Errorf("could not load config from environment files, error: %v", err)
-			}
-
-			c, err := loadEnvVars()
+	addJob := func(c *Config) error {
+		_, err := cr.AddFunc(c.BackupCronExpression, func() {
+			err := runScript(c)
 			if err != nil {
-				return fmt.Errorf("could not load config from environment variables")
-			} else {
-				err = addJob(c)
-				if err != nil {
-					return fmt.Errorf("could not add cron job, error: %v", err)
-				}
+				slog.Error("unexpected error during backup", "error", err)
 			}
-		} else {
-			for _, c := range cs {
-				err = addJob(c)
-				if err != nil {
-					return fmt.Errorf("could not add cron job, error: %v", err)
-				}
-			}
+		})
+		return err
+	}
+
+	cs, err := loadEnvFiles("/etc/dockervolumebackup/conf.d")
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("could not load config from environment files, error: %w", err)
 		}
 
-		var quit = make(chan os.Signal, 1)
-		signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
-		cr.Start()
-		<-quit
-		ctx := cr.Stop()
-		<-ctx.Done()
-	} else {
 		c, err := loadEnvVars()
 		if err != nil {
-			return fmt.Errorf("could not load config from environment variables, error: %v", err)
+			return fmt.Errorf("could not load config from environment variables")
+		} else {
+			err = addJob(c)
+			if err != nil {
+				return fmt.Errorf("could not add cron job, error: %w", err)
+			}
 		}
+	} else {
+		for _, c := range cs {
+			err = addJob(c)
+			if err != nil {
+				return fmt.Errorf("could not add cron job, error: %w", err)
+			}
+		}
+	}
 
-		err = runBackup(c)
-		if err != nil {
-			return fmt.Errorf("unexpected error during backup, error: %v", err)
-		}
+	var quit = make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+	cr.Start()
+	<-quit
+	ctx := cr.Stop()
+	<-ctx.Done()
+
+	return nil
+}
+
+func runAsCommand() error {
+	c, err := loadEnvVars()
+	if err != nil {
+		return fmt.Errorf("could not load config from environment variables, error: %w", err)
+	}
+
+	err = runScript(c)
+	if err != nil {
+		return fmt.Errorf("unexpected error during backup, error: %w", err)
 	}
 
 	return nil
@@ -155,7 +157,13 @@ func main() {
 	serve := flag.Bool("foreground", false, "run the tool in the foreground")
 	flag.Parse()
 
-	err := app(*serve)
+	var err error
+	if *serve {
+		err = runInForeground()
+	} else {
+		err = runAsCommand()
+	}
+
 	if err != nil {
 		slog.Error("ran into an issue during execution", "error", err)
 		os.Exit(1)
