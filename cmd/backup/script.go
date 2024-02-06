@@ -30,7 +30,6 @@ import (
 	"github.com/containrrr/shoutrrr/pkg/router"
 	"github.com/docker/docker/client"
 	"github.com/leekchan/timeutil"
-	"github.com/offen/envconfig"
 	"github.com/otiai10/copy"
 	"golang.org/x/sync/errgroup"
 )
@@ -58,10 +57,10 @@ type script struct {
 // remote resources like the Docker engine or remote storage locations. All
 // reading from env vars or other configuration sources is expected to happen
 // in this method.
-func newScript() (*script, error) {
+func newScript(c *Config) (*script, error) {
 	stdOut, logBuffer := buffer(os.Stdout)
 	s := &script{
-		c:      &Config{},
+		c:      c,
 		logger: slog.New(slog.NewTextHandler(stdOut, nil)),
 		stats: &Stats{
 			StartTime: time.Now(),
@@ -82,32 +81,6 @@ func newScript() (*script, error) {
 		s.stats.TookTime = s.stats.EndTime.Sub(s.stats.StartTime)
 		return nil
 	})
-
-	envconfig.Lookup = func(key string) (string, bool) {
-		value, okValue := os.LookupEnv(key)
-		location, okFile := os.LookupEnv(key + "_FILE")
-
-		switch {
-		case okValue && !okFile: // only value
-			return value, true
-		case !okValue && okFile: // only file
-			contents, err := os.ReadFile(location)
-			if err != nil {
-				s.must(fmt.Errorf("newScript: failed to read %s! Error: %s", location, err))
-				return "", false
-			}
-			return string(contents), true
-		case okValue && okFile: // both
-			s.must(fmt.Errorf("newScript: both %s and %s are set!", key, key+"_FILE"))
-			return "", false
-		default: // neither, ignore
-			return "", false
-		}
-	}
-
-	if err := envconfig.Process("", s.c); err != nil {
-		return nil, fmt.Errorf("newScript: failed to process configuration values: %w", err)
-	}
 
 	s.file = path.Join("/tmp", s.c.BackupFilename)
 

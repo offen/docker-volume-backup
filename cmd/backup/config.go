@@ -34,6 +34,7 @@ type Config struct {
 	BackupFilenameExpand          bool            `split_words:"true"`
 	BackupLatestSymlink           string          `split_words:"true"`
 	BackupArchive                 string          `split_words:"true" default:"/archive"`
+	BackupCronExpression          string          `split_words:"true" default:"@daily"`
 	BackupRetentionDays           int32           `split_words:"true" default:"-1"`
 	BackupPruningLeeway           time.Duration   `split_words:"true" default:"1m"`
 	BackupPruningPrefix           string          `split_words:"true"`
