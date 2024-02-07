@@ -54,7 +54,7 @@ func loadEnvFiles(directory string) ([]*Config, error) {
 		if os.IsNotExist(err) {
 			return nil, err
 		}
-		return nil, fmt.Errorf("failed to read files from env directory, error: %w", err)
+		return nil, fmt.Errorf("loadEnvFiles: failed to read files from env directory: %w", err)
 	}
 
 	var cs = make([]*Config, 0)
@@ -63,7 +63,7 @@ func loadEnvFiles(directory string) ([]*Config, error) {
 			p := filepath.Join(directory, item.Name())
 			envFile, err := godotenv.Read(p)
 			if err != nil {
-				return nil, fmt.Errorf("error reading config file %s, error: %w", p, err)
+				return nil, fmt.Errorf("loadEnvFiles: error reading config file %s: %w", p, err)
 			}
 			lookup := func(key string) (string, bool) {
 				val, ok := envFile[key]
@@ -71,7 +71,7 @@ func loadEnvFiles(directory string) ([]*Config, error) {
 			}
 			c, err := loadConfig(lookup)
 			if err != nil {
-				return nil, fmt.Errorf("error loading config from file %s, error: %w", p, err)
+				return nil, fmt.Errorf("loadEnvFiles: error loading config from file %s: %w", p, err)
 			}
 			cs = append(cs, c)
 		}

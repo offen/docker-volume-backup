@@ -14,79 +14,109 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-func runScript(c *Config) (ret error) {
-	s, err := newScript(c)
-	if err != nil {
-		return err
-	}
-
-	unlock, err := s.lock("/var/lock/dockervolumebackup.lock")
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		err = unlock()
-		if err != nil {
-			ret = err
-		}
-	}()
-
-	defer func() {
-		if pArg := recover(); pArg != nil {
-			if err, ok := pArg.(error); ok {
-				s.logger.Error(
-					fmt.Sprintf("Executing the script encountered a panic: %v", err),
-				)
-				if hookErr := s.runHooks(err); hookErr != nil {
-					s.logger.Error(
-						fmt.Sprintf("An error occurred calling the registered hooks: %s", hookErr),
-					)
-				}
-				ret = err
-			} else {
-				s.logger.Error(
-					fmt.Sprintf("Executing the script encountered an unrecoverable panic: %v", err),
-				)
-
-				panic(pArg)
-			}
-		}
-
-		if err := s.runHooks(nil); err != nil {
-			s.logger.Error(
-				fmt.Sprintf(
-					"Backup procedure ran successfully, but an error ocurred calling the registered hooks: %v",
-					err,
-				),
-			)
-			ret = err
-		}
-		s.logger.Info("Finished running backup tasks.")
-	}()
-
-	s.must(s.withLabeledCommands(lifecyclePhaseArchive, func() error {
-		restartContainersAndServices, err := s.stopContainersAndServices()
-		// The mechanism for restarting containers is not using hooks as it
-		// should happen as soon as possible (i.e. before uploading backups or
-		// similar).
-		defer func() {
-			s.must(restartContainersAndServices())
-		}()
-		if err != nil {
-			return err
-		}
-		return s.createArchive()
-	})())
-
-	s.must(s.withLabeledCommands(lifecyclePhaseProcess, s.encryptArchive)())
-	s.must(s.withLabeledCommands(lifecyclePhaseCopy, s.copyArchive)())
-	s.must(s.withLabeledCommands(lifecyclePhasePrune, s.pruneBackups)())
-
-	return nil
+type command struct {
+	logger *slog.Logger
 }
 
-func runInForeground() error {
+func newCommand() *command {
+	return &command{
+		logger: slog.New(slog.NewTextHandler(os.Stdout, nil)),
+	}
+}
+
+func (c *command) must(err error) {
+	if err != nil {
+		c.logger.Error(
+			fmt.Sprintf("Fatal error running command: %v", err),
+			"error",
+			err,
+		)
+		os.Exit(1)
+	}
+}
+
+func runScript(c *Config) (ret error) {
+	defer func() {
+		if err := recover(); err != nil {
+			ret = fmt.Errorf("runScript: unexpected panic running script: %v", err)
+		}
+	}()
+
+	s, err := newScript(c)
+	if err != nil {
+		return fmt.Errorf("runScript: error instantiating script: %w", err)
+	}
+
+	runErr := func() (ret error) {
+		unlock, err := s.lock("/var/lock/dockervolumebackup.lock")
+		if err != nil {
+			return fmt.Errorf("runScript: error acquiring file lock: %w", err)
+		}
+
+		defer func() {
+			err = unlock()
+			if err != nil {
+				ret = fmt.Errorf("runScript: error releasing file lock: %w", err)
+			}
+		}()
+
+		scriptErr := func() error {
+			if err := s.withLabeledCommands(lifecyclePhaseArchive, func() (ret error) {
+				restartContainersAndServices, err := s.stopContainersAndServices()
+				// The mechanism for restarting containers is not using hooks as it
+				// should happen as soon as possible (i.e. before uploading backups or
+				// similar).
+				defer func() {
+					ret = restartContainersAndServices()
+				}()
+				if err != nil {
+					return err
+				}
+				return s.createArchive()
+			})(); err != nil {
+				return err
+			}
+
+			if err := s.withLabeledCommands(lifecyclePhaseProcess, s.encryptArchive)(); err != nil {
+				return err
+			}
+			if err := s.withLabeledCommands(lifecyclePhaseCopy, s.copyArchive)(); err != nil {
+				return err
+			}
+			if err := s.withLabeledCommands(lifecyclePhasePrune, s.pruneBackups)(); err != nil {
+				return err
+			}
+			return nil
+		}()
+		if hookErr := s.runHooks(scriptErr); hookErr != nil {
+			if scriptErr != nil {
+				return fmt.Errorf(
+					"runScript: error %w executing the script followed by %w calling the registered hooks",
+					scriptErr,
+					hookErr,
+				)
+			}
+			return fmt.Errorf(
+				"runScript: the script ran successfully, but an error occurred calling the registered hooks: %w",
+				hookErr,
+			)
+		}
+		if scriptErr != nil {
+			return fmt.Errorf("runScript: error running script: %w", err)
+		}
+		return nil
+	}()
+
+	if runErr != nil {
+		s.logger.Error(
+			fmt.Sprintf("Script run failed: %v", runErr), "error", runErr,
+		)
+	}
+	return runErr
+
+}
+
+func (c *command) runInForeground() error {
 	cr := cron.New(
 		cron.WithParser(
 			cron.NewParser(
@@ -95,37 +125,51 @@ func runInForeground() error {
 		),
 	)
 
-	addJob := func(c *Config) error {
-		_, err := cr.AddFunc(c.BackupCronExpression, func() {
-			err := runScript(c)
-			if err != nil {
-				slog.Error("unexpected error during backup", "error", err)
+	addJob := func(config *Config) error {
+		if _, err := cr.AddFunc(config.BackupCronExpression, func() {
+			if err := runScript(config); err != nil {
+				c.logger.Error(
+					fmt.Sprintf(
+						"Unexpected error running schedule %v: %v",
+						config.BackupCronExpression,
+						err,
+					),
+					"error",
+					err,
+				)
 			}
-		})
-		return err
+		}); err != nil {
+			return fmt.Errorf("addJob: error adding schedule %s: %w", config.BackupCronExpression, err)
+		}
+		c.logger.Info(fmt.Sprintf("Successfully scheduled backup with expression %s", config.BackupCronExpression))
+		return nil
 	}
 
 	cs, err := loadEnvFiles("/etc/dockervolumebackup/conf.d")
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return fmt.Errorf("could not load config from environment files, error: %w", err)
+			return fmt.Errorf("runInForeground: could not load config from environment files: %w", err)
 		}
 
 		c, err := loadEnvVars()
 		if err != nil {
-			return fmt.Errorf("could not load config from environment variables")
+			return fmt.Errorf("runInForeground: could not load config from environment variables: %w", err)
 		} else {
 			err = addJob(c)
 			if err != nil {
-				return fmt.Errorf("could not add cron job, error: %w", err)
+				return fmt.Errorf("runInForeground: error adding job from env: %w", err)
 			}
 		}
 	} else {
-		for _, c := range cs {
-			err = addJob(c)
+		c.logger.Info("/etc/dockervolumebackup/conf.d was found, using configuration files from this directory.")
+		for _, config := range cs {
+			err = addJob(config)
 			if err != nil {
-				return fmt.Errorf("could not add cron job, error: %w", err)
+				return fmt.Errorf("runInForeground: error adding jobs from conf files: %w", err)
 			}
+			c.logger.Info(
+				fmt.Sprintf("Successfully scheduled backup with expression %s", config.BackupCronExpression),
+			)
 		}
 	}
 
@@ -139,13 +183,13 @@ func runInForeground() error {
 	return nil
 }
 
-func runAsCommand() error {
-	c, err := loadEnvVars()
+func (c *command) runAsCommand() error {
+	config, err := loadEnvVars()
 	if err != nil {
 		return fmt.Errorf("could not load config from environment variables, error: %w", err)
 	}
 
-	err = runScript(c)
+	err = runScript(config)
 	if err != nil {
 		return fmt.Errorf("unexpected error during backup, error: %w", err)
 	}
@@ -154,18 +198,13 @@ func runAsCommand() error {
 }
 
 func main() {
-	serve := flag.Bool("foreground", false, "run the tool in the foreground")
+	foreground := flag.Bool("foreground", false, "run the tool in the foreground")
 	flag.Parse()
 
-	var err error
-	if *serve {
-		err = runInForeground()
+	c := newCommand()
+	if *foreground {
+		c.must(c.runInForeground())
 	} else {
-		err = runAsCommand()
-	}
-
-	if err != nil {
-		slog.Error("ran into an issue during execution", "error", err)
-		os.Exit(1)
+		c.must(c.runAsCommand())
 	}
 }

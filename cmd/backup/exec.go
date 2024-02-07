@@ -188,12 +188,12 @@ func (s *script) withLabeledCommands(step lifecyclePhase, cb func() error) func(
 	if s.cli == nil {
 		return cb
 	}
-	return func() error {
+	return func() (ret error) {
 		if err := s.runLabeledCommands(fmt.Sprintf("docker-volume-backup.%s-pre", step)); err != nil {
 			return fmt.Errorf("withLabeledCommands: %s: error running pre commands: %w", step, err)
 		}
 		defer func() {
-			s.must(s.runLabeledCommands(fmt.Sprintf("docker-volume-backup.%s-post", step)))
+			ret = s.runLabeledCommands(fmt.Sprintf("docker-volume-backup.%s-post", step))
 		}()
 		return cb()
 	}
