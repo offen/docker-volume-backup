@@ -133,10 +133,16 @@ func (c *command) runInForeground() error {
 
 	addJob := func(config *Config) error {
 		if _, err := cr.AddFunc(config.BackupCronExpression, func() {
+			c.logger.Info(
+				fmt.Sprintf(
+					"Now running schedule %s",
+					config.BackupCronExpression,
+				),
+			)
 			if err := runScript(config); err != nil {
 				c.logger.Error(
 					fmt.Sprintf(
-						"Unexpected error running schedule %v: %v",
+						"Unexpected error running schedule %s: %v",
 						config.BackupCronExpression,
 						err,
 					),
