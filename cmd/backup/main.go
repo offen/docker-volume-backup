@@ -35,44 +35,50 @@ func (c *command) must(err error) {
 	}
 }
 
-func runScript(c *Config) (ret error) {
+func runScript(c *Config) (err error) {
 	defer func() {
-		if err := recover(); err != nil {
-			ret = fmt.Errorf("runScript: unexpected panic running script: %v", err)
+		if derr := recover(); derr != nil {
+			err = fmt.Errorf("runScript: unexpected panic running script: %v", err)
 		}
 	}()
 
 	s, err := newScript(c)
 	if err != nil {
-		return fmt.Errorf("runScript: error instantiating script: %w", err)
+		err = fmt.Errorf("runScript: error instantiating script: %w", err)
+		return
 	}
 
-	runErr := func() (ret error) {
+	runErr := func() (err error) {
 		unlock, err := s.lock("/var/lock/dockervolumebackup.lock")
 		if err != nil {
-			return fmt.Errorf("runScript: error acquiring file lock: %w", err)
+			err = fmt.Errorf("runScript: error acquiring file lock: %w", err)
+			return
 		}
 
 		defer func() {
-			err = unlock()
-			if err != nil {
-				ret = fmt.Errorf("runScript: error releasing file lock: %w", err)
+			derr := unlock()
+			if err == nil && derr != nil {
+				err = fmt.Errorf("runScript: error releasing file lock: %w", derr)
 			}
 		}()
 
 		scriptErr := func() error {
-			if err := s.withLabeledCommands(lifecyclePhaseArchive, func() (ret error) {
+			if err := s.withLabeledCommands(lifecyclePhaseArchive, func() (err error) {
 				restartContainersAndServices, err := s.stopContainersAndServices()
 				// The mechanism for restarting containers is not using hooks as it
 				// should happen as soon as possible (i.e. before uploading backups or
 				// similar).
 				defer func() {
-					ret = restartContainersAndServices()
+					derr := restartContainersAndServices()
+					if err == nil {
+						err = derr
+					}
 				}()
 				if err != nil {
-					return err
+					return
 				}
-				return s.createArchive()
+				err = s.createArchive()
+				return
 			})(); err != nil {
 				return err
 			}
@@ -88,6 +94,7 @@ func runScript(c *Config) (ret error) {
 			}
 			return nil
 		}()
+
 		if hookErr := s.runHooks(scriptErr); hookErr != nil {
 			if scriptErr != nil {
 				return fmt.Errorf(
@@ -102,7 +109,7 @@ func runScript(c *Config) (ret error) {
 			)
 		}
 		if scriptErr != nil {
-			return fmt.Errorf("runScript: error running script: %w", err)
+			return fmt.Errorf("runScript: error running script: %w", scriptErr)
 		}
 		return nil
 	}()
@@ -113,7 +120,6 @@ func runScript(c *Config) (ret error) {
 		)
 	}
 	return runErr
-
 }
 
 func (c *command) runInForeground() error {
@@ -186,12 +192,11 @@ func (c *command) runInForeground() error {
 func (c *command) runAsCommand() error {
 	config, err := loadEnvVars()
 	if err != nil {
-		return fmt.Errorf("could not load config from environment variables, error: %w", err)
+		return fmt.Errorf("runAsCommand: error loading env vars: %w", err)
 	}
-
 	err = runScript(config)
 	if err != nil {
-		return fmt.Errorf("unexpected error during backup, error: %w", err)
+		return fmt.Errorf("runAsCommand: error running script: %w", err)
 	}
 
 	return nil

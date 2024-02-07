@@ -38,7 +38,7 @@ func loadConfig(lookup envProxy) (*Config, error) {
 
 	var c = &Config{}
 	if err := envconfig.Process("", c); err != nil {
-		return nil, fmt.Errorf("failed to process configuration values, error: %w", err)
+		return nil, fmt.Errorf("loadConfig: failed to process configuration values: %w", err)
 	}
 
 	return c, nil
@@ -59,22 +59,23 @@ func loadEnvFiles(directory string) ([]*Config, error) {
 
 	var cs = make([]*Config, 0)
 	for _, item := range items {
-		if !item.IsDir() {
-			p := filepath.Join(directory, item.Name())
-			envFile, err := godotenv.Read(p)
-			if err != nil {
-				return nil, fmt.Errorf("loadEnvFiles: error reading config file %s: %w", p, err)
-			}
-			lookup := func(key string) (string, bool) {
-				val, ok := envFile[key]
-				return val, ok
-			}
-			c, err := loadConfig(lookup)
-			if err != nil {
-				return nil, fmt.Errorf("loadEnvFiles: error loading config from file %s: %w", p, err)
-			}
-			cs = append(cs, c)
+		if item.IsDir() {
+			continue
 		}
+		p := filepath.Join(directory, item.Name())
+		envFile, err := godotenv.Read(p)
+		if err != nil {
+			return nil, fmt.Errorf("loadEnvFiles: error reading config file %s: %w", p, err)
+		}
+		lookup := func(key string) (string, bool) {
+			val, ok := envFile[key]
+			return val, ok
+		}
+		c, err := loadConfig(lookup)
+		if err != nil {
+			return nil, fmt.Errorf("loadEnvFiles: error loading config from file %s: %w", p, err)
+		}
+		cs = append(cs, c)
 	}
 
 	return cs, nil
