@@ -179,9 +179,6 @@ func (c *command) runInForeground() error {
 			if err != nil {
 				return fmt.Errorf("runInForeground: error adding jobs from conf files: %w", err)
 			}
-			c.logger.Info(
-				fmt.Sprintf("Successfully scheduled backup with expression %s", config.BackupCronExpression),
-			)
 		}
 	}
 
