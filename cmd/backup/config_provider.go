@@ -38,7 +38,7 @@ func loadConfig(lookup envProxy) (*Config, error) {
 
 	var c = &Config{}
 	if err := envconfig.Process("", c); err != nil {
-		return nil, fmt.Errorf("failed to process configuration values, error: %w", err)
+		return nil, fmt.Errorf("loadConfig: failed to process configuration values: %w", err)
 	}
 
 	return c, nil
@@ -48,33 +48,39 @@ func loadEnvVars() (*Config, error) {
 	return loadConfig(os.LookupEnv)
 }
 
-func loadEnvFiles(directory string) ([]*Config, error) {
+type configFile struct {
+	name   string
+	config *Config
+}
+
+func loadEnvFiles(directory string) ([]configFile, error) {
 	items, err := os.ReadDir(directory)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, err
 		}
-		return nil, fmt.Errorf("failed to read files from env directory, error: %w", err)
+		return nil, fmt.Errorf("loadEnvFiles: failed to read files from env directory: %w", err)
 	}
 
-	var cs = make([]*Config, 0)
+	cs := []configFile{}
 	for _, item := range items {
-		if !item.IsDir() {
-			p := filepath.Join(directory, item.Name())
-			envFile, err := godotenv.Read(p)
-			if err != nil {
-				return nil, fmt.Errorf("error reading config file %s, error: %w", p, err)
-			}
-			lookup := func(key string) (string, bool) {
-				val, ok := envFile[key]
-				return val, ok
-			}
-			c, err := loadConfig(lookup)
-			if err != nil {
-				return nil, fmt.Errorf("error loading config from file %s, error: %w", p, err)
-			}
-			cs = append(cs, c)
+		if item.IsDir() {
+			continue
 		}
+		p := filepath.Join(directory, item.Name())
+		envFile, err := godotenv.Read(p)
+		if err != nil {
+			return nil, fmt.Errorf("loadEnvFiles: error reading config file %s: %w", p, err)
+		}
+		lookup := func(key string) (string, bool) {
+			val, ok := envFile[key]
+			return val, ok
+		}
+		c, err := loadConfig(lookup)
+		if err != nil {
+			return nil, fmt.Errorf("loadEnvFiles: error loading config from file %s: %w", p, err)
+		}
+		cs = append(cs, configFile{config: c, name: item.Name()})
 	}
 
 	return cs, nil
