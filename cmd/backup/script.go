@@ -480,17 +480,6 @@ func (s *script) pruneBackups() error {
 	return nil
 }
 
-// must exits the script run prematurely in case the given error
-// is non-nil.
-func (s *script) must(err error) {
-	if err != nil {
-		s.logger.Error(
-			fmt.Sprintf("Fatal error running backup: %s", err),
-		)
-		panic(err)
-	}
-}
-
 // skipPrune returns true if the given backend name is contained in the
 // list of skipped backends.
 func skipPrune(name string, skippedBackends []string) bool {
