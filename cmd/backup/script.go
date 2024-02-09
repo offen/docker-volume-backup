@@ -112,6 +112,12 @@ func newScript(c *Config) (*script, error) {
 			return nil, fmt.Errorf("newScript: failed to create docker client")
 		}
 		s.cli = cli
+		s.registerHook(hookLevelPlumbing, func(err error) error {
+			if err := s.cli.Close(); err != nil {
+				return fmt.Errorf("newScript: failed to close docker client: %w", err)
+			}
+			return nil
+		})
 	}
 
 	logFunc := func(logType storage.LogLevel, context string, msg string, params ...any) {
