@@ -131,11 +131,11 @@ func (c *command) runInForeground() error {
 		),
 	)
 
-	addJob := func(config *Config) error {
+	addJob := func(config *Config, name string) error {
 		if _, err := cr.AddFunc(config.BackupCronExpression, func() {
 			c.logger.Info(
 				fmt.Sprintf(
-					"Now running schedule %s",
+					"Now running script on schedule %s",
 					config.BackupCronExpression,
 				),
 			)
@@ -153,7 +153,14 @@ func (c *command) runInForeground() error {
 		}); err != nil {
 			return fmt.Errorf("addJob: error adding schedule %s: %w", config.BackupCronExpression, err)
 		}
-		c.logger.Info(fmt.Sprintf("Successfully scheduled backup with expression %s", config.BackupCronExpression))
+
+		c.logger.Info(fmt.Sprintf("Successfully scheduled backup %s with expression %s", name, config.BackupCronExpression))
+		if ok := checkCronSchedule(config.BackupCronExpression); !ok {
+			c.logger.Warn(
+				fmt.Sprintf("Scheduled cron expression %s will never run, is this intentional?", config.BackupCronExpression),
+			)
+		}
+
 		return nil
 	}
 
@@ -167,7 +174,7 @@ func (c *command) runInForeground() error {
 		if err != nil {
 			return fmt.Errorf("runInForeground: could not load config from environment variables: %w", err)
 		} else {
-			err = addJob(c)
+			err = addJob(c, "from environment")
 			if err != nil {
 				return fmt.Errorf("runInForeground: error adding job from env: %w", err)
 			}
@@ -175,7 +182,7 @@ func (c *command) runInForeground() error {
 	} else {
 		c.logger.Info("/etc/dockervolumebackup/conf.d was found, using configuration files from this directory.")
 		for _, config := range cs {
-			err = addJob(config)
+			err = addJob(config.config, config.name)
 			if err != nil {
 				return fmt.Errorf("runInForeground: error adding jobs from conf files: %w", err)
 			}

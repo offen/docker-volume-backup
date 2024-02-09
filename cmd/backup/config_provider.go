@@ -48,7 +48,12 @@ func loadEnvVars() (*Config, error) {
 	return loadConfig(os.LookupEnv)
 }
 
-func loadEnvFiles(directory string) ([]*Config, error) {
+type configFile struct {
+	name   string
+	config *Config
+}
+
+func loadEnvFiles(directory string) ([]configFile, error) {
 	items, err := os.ReadDir(directory)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -57,7 +62,7 @@ func loadEnvFiles(directory string) ([]*Config, error) {
 		return nil, fmt.Errorf("loadEnvFiles: failed to read files from env directory: %w", err)
 	}
 
-	var cs = make([]*Config, 0)
+	cs := []configFile{}
 	for _, item := range items {
 		if item.IsDir() {
 			continue
@@ -75,7 +80,7 @@ func loadEnvFiles(directory string) ([]*Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("loadEnvFiles: error loading config from file %s: %w", p, err)
 		}
-		cs = append(cs, c)
+		cs = append(cs, configFile{config: c, name: item.Name()})
 	}
 
 	return cs, nil
