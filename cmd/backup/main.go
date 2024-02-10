@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/robfig/cron/v3"
@@ -122,7 +123,7 @@ func runScript(c *Config) (err error) {
 	return runErr
 }
 
-func (c *command) runInForeground() error {
+func (c *command) runInForeground(profileCronExpression string) error {
 	cr := cron.New(
 		cron.WithParser(
 			cron.NewParser(
@@ -189,6 +190,24 @@ func (c *command) runInForeground() error {
 		}
 	}
 
+	if profileCronExpression != "" {
+		cr.AddFunc(profileCronExpression, func() {
+			memStats := runtime.MemStats{}
+			runtime.ReadMemStats(&memStats)
+			c.logger.Info(
+				"Collecting runtime information",
+				"num_goroutines",
+				runtime.NumGoroutine(),
+				"memory_heap_alloc",
+				formatBytes(memStats.HeapAlloc, false),
+				"memory_heap_inuse",
+				formatBytes(memStats.HeapInuse, false),
+				"memory_heap_sys",
+				formatBytes(memStats.HeapSys, false),
+			)
+		})
+	}
+
 	var quit = make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	cr.Start()
@@ -214,11 +233,12 @@ func (c *command) runAsCommand() error {
 
 func main() {
 	foreground := flag.Bool("foreground", false, "run the tool in the foreground")
+	profile := flag.String("profile", "", "collect runtime metrics and log them periodically on the given cron expression")
 	flag.Parse()
 
 	c := newCommand()
 	if *foreground {
-		c.must(c.runInForeground())
+		c.must(c.runInForeground(*profile))
 	} else {
 		c.must(c.runAsCommand())
 	}
