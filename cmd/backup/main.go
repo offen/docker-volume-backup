@@ -191,7 +191,7 @@ func (c *command) runInForeground(profileCronExpression string) error {
 	}
 
 	if profileCronExpression != "" {
-		cr.AddFunc(profileCronExpression, func() {
+		if _, err := cr.AddFunc(profileCronExpression, func() {
 			memStats := runtime.MemStats{}
 			runtime.ReadMemStats(&memStats)
 			c.logger.Info(
@@ -205,7 +205,9 @@ func (c *command) runInForeground(profileCronExpression string) error {
 				"memory_heap_sys",
 				formatBytes(memStats.HeapSys, false),
 			)
-		})
+		}); err != nil {
+			return fmt.Errorf("runInForeground: error adding profiling job: %w", err)
+		}
 	}
 
 	var quit = make(chan os.Signal, 1)
