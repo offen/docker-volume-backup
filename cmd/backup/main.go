@@ -204,6 +204,8 @@ func (c *command) runInForeground(profileCronExpression string) error {
 				formatBytes(memStats.HeapInuse, false),
 				"memory_heap_sys",
 				formatBytes(memStats.HeapSys, false),
+				"memory_heap_objects",
+				memStats.HeapObjects,
 			)
 		}); err != nil {
 			return fmt.Errorf("runInForeground: error adding profiling job: %w", err)
