@@ -17,7 +17,7 @@ require (
 	github.com/offen/envconfig v1.5.0
 	github.com/otiai10/copy v1.14.0
 	github.com/pkg/sftp v1.13.6
-	github.com/robfig/cron/v3 v3.0.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/studio-b12/gowebdav v0.9.0
 	golang.org/x/crypto v0.18.0
 	golang.org/x/oauth2 v0.16.0
