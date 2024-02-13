@@ -80,6 +80,8 @@ type Config struct {
 	DropboxAppSecret              string          `split_words:"true"`
 	DropboxRemotePath             string          `split_words:"true"`
 	DropboxConcurrencyLevel       NaturalNumber   `split_words:"true" default:"6"`
+	source                        string
+	additionalEnvVars             map[string]string
 }
 
 type CompressionType string
@@ -171,4 +173,41 @@ func (n *WholeNumber) Decode(v string) error {
 
 func (n *WholeNumber) Int() int {
 	return int(*n)
+}
+
+type envVarLookup struct {
+	ok    bool
+	key   string
+	value string
+}
+
+// applyEnv sets the values in `additionalEnvVars` as environment variables.
+// It returns a function that reverts all values that have been set to its
+// previous state.
+func (c *Config) applyEnv() (func() error, error) {
+	lookups := []envVarLookup{}
+
+	unset := func() error {
+		for _, lookup := range lookups {
+			if !lookup.ok {
+				if err := os.Unsetenv(lookup.key); err != nil {
+					return fmt.Errorf("(*Config).applyEnv: error unsetting env var %s: %w", lookup.key, err)
+				}
+				continue
+			}
+			if err := os.Setenv(lookup.key, lookup.value); err != nil {
+				return fmt.Errorf("(*Config).applyEnv: error setting back env var %s: %w", lookup.key, err)
+			}
+		}
+		return nil
+	}
+
+	for key, value := range c.additionalEnvVars {
+		current, ok := os.LookupEnv(key)
+		lookups = append(lookups, envVarLookup{ok: ok, key: key, value: current})
+		if err := os.Setenv(key, value); err != nil {
+			return unset, fmt.Errorf("(*Config).applyEnv: error setting env var: %w", err)
+		}
+	}
+	return unset, nil
 }

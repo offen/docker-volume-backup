@@ -9,6 +9,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -190,13 +191,12 @@ func (s *script) withLabeledCommands(step lifecyclePhase, cb func() error) func(
 	}
 	return func() (err error) {
 		if err = s.runLabeledCommands(fmt.Sprintf("docker-volume-backup.%s-pre", step)); err != nil {
-			err = fmt.Errorf("withLabeledCommands: %s: error running pre commands: %w", step, err)
+			err = fmt.Errorf("(*script).withLabeledCommands: %s: error running pre commands: %w", step, err)
 			return
 		}
 		defer func() {
-			derr := s.runLabeledCommands(fmt.Sprintf("docker-volume-backup.%s-post", step))
-			if err == nil && derr != nil {
-				err = derr
+			if derr := s.runLabeledCommands(fmt.Sprintf("docker-volume-backup.%s-post", step)); derr != nil {
+				err = errors.Join(err, fmt.Errorf("(*script).withLabeledCommands: error running %s-post commands: %w", step, derr))
 			}
 		}()
 		err = cb()

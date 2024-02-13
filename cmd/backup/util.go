@@ -9,6 +9,9 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
+
+	"github.com/robfig/cron/v3"
 )
 
 var noop = func() error { return nil }
@@ -78,4 +81,23 @@ func (c *concurrentSlice[T]) append(v T) {
 
 func (c *concurrentSlice[T]) value() []T {
 	return c.val
+}
+
+// checkCronSchedule detects whether the given cron expression will actually
+// ever be executed or not.
+func checkCronSchedule(expression string) (ok bool) {
+	defer func() {
+		if err := recover(); err != nil {
+			ok = false
+		}
+	}()
+	sched, err := cron.ParseStandard(expression)
+	if err != nil {
+		ok = false
+		return
+	}
+	now := time.Now()
+	sched.Next(now) // panics when the cron would never run
+	ok = true
+	return
 }

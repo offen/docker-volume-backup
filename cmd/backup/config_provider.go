@@ -12,9 +12,39 @@ import (
 	"github.com/offen/envconfig"
 )
 
+type configStrategy string
+
+const (
+	configStrategyEnv   configStrategy = "env"
+	configStrategyConfd configStrategy = "confd"
+)
+
+// sourceConfiguration returns a list of config objects using the given
+// strategy. It should be the single entrypoint for retrieving configuration
+// for all consumers.
+func sourceConfiguration(strategy configStrategy) ([]*Config, error) {
+	switch strategy {
+	case configStrategyEnv:
+		c, err := loadConfigFromEnvVars()
+		return []*Config{c}, err
+	case configStrategyConfd:
+		cs, err := loadConfigsFromEnvFiles("/etc/dockervolumebackup/conf.d")
+		if err != nil {
+			if os.IsNotExist(err) {
+				return sourceConfiguration(configStrategyEnv)
+			}
+			return nil, fmt.Errorf("sourceConfiguration: error loading config files: %w", err)
+		}
+		return cs, nil
+	default:
+		return nil, fmt.Errorf("sourceConfiguration: received unknown config strategy: %v", strategy)
+	}
+}
+
 // envProxy is a function that mimics os.LookupEnv but can read values from any other source
 type envProxy func(string) (string, bool)
 
+// loadConfig creates a config object using the given lookup function
 func loadConfig(lookup envProxy) (*Config, error) {
 	envconfig.Lookup = func(key string) (string, bool) {
 		value, okValue := lookup(key)
@@ -44,17 +74,16 @@ func loadConfig(lookup envProxy) (*Config, error) {
 	return c, nil
 }
 
-func loadEnvVars() (*Config, error) {
-	return loadConfig(os.LookupEnv)
+func loadConfigFromEnvVars() (*Config, error) {
+	c, err := loadConfig(os.LookupEnv)
+	if err != nil {
+		return nil, fmt.Errorf("loadEnvVars: error loading config from environment: %w", err)
+	}
+	c.source = "from environment"
+	return c, nil
 }
 
-type configFile struct {
-	name              string
-	config            *Config
-	additionalEnvVars map[string]string
-}
-
-func loadEnvFiles(directory string) ([]configFile, error) {
+func loadConfigsFromEnvFiles(directory string) ([]*Config, error) {
 	items, err := os.ReadDir(directory)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -63,7 +92,7 @@ func loadEnvFiles(directory string) ([]configFile, error) {
 		return nil, fmt.Errorf("loadEnvFiles: failed to read files from env directory: %w", err)
 	}
 
-	cs := []configFile{}
+	configs := []*Config{}
 	for _, item := range items {
 		if item.IsDir() {
 			continue
@@ -88,8 +117,10 @@ func loadEnvFiles(directory string) ([]configFile, error) {
 		if err != nil {
 			return nil, fmt.Errorf("loadEnvFiles: error loading config from file %s: %w", p, err)
 		}
-		cs = append(cs, configFile{config: c, name: item.Name(), additionalEnvVars: envFile})
+		c.source = item.Name()
+		c.additionalEnvVars = envFile
+		configs = append(configs, c)
 	}
 
-	return cs, nil
+	return configs, nil
 }
