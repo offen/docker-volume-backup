@@ -97,11 +97,6 @@ func newScript(c *Config) (*script, error) {
 	}
 	s.file = bf.String()
 
-	if s.c.BackupFilenameExpand {
-		s.file = os.ExpandEnv(s.file)
-		s.c.BackupLatestSymlink = os.ExpandEnv(s.c.BackupLatestSymlink)
-		s.c.BackupPruningPrefix = os.ExpandEnv(s.c.BackupPruningPrefix)
-	}
 	s.file = timeutil.Strftime(&s.stats.StartTime, s.file)
 
 	_, err := os.Stat("/var/run/docker.sock")

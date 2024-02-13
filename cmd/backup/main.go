@@ -36,7 +36,7 @@ func (c *command) must(err error) {
 	}
 }
 
-func runScript(c *Config) (err error) {
+func runScript(c *Config, envVars map[string]string) (err error) {
 	defer func() {
 		if derr := recover(); derr != nil {
 			err = fmt.Errorf("runScript: unexpected panic running script: %v", err)
@@ -62,6 +62,33 @@ func runScript(c *Config) (err error) {
 				err = fmt.Errorf("runScript: error releasing file lock: %w", derr)
 			}
 		}()
+
+		for key, value := range envVars {
+			currentVal, currentOk := os.LookupEnv(key)
+			defer func(currentKey, currentVal string, currentOk bool) {
+				if !currentOk {
+					_ = os.Unsetenv(currentKey)
+				} else {
+					_ = os.Setenv(currentKey, currentVal)
+				}
+				s.logger.Info(fmt.Sprintf("unset %v: %v", currentKey, currentVal))
+			}(key, currentVal, currentOk)
+
+			if err := os.Setenv(key, value); err != nil {
+				return fmt.Errorf(
+					"Unexpected error overloading environment %s: %w",
+					s.c.BackupCronExpression,
+					err,
+				)
+			}
+			s.logger.Info(fmt.Sprintf("set %v: %v", key, value))
+		}
+
+		if s.c.BackupFilenameExpand {
+			s.file = os.ExpandEnv(s.file)
+			s.c.BackupLatestSymlink = os.ExpandEnv(s.c.BackupLatestSymlink)
+			s.c.BackupPruningPrefix = os.ExpandEnv(s.c.BackupPruningPrefix)
+		}
 
 		scriptErr := func() error {
 			if err := s.withLabeledCommands(lifecyclePhaseArchive, func() (err error) {
@@ -132,7 +159,7 @@ func (c *command) runInForeground(profileCronExpression string) error {
 		),
 	)
 
-	addJob := func(config *Config, name string) error {
+	addJob := func(config *Config, name string, envVars map[string]string) error {
 		if _, err := cr.AddFunc(config.BackupCronExpression, func() {
 			c.logger.Info(
 				fmt.Sprintf(
@@ -140,7 +167,8 @@ func (c *command) runInForeground(profileCronExpression string) error {
 					config.BackupCronExpression,
 				),
 			)
-			if err := runScript(config); err != nil {
+
+			if err := runScript(config, envVars); err != nil {
 				c.logger.Error(
 					fmt.Sprintf(
 						"Unexpected error running schedule %s: %v",
@@ -175,7 +203,7 @@ func (c *command) runInForeground(profileCronExpression string) error {
 		if err != nil {
 			return fmt.Errorf("runInForeground: could not load config from environment variables: %w", err)
 		} else {
-			err = addJob(c, "from environment")
+			err = addJob(c, "from environment", nil)
 			if err != nil {
 				return fmt.Errorf("runInForeground: error adding job from env: %w", err)
 			}
@@ -183,7 +211,7 @@ func (c *command) runInForeground(profileCronExpression string) error {
 	} else {
 		c.logger.Info("/etc/dockervolumebackup/conf.d was found, using configuration files from this directory.")
 		for _, config := range cs {
-			err = addJob(config.config, config.name)
+			err = addJob(config.config, config.name, config.additionalEnvVars)
 			if err != nil {
 				return fmt.Errorf("runInForeground: error adding jobs from conf files: %w", err)
 			}
@@ -227,7 +255,7 @@ func (c *command) runAsCommand() error {
 	if err != nil {
 		return fmt.Errorf("runAsCommand: error loading env vars: %w", err)
 	}
-	err = runScript(config)
+	err = runScript(config, nil)
 	if err != nil {
 		return fmt.Errorf("runAsCommand: error running script: %w", err)
 	}
