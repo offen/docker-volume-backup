@@ -89,7 +89,6 @@ func newScript(c *Config, envVars map[string]string) (*script, func() error, err
 			} else {
 				_ = os.Setenv(currentKey, currentVal)
 			}
-			s.logger.Info(fmt.Sprintf("unset %v: %v", currentKey, currentVal))
 		}(key, currentVal, currentOk)
 
 		if err := os.Setenv(key, value); err != nil {
@@ -99,7 +98,6 @@ func newScript(c *Config, envVars map[string]string) (*script, func() error, err
 				err,
 			)
 		}
-		s.logger.Info(fmt.Sprintf("set %v: %v", key, value))
 	}
 	s.registerHook(hookLevelPlumbing, func(error) error {
 		s.stats.EndTime = time.Now()
