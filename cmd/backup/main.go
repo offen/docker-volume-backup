@@ -43,53 +43,19 @@ func runScript(c *Config, envVars map[string]string) (err error) {
 		}
 	}()
 
-	s, err := newScript(c)
+	s, unlock, err := newScript(c, envVars)
 	if err != nil {
 		err = fmt.Errorf("runScript: error instantiating script: %w", err)
 		return
 	}
+	defer func() {
+		derr := unlock()
+		if err != nil {
+			err = fmt.Errorf("runScript: error releasing file lock: %w", derr)
+		}
+	}()
 
 	runErr := func() (err error) {
-		unlock, err := s.lock("/var/lock/dockervolumebackup.lock")
-		if err != nil {
-			err = fmt.Errorf("runScript: error acquiring file lock: %w", err)
-			return
-		}
-
-		defer func() {
-			derr := unlock()
-			if err == nil && derr != nil {
-				err = fmt.Errorf("runScript: error releasing file lock: %w", derr)
-			}
-		}()
-
-		for key, value := range envVars {
-			currentVal, currentOk := os.LookupEnv(key)
-			defer func(currentKey, currentVal string, currentOk bool) {
-				if !currentOk {
-					_ = os.Unsetenv(currentKey)
-				} else {
-					_ = os.Setenv(currentKey, currentVal)
-				}
-				s.logger.Info(fmt.Sprintf("unset %v: %v", currentKey, currentVal))
-			}(key, currentVal, currentOk)
-
-			if err := os.Setenv(key, value); err != nil {
-				return fmt.Errorf(
-					"Unexpected error overloading environment %s: %w",
-					s.c.BackupCronExpression,
-					err,
-				)
-			}
-			s.logger.Info(fmt.Sprintf("set %v: %v", key, value))
-		}
-
-		if s.c.BackupFilenameExpand {
-			s.file = os.ExpandEnv(s.file)
-			s.c.BackupLatestSymlink = os.ExpandEnv(s.c.BackupLatestSymlink)
-			s.c.BackupPruningPrefix = os.ExpandEnv(s.c.BackupPruningPrefix)
-		}
-
 		scriptErr := func() error {
 			if err := s.withLabeledCommands(lifecyclePhaseArchive, func() (err error) {
 				restartContainersAndServices, err := s.stopContainersAndServices()

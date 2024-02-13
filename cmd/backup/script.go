@@ -57,7 +57,7 @@ type script struct {
 // remote resources like the Docker engine or remote storage locations. All
 // reading from env vars or other configuration sources is expected to happen
 // in this method.
-func newScript(c *Config) (*script, error) {
+func newScript(c *Config, envVars map[string]string) (*script, func() error, error) {
 	stdOut, logBuffer := buffer(os.Stdout)
 	s := &script{
 		c:      c,
@@ -76,6 +76,31 @@ func newScript(c *Config) (*script, error) {
 		},
 	}
 
+	unlock, err := s.lock("/var/lock/dockervolumebackup.lock")
+	if err != nil {
+		return nil, noop, fmt.Errorf("runScript: error acquiring file lock: %w", err)
+	}
+
+	for key, value := range envVars {
+		currentVal, currentOk := os.LookupEnv(key)
+		defer func(currentKey, currentVal string, currentOk bool) {
+			if !currentOk {
+				_ = os.Unsetenv(currentKey)
+			} else {
+				_ = os.Setenv(currentKey, currentVal)
+			}
+			s.logger.Info(fmt.Sprintf("unset %v: %v", currentKey, currentVal))
+		}(key, currentVal, currentOk)
+
+		if err := os.Setenv(key, value); err != nil {
+			return nil, unlock, fmt.Errorf(
+				"Unexpected error overloading environment %s: %w",
+				s.c.BackupCronExpression,
+				err,
+			)
+		}
+		s.logger.Info(fmt.Sprintf("set %v: %v", key, value))
+	}
 	s.registerHook(hookLevelPlumbing, func(error) error {
 		s.stats.EndTime = time.Now()
 		s.stats.TookTime = s.stats.EndTime.Sub(s.stats.StartTime)
@@ -86,25 +111,30 @@ func newScript(c *Config) (*script, error) {
 
 	tmplFileName, tErr := template.New("extension").Parse(s.file)
 	if tErr != nil {
-		return nil, fmt.Errorf("newScript: unable to parse backup file extension template: %w", tErr)
+		return nil, unlock, fmt.Errorf("newScript: unable to parse backup file extension template: %w", tErr)
 	}
 
 	var bf bytes.Buffer
 	if tErr := tmplFileName.Execute(&bf, map[string]string{
 		"Extension": fmt.Sprintf("tar.%s", s.c.BackupCompression),
 	}); tErr != nil {
-		return nil, fmt.Errorf("newScript: error executing backup file extension template: %w", tErr)
+		return nil, unlock, fmt.Errorf("newScript: error executing backup file extension template: %w", tErr)
 	}
 	s.file = bf.String()
 
+	if s.c.BackupFilenameExpand {
+		s.file = os.ExpandEnv(s.file)
+		s.c.BackupLatestSymlink = os.ExpandEnv(s.c.BackupLatestSymlink)
+		s.c.BackupPruningPrefix = os.ExpandEnv(s.c.BackupPruningPrefix)
+	}
 	s.file = timeutil.Strftime(&s.stats.StartTime, s.file)
 
-	_, err := os.Stat("/var/run/docker.sock")
+	_, err = os.Stat("/var/run/docker.sock")
 	_, dockerHostSet := os.LookupEnv("DOCKER_HOST")
 	if !os.IsNotExist(err) || dockerHostSet {
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
-			return nil, fmt.Errorf("newScript: failed to create docker client")
+			return nil, unlock, fmt.Errorf("newScript: failed to create docker client")
 		}
 		s.cli = cli
 		s.registerHook(hookLevelPlumbing, func(err error) error {
@@ -142,7 +172,7 @@ func newScript(c *Config) (*script, error) {
 		}
 		s3Backend, err := s3.NewStorageBackend(s3Config, logFunc)
 		if err != nil {
-			return nil, fmt.Errorf("newScript: error creating s3 storage backend: %w", err)
+			return nil, unlock, fmt.Errorf("newScript: error creating s3 storage backend: %w", err)
 		}
 		s.storages = append(s.storages, s3Backend)
 	}
@@ -157,7 +187,7 @@ func newScript(c *Config) (*script, error) {
 		}
 		webdavBackend, err := webdav.NewStorageBackend(webDavConfig, logFunc)
 		if err != nil {
-			return nil, fmt.Errorf("newScript: error creating webdav storage backend: %w", err)
+			return nil, unlock, fmt.Errorf("newScript: error creating webdav storage backend: %w", err)
 		}
 		s.storages = append(s.storages, webdavBackend)
 	}
@@ -174,7 +204,7 @@ func newScript(c *Config) (*script, error) {
 		}
 		sshBackend, err := ssh.NewStorageBackend(sshConfig, logFunc)
 		if err != nil {
-			return nil, fmt.Errorf("newScript: error creating ssh storage backend: %w", err)
+			return nil, unlock, fmt.Errorf("newScript: error creating ssh storage backend: %w", err)
 		}
 		s.storages = append(s.storages, sshBackend)
 	}
@@ -198,7 +228,7 @@ func newScript(c *Config) (*script, error) {
 		}
 		azureBackend, err := azure.NewStorageBackend(azureConfig, logFunc)
 		if err != nil {
-			return nil, fmt.Errorf("newScript: error creating azure storage backend: %w", err)
+			return nil, unlock, fmt.Errorf("newScript: error creating azure storage backend: %w", err)
 		}
 		s.storages = append(s.storages, azureBackend)
 	}
@@ -215,7 +245,7 @@ func newScript(c *Config) (*script, error) {
 		}
 		dropboxBackend, err := dropbox.NewStorageBackend(dropboxConfig, logFunc)
 		if err != nil {
-			return nil, fmt.Errorf("newScript: error creating dropbox storage backend: %w", err)
+			return nil, unlock, fmt.Errorf("newScript: error creating dropbox storage backend: %w", err)
 		}
 		s.storages = append(s.storages, dropboxBackend)
 	}
@@ -241,14 +271,14 @@ func newScript(c *Config) (*script, error) {
 
 	hookLevel, ok := hookLevels[s.c.NotificationLevel]
 	if !ok {
-		return nil, fmt.Errorf("newScript: unknown NOTIFICATION_LEVEL %s", s.c.NotificationLevel)
+		return nil, unlock, fmt.Errorf("newScript: unknown NOTIFICATION_LEVEL %s", s.c.NotificationLevel)
 	}
 	s.hookLevel = hookLevel
 
 	if len(s.c.NotificationURLs) > 0 {
 		sender, senderErr := shoutrrr.CreateSender(s.c.NotificationURLs...)
 		if senderErr != nil {
-			return nil, fmt.Errorf("newScript: error creating sender: %w", senderErr)
+			return nil, unlock, fmt.Errorf("newScript: error creating sender: %w", senderErr)
 		}
 		s.sender = sender
 
@@ -256,13 +286,13 @@ func newScript(c *Config) (*script, error) {
 		tmpl.Funcs(templateHelpers)
 		tmpl, err = tmpl.Parse(defaultNotifications)
 		if err != nil {
-			return nil, fmt.Errorf("newScript: unable to parse default notifications templates: %w", err)
+			return nil, unlock, fmt.Errorf("newScript: unable to parse default notifications templates: %w", err)
 		}
 
 		if fi, err := os.Stat("/etc/dockervolumebackup/notifications.d"); err == nil && fi.IsDir() {
 			tmpl, err = tmpl.ParseGlob("/etc/dockervolumebackup/notifications.d/*.*")
 			if err != nil {
-				return nil, fmt.Errorf("newScript: unable to parse user defined notifications templates: %w", err)
+				return nil, unlock, fmt.Errorf("newScript: unable to parse user defined notifications templates: %w", err)
 			}
 		}
 		s.template = tmpl
@@ -283,7 +313,7 @@ func newScript(c *Config) (*script, error) {
 		})
 	}
 
-	return s, nil
+	return s, unlock, nil
 }
 
 // createArchive creates a tar archive of the configured backup location and
