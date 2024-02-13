@@ -4,6 +4,9 @@ services:
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
     restart: always
+    environment:
+      BACKUP_FILENAME: $$NAME.tar.gz
+      BACKUP_FILENAME_EXPAND: 'true'
     volumes:
       - ${LOCAL_DIR:-./local}:/archive
       - app_data:/backup/app_data:ro
