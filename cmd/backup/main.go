@@ -36,33 +36,26 @@ func (c *command) must(err error) {
 	}
 }
 
-func runScript(c *Config) (err error) {
+func runScript(c *Config, envVars map[string]string) (err error) {
 	defer func() {
 		if derr := recover(); derr != nil {
 			err = fmt.Errorf("runScript: unexpected panic running script: %v", err)
 		}
 	}()
 
-	s, err := newScript(c)
+	s, unlock, err := newScript(c, envVars)
 	if err != nil {
 		err = fmt.Errorf("runScript: error instantiating script: %w", err)
 		return
 	}
+	defer func() {
+		derr := unlock()
+		if err != nil {
+			err = fmt.Errorf("runScript: error releasing file lock: %w", derr)
+		}
+	}()
 
 	runErr := func() (err error) {
-		unlock, err := s.lock("/var/lock/dockervolumebackup.lock")
-		if err != nil {
-			err = fmt.Errorf("runScript: error acquiring file lock: %w", err)
-			return
-		}
-
-		defer func() {
-			derr := unlock()
-			if err == nil && derr != nil {
-				err = fmt.Errorf("runScript: error releasing file lock: %w", derr)
-			}
-		}()
-
 		scriptErr := func() error {
 			if err := s.withLabeledCommands(lifecyclePhaseArchive, func() (err error) {
 				restartContainersAndServices, err := s.stopContainersAndServices()
@@ -132,7 +125,7 @@ func (c *command) runInForeground(profileCronExpression string) error {
 		),
 	)
 
-	addJob := func(config *Config, name string) error {
+	addJob := func(config *Config, name string, envVars map[string]string) error {
 		if _, err := cr.AddFunc(config.BackupCronExpression, func() {
 			c.logger.Info(
 				fmt.Sprintf(
@@ -140,7 +133,8 @@ func (c *command) runInForeground(profileCronExpression string) error {
 					config.BackupCronExpression,
 				),
 			)
-			if err := runScript(config); err != nil {
+
+			if err := runScript(config, envVars); err != nil {
 				c.logger.Error(
 					fmt.Sprintf(
 						"Unexpected error running schedule %s: %v",
@@ -175,7 +169,7 @@ func (c *command) runInForeground(profileCronExpression string) error {
 		if err != nil {
 			return fmt.Errorf("runInForeground: could not load config from environment variables: %w", err)
 		} else {
-			err = addJob(c, "from environment")
+			err = addJob(c, "from environment", nil)
 			if err != nil {
 				return fmt.Errorf("runInForeground: error adding job from env: %w", err)
 			}
@@ -183,7 +177,7 @@ func (c *command) runInForeground(profileCronExpression string) error {
 	} else {
 		c.logger.Info("/etc/dockervolumebackup/conf.d was found, using configuration files from this directory.")
 		for _, config := range cs {
-			err = addJob(config.config, config.name)
+			err = addJob(config.config, config.name, config.additionalEnvVars)
 			if err != nil {
 				return fmt.Errorf("runInForeground: error adding jobs from conf files: %w", err)
 			}
@@ -227,7 +221,7 @@ func (c *command) runAsCommand() error {
 	if err != nil {
 		return fmt.Errorf("runAsCommand: error loading env vars: %w", err)
 	}
-	err = runScript(config)
+	err = runScript(config, nil)
 	if err != nil {
 		return fmt.Errorf("runAsCommand: error running script: %w", err)
 	}

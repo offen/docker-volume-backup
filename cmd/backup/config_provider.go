@@ -49,8 +49,9 @@ func loadEnvVars() (*Config, error) {
 }
 
 type configFile struct {
-	name   string
-	config *Config
+	name              string
+	config            *Config
+	additionalEnvVars map[string]string
 }
 
 func loadEnvFiles(directory string) ([]configFile, error) {
@@ -74,13 +75,16 @@ func loadEnvFiles(directory string) ([]configFile, error) {
 		}
 		lookup := func(key string) (string, bool) {
 			val, ok := envFile[key]
-			return val, ok
+			if ok {
+				return val, ok
+			}
+			return os.LookupEnv(key)
 		}
 		c, err := loadConfig(lookup)
 		if err != nil {
 			return nil, fmt.Errorf("loadEnvFiles: error loading config from file %s: %w", p, err)
 		}
-		cs = append(cs, configFile{config: c, name: item.Name()})
+		cs = append(cs, configFile{config: c, name: item.Name(), additionalEnvVars: envFile})
 	}
 
 	return cs, nil
