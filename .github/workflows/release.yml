@@ -15,6 +15,45 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
+      - name: set Environment Variables
+        id: env
+        run: |
+          version_tag="${{github.ref_name}}"
+          echo "NOW=$(date +'%F %Z %T')" >> $GITHUB_ENV
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # list of Docker images to use as base name for tags
+          images: |
+            offen/docker-volume-backup
+            ghcr.io/offen/docker-volume-backup
+          # define global behaviour for tags
+          flavor: |
+            latest=false
+          # generate Docker tags based on the following events/attributes
+          tags: |
+            # tag releases as latest, except prerelease tags like `v2.0.0-alpha.x`
+            type=raw,value=latest,enable=${{ !contains(github.ref, 'alpha') }}
+            # output v2.42.1-alpha.1 (incl. pre-releases)
+            type=semver,pattern=v{{version}}
+            # output v2.42.1 (excl. pre-releases)
+            type=semver,pattern=v{{major}}.{{minor}}.{{patch}}
+            # output v2 
+            type=semver,pattern=v{{major}}
+          labels: |
+            org.opencontainers.image.title=${{github.event.repository.name}}
+            org.opencontainers.image.description="Backup Docker volumes locally or to any S3, WebDAV, Azure Blob Storage, Dropbox or SSH compatible storage"
+            org.opencontainers.image.vendor=${{github.repository_owner}}
+            org.opencontainers.image.licenses="MPL-2.0"
+            org.opencontainers.image.version=${{github.ref_name}}
+            org.opencontainers.image.created=${{ env.NOW }}
+            org.opencontainers.image.source=${{github.server_url}}/${{github.repository}}
+            org.opencontainers.image.revision=${{github.sha}}
+            org.opencontainers.image.url="https://offen.github.io/docker-volume-backup/"
+            org.opencontainers.image.documentation="https://offen.github.io/docker-volume-backup/"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
 
@@ -34,26 +73,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker tags
-        id: meta
-        run: |
-          version_tag="${{github.ref_name}}"
-          tags=($version_tag)
-          if [[ "$version_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            # prerelease tags like `v2.0.0-alpha.1` should not be released as `latest` nor `v2`
-            tags+=("latest")
-            tags+=($(echo "$version_tag" | cut -d. -f1))
-          fi
-          releases=""
-          for tag in "${tags[@]}"; do
-            releases="${releases:+$releases,}offen/docker-volume-backup:$tag,ghcr.io/offen/docker-volume-backup:$tag"
-          done
-          echo "releases=$releases" >> "$GITHUB_OUTPUT"
+
 
       - name: Build and push Docker images
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-          tags: ${{ steps.meta.outputs.releases }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
