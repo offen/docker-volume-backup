@@ -6,14 +6,9 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"io/fs"
 	"log/slog"
 	"os"
 	"path"
-	"path/filepath"
-	"slices"
-	"strings"
 	"text/template"
 	"time"
 
@@ -25,13 +20,10 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage/ssh"
 	"github.com/offen/docker-volume-backup/internal/storage/webdav"
 
-	openpgp "github.com/ProtonMail/go-crypto/openpgp/v2"
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
 	"github.com/docker/docker/client"
 	"github.com/leekchan/timeutil"
-	"github.com/otiai10/copy"
-	"golang.org/x/sync/errgroup"
 )
 
 // script holds all the stateful information required to orchestrate a
@@ -57,9 +49,9 @@ type script struct {
 // remote resources like the Docker engine or remote storage locations. All
 // reading from env vars or other configuration sources is expected to happen
 // in this method.
-func newScript(c *Config, envVars map[string]string) (*script, func() error, error) {
+func newScript(c *Config) *script {
 	stdOut, logBuffer := buffer(os.Stdout)
-	s := &script{
+	return &script{
 		c:      c,
 		logger: slog.New(slog.NewTextHandler(stdOut, nil)),
 		stats: &Stats{
@@ -75,30 +67,9 @@ func newScript(c *Config, envVars map[string]string) (*script, func() error, err
 			},
 		},
 	}
+}
 
-	unlock, err := s.lock("/var/lock/dockervolumebackup.lock")
-	if err != nil {
-		return nil, noop, fmt.Errorf("runScript: error acquiring file lock: %w", err)
-	}
-
-	for key, value := range envVars {
-		currentVal, currentOk := os.LookupEnv(key)
-		defer func(currentKey, currentVal string, currentOk bool) {
-			if !currentOk {
-				_ = os.Unsetenv(currentKey)
-			} else {
-				_ = os.Setenv(currentKey, currentVal)
-			}
-		}(key, currentVal, currentOk)
-
-		if err := os.Setenv(key, value); err != nil {
-			return nil, unlock, fmt.Errorf(
-				"Unexpected error overloading environment %s: %w",
-				s.c.BackupCronExpression,
-				err,
-			)
-		}
-	}
+func (s *script) init() error {
 	s.registerHook(hookLevelPlumbing, func(error) error {
 		s.stats.EndTime = time.Now()
 		s.stats.TookTime = s.stats.EndTime.Sub(s.stats.StartTime)
@@ -109,14 +80,14 @@ func newScript(c *Config, envVars map[string]string) (*script, func() error, err
 
 	tmplFileName, tErr := template.New("extension").Parse(s.file)
 	if tErr != nil {
-		return nil, unlock, fmt.Errorf("newScript: unable to parse backup file extension template: %w", tErr)
+		return fmt.Errorf("newScript: unable to parse backup file extension template: %w", tErr)
 	}
 
 	var bf bytes.Buffer
 	if tErr := tmplFileName.Execute(&bf, map[string]string{
 		"Extension": fmt.Sprintf("tar.%s", s.c.BackupCompression),
 	}); tErr != nil {
-		return nil, unlock, fmt.Errorf("newScript: error executing backup file extension template: %w", tErr)
+		return fmt.Errorf("newScript: error executing backup file extension template: %w", tErr)
 	}
 	s.file = bf.String()
 
@@ -127,12 +98,12 @@ func newScript(c *Config, envVars map[string]string) (*script, func() error, err
 	}
 	s.file = timeutil.Strftime(&s.stats.StartTime, s.file)
 
-	_, err = os.Stat("/var/run/docker.sock")
+	_, err := os.Stat("/var/run/docker.sock")
 	_, dockerHostSet := os.LookupEnv("DOCKER_HOST")
 	if !os.IsNotExist(err) || dockerHostSet {
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
-			return nil, unlock, fmt.Errorf("newScript: failed to create docker client")
+			return fmt.Errorf("newScript: failed to create docker client")
 		}
 		s.cli = cli
 		s.registerHook(hookLevelPlumbing, func(err error) error {
@@ -170,7 +141,7 @@ func newScript(c *Config, envVars map[string]string) (*script, func() error, err
 		}
 		s3Backend, err := s3.NewStorageBackend(s3Config, logFunc)
 		if err != nil {
-			return nil, unlock, fmt.Errorf("newScript: error creating s3 storage backend: %w", err)
+			return fmt.Errorf("newScript: error creating s3 storage backend: %w", err)
 		}
 		s.storages = append(s.storages, s3Backend)
 	}
@@ -185,7 +156,7 @@ func newScript(c *Config, envVars map[string]string) (*script, func() error, err
 		}
 		webdavBackend, err := webdav.NewStorageBackend(webDavConfig, logFunc)
 		if err != nil {
-			return nil, unlock, fmt.Errorf("newScript: error creating webdav storage backend: %w", err)
+			return fmt.Errorf("newScript: error creating webdav storage backend: %w", err)
 		}
 		s.storages = append(s.storages, webdavBackend)
 	}
@@ -202,7 +173,7 @@ func newScript(c *Config, envVars map[string]string) (*script, func() error, err
 		}
 		sshBackend, err := ssh.NewStorageBackend(sshConfig, logFunc)
 		if err != nil {
-			return nil, unlock, fmt.Errorf("newScript: error creating ssh storage backend: %w", err)
+			return fmt.Errorf("newScript: error creating ssh storage backend: %w", err)
 		}
 		s.storages = append(s.storages, sshBackend)
 	}
@@ -226,7 +197,7 @@ func newScript(c *Config, envVars map[string]string) (*script, func() error, err
 		}
 		azureBackend, err := azure.NewStorageBackend(azureConfig, logFunc)
 		if err != nil {
-			return nil, unlock, fmt.Errorf("newScript: error creating azure storage backend: %w", err)
+			return fmt.Errorf("newScript: error creating azure storage backend: %w", err)
 		}
 		s.storages = append(s.storages, azureBackend)
 	}
@@ -243,7 +214,7 @@ func newScript(c *Config, envVars map[string]string) (*script, func() error, err
 		}
 		dropboxBackend, err := dropbox.NewStorageBackend(dropboxConfig, logFunc)
 		if err != nil {
-			return nil, unlock, fmt.Errorf("newScript: error creating dropbox storage backend: %w", err)
+			return fmt.Errorf("newScript: error creating dropbox storage backend: %w", err)
 		}
 		s.storages = append(s.storages, dropboxBackend)
 	}
@@ -269,14 +240,14 @@ func newScript(c *Config, envVars map[string]string) (*script, func() error, err
 
 	hookLevel, ok := hookLevels[s.c.NotificationLevel]
 	if !ok {
-		return nil, unlock, fmt.Errorf("newScript: unknown NOTIFICATION_LEVEL %s", s.c.NotificationLevel)
+		return fmt.Errorf("newScript: unknown NOTIFICATION_LEVEL %s", s.c.NotificationLevel)
 	}
 	s.hookLevel = hookLevel
 
 	if len(s.c.NotificationURLs) > 0 {
 		sender, senderErr := shoutrrr.CreateSender(s.c.NotificationURLs...)
 		if senderErr != nil {
-			return nil, unlock, fmt.Errorf("newScript: error creating sender: %w", senderErr)
+			return fmt.Errorf("newScript: error creating sender: %w", senderErr)
 		}
 		s.sender = sender
 
@@ -284,13 +255,13 @@ func newScript(c *Config, envVars map[string]string) (*script, func() error, err
 		tmpl.Funcs(templateHelpers)
 		tmpl, err = tmpl.Parse(defaultNotifications)
 		if err != nil {
-			return nil, unlock, fmt.Errorf("newScript: unable to parse default notifications templates: %w", err)
+			return fmt.Errorf("newScript: unable to parse default notifications templates: %w", err)
 		}
 
 		if fi, err := os.Stat("/etc/dockervolumebackup/notifications.d"); err == nil && fi.IsDir() {
 			tmpl, err = tmpl.ParseGlob("/etc/dockervolumebackup/notifications.d/*.*")
 			if err != nil {
-				return nil, unlock, fmt.Errorf("newScript: unable to parse user defined notifications templates: %w", err)
+				return fmt.Errorf("newScript: unable to parse user defined notifications templates: %w", err)
 			}
 		}
 		s.template = tmpl
@@ -311,211 +282,5 @@ func newScript(c *Config, envVars map[string]string) (*script, func() error, err
 		})
 	}
 
-	return s, unlock, nil
-}
-
-// createArchive creates a tar archive of the configured backup location and
-// saves it to disk.
-func (s *script) createArchive() error {
-	backupSources := s.c.BackupSources
-
-	if s.c.BackupFromSnapshot {
-		s.logger.Warn(
-			"Using BACKUP_FROM_SNAPSHOT has been deprecated and will be removed in the next major version.",
-		)
-		s.logger.Warn(
-			"Please use `archive-pre` and `archive-post` commands to prepare your backup sources. Refer to the documentation for an upgrade guide.",
-		)
-		backupSources = filepath.Join("/tmp", s.c.BackupSources)
-		// copy before compressing guard against a situation where backup folder's content are still growing.
-		s.registerHook(hookLevelPlumbing, func(error) error {
-			if err := remove(backupSources); err != nil {
-				return fmt.Errorf("createArchive: error removing snapshot: %w", err)
-			}
-			s.logger.Info(
-				fmt.Sprintf("Removed snapshot `%s`.", backupSources),
-			)
-			return nil
-		})
-		if err := copy.Copy(s.c.BackupSources, backupSources, copy.Options{
-			PreserveTimes: true,
-			PreserveOwner: true,
-		}); err != nil {
-			return fmt.Errorf("createArchive: error creating snapshot: %w", err)
-		}
-		s.logger.Info(
-			fmt.Sprintf("Created snapshot of `%s` at `%s`.", s.c.BackupSources, backupSources),
-		)
-	}
-
-	tarFile := s.file
-	s.registerHook(hookLevelPlumbing, func(error) error {
-		if err := remove(tarFile); err != nil {
-			return fmt.Errorf("createArchive: error removing tar file: %w", err)
-		}
-		s.logger.Info(
-			fmt.Sprintf("Removed tar file `%s`.", tarFile),
-		)
-		return nil
-	})
-
-	backupPath, err := filepath.Abs(stripTrailingSlashes(backupSources))
-	if err != nil {
-		return fmt.Errorf("createArchive: error getting absolute path: %w", err)
-	}
-
-	var filesEligibleForBackup []string
-	if err := filepath.WalkDir(backupPath, func(path string, di fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if s.c.BackupExcludeRegexp.Re != nil && s.c.BackupExcludeRegexp.Re.MatchString(path) {
-			return nil
-		}
-		filesEligibleForBackup = append(filesEligibleForBackup, path)
-		return nil
-	}); err != nil {
-		return fmt.Errorf("createArchive: error walking filesystem tree: %w", err)
-	}
-
-	if err := createArchive(filesEligibleForBackup, backupSources, tarFile, s.c.BackupCompression.String(), s.c.GzipParallelism.Int()); err != nil {
-		return fmt.Errorf("createArchive: error compressing backup folder: %w", err)
-	}
-
-	s.logger.Info(
-		fmt.Sprintf("Created backup of `%s` at `%s`.", backupSources, tarFile),
-	)
 	return nil
-}
-
-// encryptArchive encrypts the backup file using PGP and the configured passphrase.
-// In case no passphrase is given it returns early, leaving the backup file
-// untouched.
-func (s *script) encryptArchive() error {
-	if s.c.GpgPassphrase == "" {
-		return nil
-	}
-
-	gpgFile := fmt.Sprintf("%s.gpg", s.file)
-	s.registerHook(hookLevelPlumbing, func(error) error {
-		if err := remove(gpgFile); err != nil {
-			return fmt.Errorf("encryptArchive: error removing gpg file: %w", err)
-		}
-		s.logger.Info(
-			fmt.Sprintf("Removed GPG file `%s`.", gpgFile),
-		)
-		return nil
-	})
-
-	outFile, err := os.Create(gpgFile)
-	if err != nil {
-		return fmt.Errorf("encryptArchive: error opening out file: %w", err)
-	}
-	defer outFile.Close()
-
-	_, name := path.Split(s.file)
-	dst, err := openpgp.SymmetricallyEncrypt(outFile, []byte(s.c.GpgPassphrase), &openpgp.FileHints{
-		FileName: name,
-	}, nil)
-	if err != nil {
-		return fmt.Errorf("encryptArchive: error encrypting backup file: %w", err)
-	}
-	defer dst.Close()
-
-	src, err := os.Open(s.file)
-	if err != nil {
-		return fmt.Errorf("encryptArchive: error opening backup file `%s`: %w", s.file, err)
-	}
-
-	if _, err := io.Copy(dst, src); err != nil {
-		return fmt.Errorf("encryptArchive: error writing ciphertext to file: %w", err)
-	}
-
-	s.file = gpgFile
-	s.logger.Info(
-		fmt.Sprintf("Encrypted backup using given passphrase, saving as `%s`.", s.file),
-	)
-	return nil
-}
-
-// copyArchive makes sure the backup file is copied to both local and remote locations
-// as per the given configuration.
-func (s *script) copyArchive() error {
-	_, name := path.Split(s.file)
-	if stat, err := os.Stat(s.file); err != nil {
-		return fmt.Errorf("copyArchive: unable to stat backup file: %w", err)
-	} else {
-		size := stat.Size()
-		s.stats.BackupFile = BackupFileStats{
-			Size:     uint64(size),
-			Name:     name,
-			FullPath: s.file,
-		}
-	}
-
-	eg := errgroup.Group{}
-	for _, backend := range s.storages {
-		b := backend
-		eg.Go(func() error {
-			return b.Copy(s.file)
-		})
-	}
-	if err := eg.Wait(); err != nil {
-		return fmt.Errorf("copyArchive: error copying archive: %w", err)
-	}
-
-	return nil
-}
-
-// pruneBackups rotates away backups from local and remote storages using
-// the given configuration. In case the given configuration would delete all
-// backups, it does nothing instead and logs a warning.
-func (s *script) pruneBackups() error {
-	if s.c.BackupRetentionDays < 0 {
-		return nil
-	}
-
-	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
-
-	eg := errgroup.Group{}
-	for _, backend := range s.storages {
-		b := backend
-		eg.Go(func() error {
-			if skipPrune(b.Name(), s.c.BackupSkipBackendsFromPrune) {
-				s.logger.Info(
-					fmt.Sprintf("Skipping pruning for backend `%s`.", b.Name()),
-				)
-				return nil
-			}
-			stats, err := b.Prune(deadline, s.c.BackupPruningPrefix)
-			if err != nil {
-				return err
-			}
-			s.stats.Lock()
-			s.stats.Storages[b.Name()] = StorageStats{
-				Total:  stats.Total,
-				Pruned: stats.Pruned,
-			}
-			s.stats.Unlock()
-			return nil
-		})
-	}
-
-	if err := eg.Wait(); err != nil {
-		return fmt.Errorf("pruneBackups: error pruning backups: %w", err)
-	}
-
-	return nil
-}
-
-// skipPrune returns true if the given backend name is contained in the
-// list of skipped backends.
-func skipPrune(name string, skippedBackends []string) bool {
-	return slices.ContainsFunc(
-		skippedBackends,
-		func(b string) bool {
-			return strings.EqualFold(b, name) // ignore case on both sides
-		},
-	)
 }
