@@ -37,15 +37,15 @@ jobs:
             type=semver,pattern=v{{version}},enable=false
           labels: |
             org.opencontainers.image.title=${{github.event.repository.name}}
-            org.opencontainers.image.description="Backup Docker volumes locally or to any S3, WebDAV, Azure Blob Storage, Dropbox or SSH compatible storage"
+            org.opencontainers.image.description=Backup Docker volumes locally or to any S3, WebDAV, Azure Blob Storage, Dropbox or SSH compatible storage
             org.opencontainers.image.vendor=${{github.repository_owner}}
-            org.opencontainers.image.licenses="MPL-2.0"
+            org.opencontainers.image.licenses=MPL-2.0
             org.opencontainers.image.version=${{github.ref_name}}
             org.opencontainers.image.created=${{ env.NOW }}
             org.opencontainers.image.source=${{github.server_url}}/${{github.repository}}
             org.opencontainers.image.revision=${{github.sha}}
-            org.opencontainers.image.url="https://offen.github.io/docker-volume-backup/"
-            org.opencontainers.image.documentation="https://offen.github.io/docker-volume-backup/"
+            org.opencontainers.image.url=https://offen.github.io/docker-volume-backup/
+            org.opencontainers.image.documentation=https://offen.github.io/docker-volume-backup/
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
