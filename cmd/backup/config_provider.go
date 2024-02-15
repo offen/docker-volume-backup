@@ -69,7 +69,11 @@ func loadEnvFiles(directory string) ([]configFile, error) {
 			continue
 		}
 		p := filepath.Join(directory, item.Name())
-		envFile, err := godotenv.Read(p)
+		f, err := os.ReadFile(p)
+		if err != nil {
+			return nil, fmt.Errorf("loadEnvFiles: error reading %s: %w", item.Name(), err)
+		}
+		envFile, err := godotenv.Unmarshal(os.ExpandEnv(string(f)))
 		if err != nil {
 			return nil, fmt.Errorf("loadEnvFiles: error reading config file %s: %w", p, err)
 		}

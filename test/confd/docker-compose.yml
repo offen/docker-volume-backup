@@ -7,6 +7,7 @@ services:
     environment:
       BACKUP_FILENAME: $$NAME.tar.gz
       BACKUP_FILENAME_EXPAND: 'true'
+      EXPANSION_VALUE: conf
     volumes:
       - ${LOCAL_DIR:-./local}:/archive
       - app_data:/backup/app_data:ro
