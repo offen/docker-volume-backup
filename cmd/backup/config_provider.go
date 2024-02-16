@@ -1,4 +1,4 @@
-// Copyright 2021-2022 - Offen Authors <hioffen@posteo.de>
+// Copyright 2024 - Offen Authors <hioffen@posteo.de>
 // SPDX-License-Identifier: MPL-2.0
 
 package main
@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/joho/godotenv"
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/envconfig"
 )
 
@@ -33,11 +34,11 @@ func sourceConfiguration(strategy configStrategy) ([]*Config, error) {
 			if os.IsNotExist(err) {
 				return sourceConfiguration(configStrategyEnv)
 			}
-			return nil, fmt.Errorf("sourceConfiguration: error loading config files: %w", err)
+			return nil, errwrap.Wrap(err, "error loading config files")
 		}
 		return cs, nil
 	default:
-		return nil, fmt.Errorf("sourceConfiguration: received unknown config strategy: %v", strategy)
+		return nil, errwrap.Wrap(nil, fmt.Sprintf("received unknown config strategy: %v", strategy))
 	}
 }
 
@@ -68,7 +69,7 @@ func loadConfig(lookup envProxy) (*Config, error) {
 
 	var c = &Config{}
 	if err := envconfig.Process("", c); err != nil {
-		return nil, fmt.Errorf("loadConfig: failed to process configuration values: %w", err)
+		return nil, errwrap.Wrap(err, "failed to process configuration values")
 	}
 
 	return c, nil
@@ -77,7 +78,7 @@ func loadConfig(lookup envProxy) (*Config, error) {
 func loadConfigFromEnvVars() (*Config, error) {
 	c, err := loadConfig(os.LookupEnv)
 	if err != nil {
-		return nil, fmt.Errorf("loadEnvVars: error loading config from environment: %w", err)
+		return nil, errwrap.Wrap(err, "error loading config from environment")
 	}
 	c.source = "from environment"
 	return c, nil
@@ -89,7 +90,7 @@ func loadConfigsFromEnvFiles(directory string) ([]*Config, error) {
 		if os.IsNotExist(err) {
 			return nil, err
 		}
-		return nil, fmt.Errorf("loadEnvFiles: failed to read files from env directory: %w", err)
+		return nil, errwrap.Wrap(err, "failed to read files from env directory")
 	}
 
 	configs := []*Config{}
@@ -100,11 +101,11 @@ func loadConfigsFromEnvFiles(directory string) ([]*Config, error) {
 		p := filepath.Join(directory, item.Name())
 		f, err := os.ReadFile(p)
 		if err != nil {
-			return nil, fmt.Errorf("loadEnvFiles: error reading %s: %w", item.Name(), err)
+			return nil, errwrap.Wrap(err, fmt.Sprintf("error reading %s", item.Name()))
 		}
 		envFile, err := godotenv.Unmarshal(os.ExpandEnv(string(f)))
 		if err != nil {
-			return nil, fmt.Errorf("loadEnvFiles: error reading config file %s: %w", p, err)
+			return nil, errwrap.Wrap(err, fmt.Sprintf("error reading config file %s", p))
 		}
 		lookup := func(key string) (string, bool) {
 			val, ok := envFile[key]
@@ -115,7 +116,7 @@ func loadConfigsFromEnvFiles(directory string) ([]*Config, error) {
 		}
 		c, err := loadConfig(lookup)
 		if err != nil {
-			return nil, fmt.Errorf("loadEnvFiles: error loading config from file %s: %w", p, err)
+			return nil, errwrap.Wrap(err, fmt.Sprintf("error loading config from file %s", p))
 		}
 		c.source = item.Name()
 		c.additionalEnvVars = envFile

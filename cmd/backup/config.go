@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
 // Config holds all configuration values that are expected to be set
@@ -92,7 +94,7 @@ func (c *CompressionType) Decode(v string) error {
 		*c = CompressionType(v)
 		return nil
 	default:
-		return fmt.Errorf("config: error decoding compression type %s", v)
+		return errwrap.Wrap(nil, fmt.Sprintf("error decoding compression type %s", v))
 	}
 }
 
@@ -115,7 +117,7 @@ func (c *CertDecoder) Decode(v string) error {
 	block, _ := pem.Decode(content)
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return fmt.Errorf("config: error parsing certificate: %w", err)
+		return errwrap.Wrap(err, "error parsing certificate")
 	}
 	*c = CertDecoder{Cert: cert}
 	return nil
@@ -131,7 +133,7 @@ func (r *RegexpDecoder) Decode(v string) error {
 	}
 	re, err := regexp.Compile(v)
 	if err != nil {
-		return fmt.Errorf("config: error compiling given regexp `%s`: %w", v, err)
+		return errwrap.Wrap(err, fmt.Sprintf("error compiling given regexp `%s`", v))
 	}
 	*r = RegexpDecoder{Re: re}
 	return nil
@@ -143,10 +145,10 @@ type NaturalNumber int
 func (n *NaturalNumber) Decode(v string) error {
 	asInt, err := strconv.Atoi(v)
 	if err != nil {
-		return fmt.Errorf("config: error converting %s to int", v)
+		return errwrap.Wrap(nil, fmt.Sprintf("error converting %s to int", v))
 	}
 	if asInt <= 0 {
-		return fmt.Errorf("config: expected a natural number, got %d", asInt)
+		return errwrap.Wrap(nil, fmt.Sprintf("expected a natural number, got %d", asInt))
 	}
 	*n = NaturalNumber(asInt)
 	return nil
@@ -162,10 +164,10 @@ type WholeNumber int
 func (n *WholeNumber) Decode(v string) error {
 	asInt, err := strconv.Atoi(v)
 	if err != nil {
-		return fmt.Errorf("config: error converting %s to int", v)
+		return errwrap.Wrap(nil, fmt.Sprintf("error converting %s to int", v))
 	}
 	if asInt < 0 {
-		return fmt.Errorf("config: expected a whole, positive number, including zero. Got %d", asInt)
+		return errwrap.Wrap(nil, fmt.Sprintf("expected a whole, positive number, including zero. Got %d", asInt))
 	}
 	*n = WholeNumber(asInt)
 	return nil
@@ -191,12 +193,12 @@ func (c *Config) applyEnv() (func() error, error) {
 		for _, lookup := range lookups {
 			if !lookup.ok {
 				if err := os.Unsetenv(lookup.key); err != nil {
-					return fmt.Errorf("(*Config).applyEnv: error unsetting env var %s: %w", lookup.key, err)
+					return errwrap.Wrap(err, fmt.Sprintf("error unsetting env var %s", lookup.key))
 				}
 				continue
 			}
 			if err := os.Setenv(lookup.key, lookup.value); err != nil {
-				return fmt.Errorf("(*Config).applyEnv: error setting back env var %s: %w", lookup.key, err)
+				return errwrap.Wrap(err, fmt.Sprintf("error setting back env var %s", lookup.key))
 			}
 		}
 		return nil
@@ -206,7 +208,7 @@ func (c *Config) applyEnv() (func() error, error) {
 		current, ok := os.LookupEnv(key)
 		lookups = append(lookups, envVarLookup{ok: ok, key: key, value: current})
 		if err := os.Setenv(key, value); err != nil {
-			return unset, fmt.Errorf("(*Config).applyEnv: error setting env var: %w", err)
+			return unset, errwrap.Wrap(err, "error setting env var")
 		}
 	}
 	return unset, nil

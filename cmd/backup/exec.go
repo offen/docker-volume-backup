@@ -19,6 +19,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -35,12 +36,12 @@ func (s *script) exec(containerRef string, command string, user string) ([]byte,
 		User:         user,
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("exec: error creating container exec: %w", err)
+		return nil, nil, errwrap.Wrap(err, "error creating container exec")
 	}
 
 	resp, err := s.cli.ContainerExecAttach(context.Background(), execID.ID, types.ExecStartCheck{})
 	if err != nil {
-		return nil, nil, fmt.Errorf("exec: error attaching container exec: %w", err)
+		return nil, nil, errwrap.Wrap(err, "error attaching container exec")
 	}
 	defer resp.Close()
 
@@ -53,25 +54,25 @@ func (s *script) exec(containerRef string, command string, user string) ([]byte,
 	}()
 
 	if err := <-outputDone; err != nil {
-		return nil, nil, fmt.Errorf("exec: error demultiplexing output: %w", err)
+		return nil, nil, errwrap.Wrap(err, "error demultiplexing output")
 	}
 
 	stdout, err := io.ReadAll(&outBuf)
 	if err != nil {
-		return nil, nil, fmt.Errorf("exec: error reading stdout: %w", err)
+		return nil, nil, errwrap.Wrap(err, "error reading stdout")
 	}
 	stderr, err := io.ReadAll(&errBuf)
 	if err != nil {
-		return nil, nil, fmt.Errorf("exec: error reading stderr: %w", err)
+		return nil, nil, errwrap.Wrap(err, "error reading stderr")
 	}
 
 	res, err := s.cli.ContainerExecInspect(context.Background(), execID.ID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("exec: error inspecting container exec: %w", err)
+		return nil, nil, errwrap.Wrap(err, "error inspecting container exec")
 	}
 
 	if res.ExitCode > 0 {
-		return stdout, stderr, fmt.Errorf("exec: running command exited %d", res.ExitCode)
+		return stdout, stderr, errwrap.Wrap(nil, fmt.Sprintf("running command exited %d", res.ExitCode))
 	}
 
 	return stdout, stderr, nil
@@ -91,7 +92,7 @@ func (s *script) runLabeledCommands(label string) error {
 		Filters: filters.NewArgs(f...),
 	})
 	if err != nil {
-		return fmt.Errorf("runLabeledCommands: error querying for containers: %w", err)
+		return errwrap.Wrap(err, "error querying for containers")
 	}
 
 	var hasDeprecatedContainers bool
@@ -104,7 +105,7 @@ func (s *script) runLabeledCommands(label string) error {
 			Filters: filters.NewArgs(f...),
 		})
 		if err != nil {
-			return fmt.Errorf("runLabeledCommands: error querying for containers: %w", err)
+			return errwrap.Wrap(err, "error querying for containers")
 		}
 		if len(deprecatedContainers) != 0 {
 			hasDeprecatedContainers = true
@@ -121,7 +122,7 @@ func (s *script) runLabeledCommands(label string) error {
 			Filters: filters.NewArgs(f...),
 		})
 		if err != nil {
-			return fmt.Errorf("runLabeledCommands: error querying for containers: %w", err)
+			return errwrap.Wrap(err, "error querying for containers")
 		}
 		if len(deprecatedContainers) != 0 {
 			hasDeprecatedContainers = true
@@ -164,14 +165,14 @@ func (s *script) runLabeledCommands(label string) error {
 				os.Stdout.Write(stdout)
 			}
 			if err != nil {
-				return fmt.Errorf("runLabeledCommands: error executing command: %w", err)
+				return errwrap.Wrap(err, "error executing command")
 			}
 			return nil
 		})
 	}
 
 	if err := g.Wait(); err != nil {
-		return fmt.Errorf("runLabeledCommands: error from errgroup: %w", err)
+		return errwrap.Wrap(err, "error from errgroup")
 	}
 	return nil
 }
@@ -191,12 +192,12 @@ func (s *script) withLabeledCommands(step lifecyclePhase, cb func() error) func(
 	}
 	return func() (err error) {
 		if err = s.runLabeledCommands(fmt.Sprintf("docker-volume-backup.%s-pre", step)); err != nil {
-			err = fmt.Errorf("(*script).withLabeledCommands: %s: error running pre commands: %w", step, err)
+			err = errwrap.Wrap(err, fmt.Sprintf("error running %s-pre commands", step))
 			return
 		}
 		defer func() {
 			if derr := s.runLabeledCommands(fmt.Sprintf("docker-volume-backup.%s-post", step)); derr != nil {
-				err = errors.Join(err, fmt.Errorf("(*script).withLabeledCommands: error running %s-post commands: %w", step, derr))
+				err = errors.Join(err, errwrap.Wrap(derr, fmt.Sprintf("error running %s-post commands", step)))
 			}
 		}()
 		err = cb()

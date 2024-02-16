@@ -4,7 +4,6 @@
 package webdav
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"github.com/studio-b12/gowebdav"
 )
@@ -36,14 +36,14 @@ type Config struct {
 // NewStorageBackend creates and initializes a new WebDav storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
 	if opts.Username == "" || opts.Password == "" {
-		return nil, errors.New("NewStorageBackend: WEBDAV_URL is defined, but no credentials were provided")
+		return nil, errwrap.Wrap(nil, "WEBDAV_URL is defined, but no credentials were provided")
 	} else {
 		webdavClient := gowebdav.NewClient(opts.URL, opts.Username, opts.Password)
 
 		if opts.URLInsecure {
 			defaultTransport, ok := http.DefaultTransport.(*http.Transport)
 			if !ok {
-				return nil, errors.New("NewStorageBackend: unexpected error when asserting type for http.DefaultTransport")
+				return nil, errwrap.Wrap(nil, "unexpected error when asserting type for http.DefaultTransport")
 			}
 			webdavTransport := defaultTransport.Clone()
 			webdavTransport.TLSClientConfig.InsecureSkipVerify = opts.URLInsecure
@@ -69,16 +69,16 @@ func (b *webDavStorage) Name() string {
 func (b *webDavStorage) Copy(file string) error {
 	_, name := path.Split(file)
 	if err := b.client.MkdirAll(b.DestinationPath, 0644); err != nil {
-		return fmt.Errorf("(*webDavStorage).Copy: error creating directory '%s' on server: %w", b.DestinationPath, err)
+		return errwrap.Wrap(err, fmt.Sprintf("error creating directory '%s' on server", b.DestinationPath))
 	}
 
 	r, err := os.Open(file)
 	if err != nil {
-		return fmt.Errorf("(*webDavStorage).Copy: error opening the file to be uploaded: %w", err)
+		return errwrap.Wrap(err, "error opening the file to be uploaded")
 	}
 
 	if err := b.client.WriteStream(filepath.Join(b.DestinationPath, name), r, 0644); err != nil {
-		return fmt.Errorf("(*webDavStorage).Copy: error uploading the file: %w", err)
+		return errwrap.Wrap(err, "error uploading the file")
 	}
 	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup '%s' to '%s' at path '%s'.", file, b.url, b.DestinationPath)
 
@@ -89,7 +89,7 @@ func (b *webDavStorage) Copy(file string) error {
 func (b *webDavStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
 	candidates, err := b.client.ReadDir(b.DestinationPath)
 	if err != nil {
-		return nil, fmt.Errorf("(*webDavStorage).Prune: error looking up candidates from remote storage: %w", err)
+		return nil, errwrap.Wrap(err, "error looking up candidates from remote storage")
 	}
 	var matches []fs.FileInfo
 	var lenCandidates int
@@ -111,7 +111,7 @@ func (b *webDavStorage) Prune(deadline time.Time, pruningPrefix string) (*storag
 	pruneErr := b.DoPrune(b.Name(), len(matches), lenCandidates, deadline, func() error {
 		for _, match := range matches {
 			if err := b.client.Remove(filepath.Join(b.DestinationPath, match.Name())); err != nil {
-				return fmt.Errorf("(*webDavStorage).Prune: error removing file: %w", err)
+				return errwrap.Wrap(err, "error removing file")
 			}
 		}
 		return nil

@@ -4,8 +4,9 @@
 package storage
 
 import (
-	"fmt"
 	"time"
+
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
 // Backend is an interface for defining functions which all storage providers support.
@@ -26,7 +27,6 @@ type LogLevel int
 const (
 	LogLevelInfo LogLevel = iota
 	LogLevelWarning
-	LogLevelError
 )
 
 type Log func(logType LogLevel, context string, msg string, params ...any)
@@ -47,7 +47,7 @@ func (b *StorageBackend) DoPrune(context string, lenMatches, lenCandidates int, 
 
 		formattedDeadline, err := deadline.Local().MarshalText()
 		if err != nil {
-			return fmt.Errorf("(*StorageBackend).DoPrune: error marshaling deadline: %w", err)
+			return errwrap.Wrap(err, "error marshaling deadline")
 		}
 		b.Log(LogLevelInfo, context,
 			"Pruned %d out of %d backups as they were older than the given deadline of %s.",

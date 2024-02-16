@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/robfig/cron/v3"
 )
 
@@ -31,12 +32,12 @@ func newCommand() *command {
 func (c *command) runAsCommand() error {
 	configurations, err := sourceConfiguration(configStrategyEnv)
 	if err != nil {
-		return fmt.Errorf("runAsCommand: error loading env vars: %w", err)
+		return errwrap.Wrap(err, "error loading env vars")
 	}
 
 	for _, config := range configurations {
 		if err := runScript(config); err != nil {
-			return fmt.Errorf("runAsCommand: error running script: %w", err)
+			return errwrap.Wrap(err, "error running script")
 		}
 	}
 
@@ -59,12 +60,12 @@ func (c *command) runInForeground(opts foregroundOpts) error {
 	)
 
 	if err := c.schedule(configStrategyConfd); err != nil {
-		return fmt.Errorf("runInForeground: error scheduling: %w", err)
+		return errwrap.Wrap(err, "error scheduling")
 	}
 
 	if opts.profileCronExpression != "" {
 		if _, err := c.cr.AddFunc(opts.profileCronExpression, c.profile); err != nil {
-			return fmt.Errorf("runInForeground: error adding profiling job: %w", err)
+			return errwrap.Wrap(err, "error adding profiling job")
 		}
 	}
 
@@ -81,7 +82,7 @@ func (c *command) runInForeground(opts foregroundOpts) error {
 			return nil
 		case <-c.reload:
 			if err := c.schedule(configStrategyConfd); err != nil {
-				return fmt.Errorf("runInForeground: error reloading configuration: %w", err)
+				return errwrap.Wrap(err, "error reloading configuration")
 			}
 		}
 	}
@@ -96,7 +97,7 @@ func (c *command) schedule(strategy configStrategy) error {
 
 	configurations, err := sourceConfiguration(strategy)
 	if err != nil {
-		return fmt.Errorf("schedule: error sourcing configuration: %w", err)
+		return errwrap.Wrap(err, "error sourcing configuration")
 	}
 
 	for _, cfg := range configurations {
@@ -114,7 +115,7 @@ func (c *command) schedule(strategy configStrategy) error {
 					fmt.Sprintf(
 						"Unexpected error running schedule %s: %v",
 						config.BackupCronExpression,
-						err,
+						errwrap.Unwrap(err),
 					),
 					"error",
 					err,
@@ -123,7 +124,7 @@ func (c *command) schedule(strategy configStrategy) error {
 		})
 
 		if err != nil {
-			return fmt.Errorf("addJob: error adding schedule %s: %w", config.BackupCronExpression, err)
+			return errwrap.Wrap(err, fmt.Sprintf("error adding schedule %s", config.BackupCronExpression))
 		}
 		c.logger.Info(fmt.Sprintf("Successfully scheduled backup %s with expression %s", config.source, config.BackupCronExpression))
 		if ok := checkCronSchedule(config.BackupCronExpression); !ok {
@@ -132,7 +133,7 @@ func (c *command) schedule(strategy configStrategy) error {
 			)
 
 			if err != nil {
-				return fmt.Errorf("schedule: error scheduling: %w", err)
+				return errwrap.Wrap(err, "error scheduling")
 			}
 			c.schedules = append(c.schedules, id)
 		}
@@ -146,7 +147,7 @@ func (c *command) schedule(strategy configStrategy) error {
 func (c *command) must(err error) {
 	if err != nil {
 		c.logger.Error(
-			fmt.Sprintf("Fatal error running command: %v", err),
+			fmt.Sprintf("Fatal error running command: %v", errwrap.Unwrap(err)),
 			"error",
 			err,
 		)

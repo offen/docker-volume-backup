@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/docker-volume-backup/internal/storage"
 )
 
@@ -47,7 +48,7 @@ func (b *localStorage) Copy(file string) error {
 	_, name := path.Split(file)
 
 	if err := copyFile(file, path.Join(b.DestinationPath, name)); err != nil {
-		return fmt.Errorf("(*localStorage).Copy: Error copying file to archive: %w", err)
+		return errwrap.Wrap(err, "error copying file to archive")
 	}
 	b.Log(storage.LogLevelInfo, b.Name(), "Stored copy of backup `%s` in `%s`.", file, b.DestinationPath)
 
@@ -57,7 +58,7 @@ func (b *localStorage) Copy(file string) error {
 			os.Remove(symlink)
 		}
 		if err := os.Symlink(name, symlink); err != nil {
-			return fmt.Errorf("(*localStorage).Copy: error creating latest symlink: %w", err)
+			return errwrap.Wrap(err, "error creating latest symlink")
 		}
 		b.Log(storage.LogLevelInfo, b.Name(), "Created/Updated symlink `%s` for latest backup.", b.latestSymlink)
 	}
@@ -73,10 +74,12 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 	)
 	globMatches, err := filepath.Glob(globPattern)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"(*localStorage).Prune: Error looking up matching files using pattern %s: %w",
-			globPattern,
+		return nil, errwrap.Wrap(
 			err,
+			fmt.Sprintf(
+				"error looking up matching files using pattern %s",
+				globPattern,
+			),
 		)
 	}
 
@@ -84,10 +87,12 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 	for _, candidate := range globMatches {
 		fi, err := os.Lstat(candidate)
 		if err != nil {
-			return nil, fmt.Errorf(
-				"(*localStorage).Prune: Error calling Lstat on file %s: %w",
-				candidate,
+			return nil, errwrap.Wrap(
 				err,
+				fmt.Sprintf(
+					"error calling Lstat on file %s",
+					candidate,
+				),
 			)
 		}
 
@@ -100,10 +105,12 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 	for _, candidate := range candidates {
 		fi, err := os.Stat(candidate)
 		if err != nil {
-			return nil, fmt.Errorf(
-				"(*localStorage).Prune: Error calling stat on file %s: %w",
-				candidate,
+			return nil, errwrap.Wrap(
 				err,
+				fmt.Sprintf(
+					"error calling stat on file %s",
+					candidate,
+				),
 			)
 		}
 		if fi.ModTime().Before(deadline) {
@@ -124,10 +131,12 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 			}
 		}
 		if len(removeErrors) != 0 {
-			return fmt.Errorf(
-				"(*localStorage).Prune: %d error(s) deleting files, starting with: %w",
-				len(removeErrors),
+			return errwrap.Wrap(
 				errors.Join(removeErrors...),
+				fmt.Sprintf(
+					"%d error(s) deleting files",
+					len(removeErrors),
+				),
 			)
 		}
 		return nil

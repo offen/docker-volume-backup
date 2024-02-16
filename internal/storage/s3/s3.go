@@ -15,6 +15,7 @@ import (
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/docker-volume-backup/internal/storage"
 )
 
@@ -53,7 +54,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 	} else if opts.IamRoleEndpoint != "" {
 		creds = credentials.NewIAM(opts.IamRoleEndpoint)
 	} else {
-		return nil, errors.New("NewStorageBackend: AWS_S3_BUCKET_NAME is defined, but no credentials were provided")
+		return nil, errwrap.Wrap(nil, "AWS_S3_BUCKET_NAME is defined, but no credentials were provided")
 	}
 
 	options := minio.Options{
@@ -63,12 +64,12 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 
 	transport, err := minio.DefaultTransport(true)
 	if err != nil {
-		return nil, fmt.Errorf("NewStorageBackend: failed to create default minio transport: %w", err)
+		return nil, errwrap.Wrap(err, "failed to create default minio transport")
 	}
 
 	if opts.EndpointInsecure {
 		if !options.Secure {
-			return nil, errors.New("NewStorageBackend: AWS_ENDPOINT_INSECURE = true is only meaningful for https")
+			return nil, errwrap.Wrap(nil, "AWS_ENDPOINT_INSECURE = true is only meaningful for https")
 		}
 		transport.TLSClientConfig.InsecureSkipVerify = true
 	} else if opts.CACert != nil {
@@ -81,7 +82,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 
 	mc, err := minio.New(opts.Endpoint, &options)
 	if err != nil {
-		return nil, fmt.Errorf("NewStorageBackend: error setting up minio client: %w", err)
+		return nil, errwrap.Wrap(err, "error setting up minio client")
 	}
 
 	return &s3Storage{
@@ -112,12 +113,12 @@ func (b *s3Storage) Copy(file string) error {
 	if b.partSize > 0 {
 		srcFileInfo, err := os.Stat(file)
 		if err != nil {
-			return fmt.Errorf("(*s3Storage).Copy: error reading the local file: %w", err)
+			return errwrap.Wrap(err, "error reading the local file")
 		}
 
 		_, partSize, _, err := minio.OptimalPartInfo(srcFileInfo.Size(), uint64(b.partSize*1024*1024))
 		if err != nil {
-			return fmt.Errorf("(*s3Storage).Copy: error computing the optimal s3 part size: %w", err)
+			return errwrap.Wrap(err, "error computing the optimal s3 part size")
 		}
 
 		putObjectOptions.PartSize = uint64(partSize)
@@ -125,14 +126,17 @@ func (b *s3Storage) Copy(file string) error {
 
 	if _, err := b.client.FPutObject(context.Background(), b.bucket, filepath.Join(b.DestinationPath, name), file, putObjectOptions); err != nil {
 		if errResp := minio.ToErrorResponse(err); errResp.Message != "" {
-			return fmt.Errorf(
-				"(*s3Storage).Copy: error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d",
-				errResp.Message,
-				errResp.Code,
-				errResp.StatusCode,
+			return errwrap.Wrap(
+				nil,
+				fmt.Sprintf(
+					"error uploading backup to remote storage: [Message]: '%s', [Code]: %s, [StatusCode]: %d",
+					errResp.Message,
+					errResp.Code,
+					errResp.StatusCode,
+				),
 			)
 		}
-		return fmt.Errorf("(*s3Storage).Copy: error uploading backup to remote storage: %w", err)
+		return errwrap.Wrap(err, "error uploading backup to remote storage")
 	}
 
 	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup `%s` to bucket `%s`.", file, b.bucket)
@@ -152,9 +156,9 @@ func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.Pr
 	for candidate := range candidates {
 		lenCandidates++
 		if candidate.Err != nil {
-			return nil, fmt.Errorf(
-				"(*s3Storage).Prune: error looking up candidates from remote storage! %w",
+			return nil, errwrap.Wrap(
 				candidate.Err,
+				"error looking up candidates from remote storage",
 			)
 		}
 		if candidate.LastModified.Before(deadline) {

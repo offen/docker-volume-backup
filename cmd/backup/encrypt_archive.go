@@ -10,6 +10,7 @@ import (
 	"path"
 
 	openpgp "github.com/ProtonMail/go-crypto/openpgp/v2"
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
 // encryptArchive encrypts the backup file using PGP and the configured passphrase.
@@ -23,7 +24,7 @@ func (s *script) encryptArchive() error {
 	gpgFile := fmt.Sprintf("%s.gpg", s.file)
 	s.registerHook(hookLevelPlumbing, func(error) error {
 		if err := remove(gpgFile); err != nil {
-			return fmt.Errorf("encryptArchive: error removing gpg file: %w", err)
+			return errwrap.Wrap(err, "error removing gpg file")
 		}
 		s.logger.Info(
 			fmt.Sprintf("Removed GPG file `%s`.", gpgFile),
@@ -33,7 +34,7 @@ func (s *script) encryptArchive() error {
 
 	outFile, err := os.Create(gpgFile)
 	if err != nil {
-		return fmt.Errorf("encryptArchive: error opening out file: %w", err)
+		return errwrap.Wrap(err, "error opening out file")
 	}
 	defer outFile.Close()
 
@@ -42,17 +43,17 @@ func (s *script) encryptArchive() error {
 		FileName: name,
 	}, nil)
 	if err != nil {
-		return fmt.Errorf("encryptArchive: error encrypting backup file: %w", err)
+		return errwrap.Wrap(err, "error encrypting backup file")
 	}
 	defer dst.Close()
 
 	src, err := os.Open(s.file)
 	if err != nil {
-		return fmt.Errorf("encryptArchive: error opening backup file `%s`: %w", s.file, err)
+		return errwrap.Wrap(err, fmt.Sprintf("error opening backup file `%s`", s.file))
 	}
 
 	if _, err := io.Copy(dst, src); err != nil {
-		return fmt.Errorf("encryptArchive: error writing ciphertext to file: %w", err)
+		return errwrap.Wrap(err, "error writing ciphertext to file")
 	}
 
 	s.file = gpgFile

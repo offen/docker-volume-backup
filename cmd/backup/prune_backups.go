@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -47,7 +48,7 @@ func (s *script) pruneBackups() error {
 	}
 
 	if err := eg.Wait(); err != nil {
-		return fmt.Errorf("pruneBackups: error pruning backups: %w", err)
+		return errwrap.Wrap(err, "error pruning backups")
 	}
 
 	return nil

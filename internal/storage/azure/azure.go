@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/docker-volume-backup/internal/storage"
 )
 
@@ -40,11 +41,11 @@ type Config struct {
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
 	endpointTemplate, err := template.New("endpoint").Parse(opts.Endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("NewStorageBackend: error parsing endpoint template: %w", err)
+		return nil, errwrap.Wrap(err, "error parsing endpoint template")
 	}
 	var ep bytes.Buffer
 	if err := endpointTemplate.Execute(&ep, opts); err != nil {
-		return nil, fmt.Errorf("NewStorageBackend: error executing endpoint template: %w", err)
+		return nil, errwrap.Wrap(err, "error executing endpoint template")
 	}
 	normalizedEndpoint := fmt.Sprintf("%s/", strings.TrimSuffix(ep.String(), "/"))
 
@@ -52,21 +53,21 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 	if opts.PrimaryAccountKey != "" {
 		cred, err := azblob.NewSharedKeyCredential(opts.AccountName, opts.PrimaryAccountKey)
 		if err != nil {
-			return nil, fmt.Errorf("NewStorageBackend: error creating shared key Azure credential: %w", err)
+			return nil, errwrap.Wrap(err, "error creating shared key Azure credential")
 		}
 
 		client, err = azblob.NewClientWithSharedKeyCredential(normalizedEndpoint, cred, nil)
 		if err != nil {
-			return nil, fmt.Errorf("NewStorageBackend: error creating Azure client: %w", err)
+			return nil, errwrap.Wrap(err, "error creating Azure client")
 		}
 	} else {
 		cred, err := azidentity.NewManagedIdentityCredential(nil)
 		if err != nil {
-			return nil, fmt.Errorf("NewStorageBackend: error creating managed identity credential: %w", err)
+			return nil, errwrap.Wrap(err, "error creating managed identity credential")
 		}
 		client, err = azblob.NewClient(normalizedEndpoint, cred, nil)
 		if err != nil {
-			return nil, fmt.Errorf("NewStorageBackend: error creating Azure client: %w", err)
+			return nil, errwrap.Wrap(err, "error creating Azure client")
 		}
 	}
 
@@ -90,7 +91,7 @@ func (b *azureBlobStorage) Name() string {
 func (b *azureBlobStorage) Copy(file string) error {
 	fileReader, err := os.Open(file)
 	if err != nil {
-		return fmt.Errorf("(*azureBlobStorage).Copy: error opening file %s: %w", file, err)
+		return errwrap.Wrap(err, fmt.Sprintf("error opening file %s", file))
 	}
 	_, err = b.client.UploadStream(
 		context.Background(),
@@ -100,7 +101,7 @@ func (b *azureBlobStorage) Copy(file string) error {
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("(*azureBlobStorage).Copy: error uploading file %s: %w", file, err)
+		return errwrap.Wrap(err, fmt.Sprintf("error uploading file %s", file))
 	}
 	return nil
 }
@@ -117,7 +118,7 @@ func (b *azureBlobStorage) Prune(deadline time.Time, pruningPrefix string) (*sto
 	for pager.More() {
 		resp, err := pager.NextPage(context.Background())
 		if err != nil {
-			return nil, fmt.Errorf("(*azureBlobStorage).Prune: error paging over blobs: %w", err)
+			return nil, errwrap.Wrap(err, "error paging over blobs")
 		}
 		for _, v := range resp.Segment.BlobItems {
 			totalCount++
