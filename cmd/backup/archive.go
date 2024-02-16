@@ -16,23 +16,23 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/klauspost/pgzip"
-
 	"github.com/klauspost/compress/zstd"
+	"github.com/klauspost/pgzip"
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
 func createArchive(files []string, inputFilePath, outputFilePath string, compression string, compressionConcurrency int) error {
 	inputFilePath = stripTrailingSlashes(inputFilePath)
 	inputFilePath, outputFilePath, err := makeAbsolute(inputFilePath, outputFilePath)
 	if err != nil {
-		return fmt.Errorf("createArchive: error transposing given file paths: %w", err)
+		return errwrap.Wrap(err, "error transposing given file paths")
 	}
 	if err := os.MkdirAll(filepath.Dir(outputFilePath), 0755); err != nil {
-		return fmt.Errorf("createArchive: error creating output file path: %w", err)
+		return errwrap.Wrap(err, "error creating output file path")
 	}
 
 	if err := compress(files, outputFilePath, filepath.Dir(inputFilePath), compression, compressionConcurrency); err != nil {
-		return fmt.Errorf("createArchive: error creating archive: %w", err)
+		return errwrap.Wrap(err, "error creating archive")
 	}
 
 	return nil
@@ -58,35 +58,35 @@ func makeAbsolute(inputFilePath, outputFilePath string) (string, string, error) 
 func compress(paths []string, outFilePath, subPath string, algo string, concurrency int) error {
 	file, err := os.Create(outFilePath)
 	if err != nil {
-		return fmt.Errorf("compress: error creating out file: %w", err)
+		return errwrap.Wrap(err, "error creating out file")
 	}
 
 	prefix := path.Dir(outFilePath)
 	compressWriter, err := getCompressionWriter(file, algo, concurrency)
 	if err != nil {
-		return fmt.Errorf("compress: error getting compression writer: %w", err)
+		return errwrap.Wrap(err, "error getting compression writer")
 	}
 	tarWriter := tar.NewWriter(compressWriter)
 
 	for _, p := range paths {
 		if err := writeTarball(p, tarWriter, prefix); err != nil {
-			return fmt.Errorf("compress: error writing %s to archive: %w", p, err)
+			return errwrap.Wrap(err, fmt.Sprintf("error writing %s to archive", p))
 		}
 	}
 
 	err = tarWriter.Close()
 	if err != nil {
-		return fmt.Errorf("compress: error closing tar writer: %w", err)
+		return errwrap.Wrap(err, "error closing tar writer")
 	}
 
 	err = compressWriter.Close()
 	if err != nil {
-		return fmt.Errorf("compress: error closing compression writer: %w", err)
+		return errwrap.Wrap(err, "error closing compression writer")
 	}
 
 	err = file.Close()
 	if err != nil {
-		return fmt.Errorf("compress: error closing file: %w", err)
+		return errwrap.Wrap(err, "error closing file")
 	}
 
 	return nil
@@ -97,7 +97,7 @@ func getCompressionWriter(file *os.File, algo string, concurrency int) (io.Write
 	case "gz":
 		w, err := pgzip.NewWriterLevel(file, 5)
 		if err != nil {
-			return nil, fmt.Errorf("getCompressionWriter: gzip error: %w", err)
+			return nil, errwrap.Wrap(err, "gzip error")
 		}
 
 		if concurrency == 0 {
@@ -105,25 +105,25 @@ func getCompressionWriter(file *os.File, algo string, concurrency int) (io.Write
 		}
 
 		if err := w.SetConcurrency(1<<20, concurrency); err != nil {
-			return nil, fmt.Errorf("getCompressionWriter: error setting concurrency: %w", err)
+			return nil, errwrap.Wrap(err, "error setting concurrency")
 		}
 
 		return w, nil
 	case "zst":
 		compressWriter, err := zstd.NewWriter(file)
 		if err != nil {
-			return nil, fmt.Errorf("getCompressionWriter: zstd error: %w", err)
+			return nil, errwrap.Wrap(err, "zstd error")
 		}
 		return compressWriter, nil
 	default:
-		return nil, fmt.Errorf("getCompressionWriter: unsupported compression algorithm: %s", algo)
+		return nil, errwrap.Wrap(nil, fmt.Sprintf("unsupported compression algorithm: %s", algo))
 	}
 }
 
 func writeTarball(path string, tarWriter *tar.Writer, prefix string) error {
 	fileInfo, err := os.Lstat(path)
 	if err != nil {
-		return fmt.Errorf("writeTarball: error getting file infor for %s: %w", path, err)
+		return errwrap.Wrap(err, fmt.Sprintf("error getting file info for %s", path))
 	}
 
 	if fileInfo.Mode()&os.ModeSocket == os.ModeSocket {
@@ -134,19 +134,19 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string) error {
 	if fileInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
 		var err error
 		if link, err = os.Readlink(path); err != nil {
-			return fmt.Errorf("writeTarball: error resolving symlink %s: %w", path, err)
+			return errwrap.Wrap(err, fmt.Sprintf("error resolving symlink %s", path))
 		}
 	}
 
 	header, err := tar.FileInfoHeader(fileInfo, link)
 	if err != nil {
-		return fmt.Errorf("writeTarball: error getting file info header: %w", err)
+		return errwrap.Wrap(err, "error getting file info header")
 	}
 	header.Name = strings.TrimPrefix(path, prefix)
 
 	err = tarWriter.WriteHeader(header)
 	if err != nil {
-		return fmt.Errorf("writeTarball: error writing file info header: %w", err)
+		return errwrap.Wrap(err, "error writing file info header")
 	}
 
 	if !fileInfo.Mode().IsRegular() {
@@ -155,13 +155,13 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string) error {
 
 	file, err := os.Open(path)
 	if err != nil {
-		return fmt.Errorf("writeTarball: error opening %s: %w", path, err)
+		return errwrap.Wrap(err, fmt.Sprintf("error opening %s", path))
 	}
 	defer file.Close()
 
 	_, err = io.Copy(tarWriter, file)
 	if err != nil {
-		return fmt.Errorf("writeTarball: error copying %s to tar writer: %w", path, err)
+		return errwrap.Wrap(err, fmt.Sprintf("error copying %s to tar writer", path))
 	}
 
 	return nil

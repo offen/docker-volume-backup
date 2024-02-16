@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/robfig/cron/v3"
 )
 
@@ -23,7 +24,7 @@ func remove(location string) error {
 		if os.IsNotExist(err) {
 			return nil
 		}
-		return fmt.Errorf("remove: error checking for existence of `%s`: %w", location, err)
+		return errwrap.Wrap(err, fmt.Sprintf("error checking for existence of `%s`", location))
 	}
 	if fi.IsDir() {
 		err = os.RemoveAll(location)
@@ -31,7 +32,7 @@ func remove(location string) error {
 		err = os.Remove(location)
 	}
 	if err != nil {
-		return fmt.Errorf("remove: error removing `%s`: %w", location, err)
+		return errwrap.Wrap(err, fmt.Sprintf("error removing `%s", location))
 	}
 	return nil
 }
@@ -50,7 +51,7 @@ type bufferingWriter struct {
 
 func (b *bufferingWriter) Write(p []byte) (n int, err error) {
 	if n, err := b.buf.Write(p); err != nil {
-		return n, fmt.Errorf("(*bufferingWriter).Write: error writing to buffer: %w", err)
+		return n, errwrap.Wrap(err, "error writing to buffer")
 	}
 	return b.writer.Write(p)
 }

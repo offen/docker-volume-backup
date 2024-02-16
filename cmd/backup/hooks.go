@@ -5,8 +5,9 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"sort"
+
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
 // hook contains a queued action that can be trigger them when the script
@@ -47,7 +48,7 @@ func (s *script) runHooks(err error) error {
 			continue
 		}
 		if actionErr := hook.action(err); actionErr != nil {
-			actionErrors = append(actionErrors, fmt.Errorf("runHooks: error running hook: %w", actionErr))
+			actionErrors = append(actionErrors, errwrap.Wrap(actionErr, "error running hook"))
 		}
 	}
 	if len(actionErrors) != 0 {

@@ -14,6 +14,7 @@ import (
 
 	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox"
 	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox/files"
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"golang.org/x/oauth2"
 )
@@ -51,7 +52,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 	tkSource := conf.TokenSource(context.Background(), &oauth2.Token{RefreshToken: opts.RefreshToken})
 	token, err := tkSource.Token()
 	if err != nil {
-		return nil, fmt.Errorf("(*dropboxStorage).NewStorageBackend: Error refreshing token: %w", err)
+		return nil, errwrap.Wrap(err, "error refreshing token")
 	}
 
 	dbxConfig := dropbox.Config{
@@ -95,29 +96,28 @@ func (b *dropboxStorage) Copy(file string) error {
 		switch err := err.(type) {
 		case files.CreateFolderV2APIError:
 			if err.EndpointError.Path.Tag != files.WriteErrorConflict {
-				return fmt.Errorf("(*dropboxStorage).Copy: Error creating directory '%s': %w", b.DestinationPath, err)
+				return errwrap.Wrap(err, fmt.Sprintf("error creating directory '%s'", b.DestinationPath))
 			}
 			b.Log(storage.LogLevelInfo, b.Name(), "Destination path '%s' already exists, no new directory required.", b.DestinationPath)
 		default:
-			return fmt.Errorf("(*dropboxStorage).Copy: Error creating directory '%s': %w", b.DestinationPath, err)
+			return errwrap.Wrap(err, fmt.Sprintf("error creating directory '%s'", b.DestinationPath))
 		}
 	}
 
 	r, err := os.Open(file)
 	if err != nil {
-		return fmt.Errorf("(*dropboxStorage).Copy: Error opening the file to be uploaded: %w", err)
+		return errwrap.Wrap(err, "error opening the file to be uploaded")
 	}
 	defer r.Close()
 
 	// Start new upload session and get session id
-
 	b.Log(storage.LogLevelInfo, b.Name(), "Starting upload session for backup '%s' at path '%s'.", file, b.DestinationPath)
 
 	var sessionId string
 	uploadSessionStartArg := files.NewUploadSessionStartArg()
 	uploadSessionStartArg.SessionType = &files.UploadSessionType{Tagged: dropbox.Tagged{Tag: files.UploadSessionTypeConcurrent}}
 	if res, err := b.client.UploadSessionStart(uploadSessionStartArg, nil); err != nil {
-		return fmt.Errorf("(*dropboxStorage).Copy: Error starting the upload session: %w", err)
+		return errwrap.Wrap(err, "error starting the upload session")
 	} else {
 		sessionId = res.SessionId
 	}
@@ -165,7 +165,7 @@ loop:
 
 			bytesRead, err := r.Read(chunk)
 			if err != nil {
-				errorChn <- fmt.Errorf("(*dropboxStorage).Copy: Error reading the file to be uploaded: %w", err)
+				errorChn <- errwrap.Wrap(err, "error reading the file to be uploaded")
 				mu.Unlock()
 				return
 			}
@@ -184,7 +184,7 @@ loop:
 			mu.Unlock()
 
 			if err := b.client.UploadSessionAppendV2(uploadSessionAppendArg, bytes.NewReader(chunk)); err != nil {
-				errorChn <- fmt.Errorf("(*dropboxStorage).Copy: Error appending the file to the upload session: %w", err)
+				errorChn <- errwrap.Wrap(err, "error appending the file to the upload session")
 				return
 			}
 		}()
@@ -198,7 +198,7 @@ loop:
 			files.NewCommitInfo(filepath.Join(b.DestinationPath, name)),
 		), nil)
 	if err != nil {
-		return fmt.Errorf("(*dropboxStorage).Copy: Error finishing the upload session: %w", err)
+		return errwrap.Wrap(err, "error finishing the upload session")
 	}
 
 	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup '%s' at path '%s'.", file, b.DestinationPath)
@@ -211,14 +211,14 @@ func (b *dropboxStorage) Prune(deadline time.Time, pruningPrefix string) (*stora
 	var entries []files.IsMetadata
 	res, err := b.client.ListFolder(files.NewListFolderArg(b.DestinationPath))
 	if err != nil {
-		return nil, fmt.Errorf("(*webDavStorage).Prune: Error looking up candidates from remote storage: %w", err)
+		return nil, errwrap.Wrap(err, "error looking up candidates from remote storage")
 	}
 	entries = append(entries, res.Entries...)
 
 	for res.HasMore {
 		res, err = b.client.ListFolderContinue(files.NewListFolderContinueArg(res.Cursor))
 		if err != nil {
-			return nil, fmt.Errorf("(*webDavStorage).Prune: Error looking up candidates from remote storage: %w", err)
+			return nil, errwrap.Wrap(err, "error looking up candidates from remote storage")
 		}
 		entries = append(entries, res.Entries...)
 	}
@@ -248,7 +248,7 @@ func (b *dropboxStorage) Prune(deadline time.Time, pruningPrefix string) (*stora
 	pruneErr := b.DoPrune(b.Name(), len(matches), lenCandidates, deadline, func() error {
 		for _, match := range matches {
 			if _, err := b.client.DeleteV2(files.NewDeleteArg(filepath.Join(b.DestinationPath, match.Name))); err != nil {
-				return fmt.Errorf("(*dropboxStorage).Prune: Error removing file from Dropbox storage: %w", err)
+				return errwrap.Wrap(err, "error removing file from Dropbox storage")
 			}
 		}
 		return nil

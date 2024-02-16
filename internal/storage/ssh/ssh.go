@@ -4,7 +4,6 @@
 package ssh
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -47,20 +47,20 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 	if _, err := os.Stat(opts.IdentityFile); err == nil {
 		key, err := os.ReadFile(opts.IdentityFile)
 		if err != nil {
-			return nil, errors.New("NewStorageBackend: error reading the private key")
+			return nil, errwrap.Wrap(nil, "error reading the private key")
 		}
 
 		var signer ssh.Signer
 		if opts.IdentityPassphrase != "" {
 			signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(opts.IdentityPassphrase))
 			if err != nil {
-				return nil, errors.New("NewStorageBackend: error parsing the encrypted private key")
+				return nil, errwrap.Wrap(nil, "error parsing the encrypted private key")
 			}
 			authMethods = append(authMethods, ssh.PublicKeys(signer))
 		} else {
 			signer, err = ssh.ParsePrivateKey(key)
 			if err != nil {
-				return nil, errors.New("NewStorageBackend: error parsing the private key")
+				return nil, errwrap.Wrap(nil, "error parsing the private key")
 			}
 			authMethods = append(authMethods, ssh.PublicKeys(signer))
 		}
@@ -74,7 +74,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", opts.HostName, opts.Port), sshClientConfig)
 
 	if err != nil {
-		return nil, fmt.Errorf("NewStorageBackend: error creating ssh client: %w", err)
+		return nil, errwrap.Wrap(err, "error creating ssh client")
 	}
 	_, _, err = sshClient.SendRequest("keepalive", false, nil)
 	if err != nil {
@@ -87,7 +87,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		sftp.MaxConcurrentRequestsPerFile(64),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("NewStorageBackend: error creating sftp client: %w", err)
+		return nil, errwrap.Wrap(err, "error creating sftp client")
 	}
 
 	return &sshStorage{
@@ -111,13 +111,13 @@ func (b *sshStorage) Copy(file string) error {
 	source, err := os.Open(file)
 	_, name := path.Split(file)
 	if err != nil {
-		return fmt.Errorf("(*sshStorage).Copy: error reading the file to be uploaded: %w", err)
+		return errwrap.Wrap(err, " error reading the file to be uploaded")
 	}
 	defer source.Close()
 
 	destination, err := b.sftpClient.Create(filepath.Join(b.DestinationPath, name))
 	if err != nil {
-		return fmt.Errorf("(*sshStorage).Copy: error creating file: %w", err)
+		return errwrap.Wrap(err, "error creating file")
 	}
 	defer destination.Close()
 
@@ -127,27 +127,27 @@ func (b *sshStorage) Copy(file string) error {
 		if err == io.EOF {
 			tot, err := destination.Write(chunk[:num])
 			if err != nil {
-				return fmt.Errorf("(*sshStorage).Copy: error uploading the file: %w", err)
+				return errwrap.Wrap(err, "error uploading the file")
 			}
 
 			if tot != len(chunk[:num]) {
-				return errors.New("(*sshStorage).Copy: failed to write stream")
+				return errwrap.Wrap(nil, "failed to write stream")
 			}
 
 			break
 		}
 
 		if err != nil {
-			return fmt.Errorf("(*sshStorage).Copy: error uploading the file: %w", err)
+			return errwrap.Wrap(err, "error uploading the file")
 		}
 
 		tot, err := destination.Write(chunk[:num])
 		if err != nil {
-			return fmt.Errorf("(*sshStorage).Copy: error uploading the file: %w", err)
+			return errwrap.Wrap(err, "error uploading the file")
 		}
 
 		if tot != len(chunk[:num]) {
-			return fmt.Errorf("(*sshStorage).Copy: failed to write stream")
+			return errwrap.Wrap(nil, "failed to write stream")
 		}
 	}
 
@@ -160,7 +160,7 @@ func (b *sshStorage) Copy(file string) error {
 func (b *sshStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
 	candidates, err := b.sftpClient.ReadDir(b.DestinationPath)
 	if err != nil {
-		return nil, fmt.Errorf("(*sshStorage).Prune: error reading directory: %w", err)
+		return nil, errwrap.Wrap(err, "error reading directory")
 	}
 
 	var matches []string
@@ -181,7 +181,7 @@ func (b *sshStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.P
 	pruneErr := b.DoPrune(b.Name(), len(matches), len(candidates), deadline, func() error {
 		for _, match := range matches {
 			if err := b.sftpClient.Remove(filepath.Join(b.DestinationPath, match)); err != nil {
-				return fmt.Errorf("(*sshStorage).Prune: error removing file: %w", err)
+				return errwrap.Wrap(err, "error removing file")
 			}
 		}
 		return nil

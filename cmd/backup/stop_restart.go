@@ -1,3 +1,6 @@
+// Copyright 2024 - Offen Authors <hioffen@posteo.de>
+// SPDX-License-Identifier: MPL-2.0
+
 package main
 
 import (
@@ -15,24 +18,25 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
 func scaleService(cli *client.Client, serviceID string, replicas uint64) ([]string, error) {
 	service, _, err := cli.ServiceInspectWithRaw(context.Background(), serviceID, types.ServiceInspectOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("scaleService: error inspecting service %s: %w", serviceID, err)
+		return nil, errwrap.Wrap(err, fmt.Sprintf("error inspecting service %s", serviceID))
 	}
 	serviceMode := &service.Spec.Mode
 	switch {
 	case serviceMode.Replicated != nil:
 		serviceMode.Replicated.Replicas = &replicas
 	default:
-		return nil, fmt.Errorf("scaleService: service to be scaled %s has to be in replicated mode", service.Spec.Name)
+		return nil, errwrap.Wrap(nil, fmt.Sprintf("service to be scaled %s has to be in replicated mode", service.Spec.Name))
 	}
 
 	response, err := cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("scaleService: error updating service: %w", err)
+		return nil, errwrap.Wrap(err, "error updating service")
 	}
 
 	discardWriter := &noopWriteCloser{io.Discard}
@@ -51,11 +55,14 @@ func awaitContainerCountForService(cli *client.Client, serviceID string, count i
 	for {
 		select {
 		case <-timeout.C:
-			return fmt.Errorf(
-				"awaitContainerCount: timed out after waiting %s for service %s to reach desired container count of %d",
-				timeoutAfter,
-				serviceID,
-				count,
+			return errwrap.Wrap(
+				nil,
+				fmt.Sprintf(
+					"timed out after waiting %s for service %s to reach desired container count of %d",
+					timeoutAfter,
+					serviceID,
+					count,
+				),
 			)
 		case <-poll.C:
 			containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{
@@ -65,7 +72,7 @@ func awaitContainerCountForService(cli *client.Client, serviceID string, count i
 				}),
 			})
 			if err != nil {
-				return fmt.Errorf("awaitContainerCount: error listing containers: %w", err)
+				return errwrap.Wrap(err, "error listing containers")
 			}
 			if len(containers) == count {
 				return nil
@@ -84,7 +91,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 
 	dockerInfo, err := s.cli.Info(context.Background())
 	if err != nil {
-		return noop, fmt.Errorf("(*script).stopContainersAndServices: error getting docker info: %w", err)
+		return noop, errwrap.Wrap(err, "error getting docker info")
 	}
 	isDockerSwarm := dockerInfo.Swarm.LocalNodeState != "inactive"
 
@@ -97,7 +104,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 			"Please use BACKUP_STOP_DURING_BACKUP_LABEL instead. Refer to the docs for an upgrade guide.",
 		)
 		if _, ok := os.LookupEnv("BACKUP_STOP_DURING_BACKUP_LABEL"); ok {
-			return noop, errors.New("(*script).stopContainersAndServices: both BACKUP_STOP_DURING_BACKUP_LABEL and BACKUP_STOP_CONTAINER_LABEL have been set, cannot continue")
+			return noop, errwrap.Wrap(nil, "both BACKUP_STOP_DURING_BACKUP_LABEL and BACKUP_STOP_CONTAINER_LABEL have been set, cannot continue")
 		}
 		labelValue = s.c.BackupStopContainerLabel
 	}
@@ -109,7 +116,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 
 	allContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err != nil {
-		return noop, fmt.Errorf("(*script).stopContainersAndServices: error querying for containers: %w", err)
+		return noop, errwrap.Wrap(err, "error querying for containers")
 	}
 	containersToStop, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
@@ -118,7 +125,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		}),
 	})
 	if err != nil {
-		return noop, fmt.Errorf("(*script).stopContainersAndServices: error querying for containers to stop: %w", err)
+		return noop, errwrap.Wrap(err, "error querying for containers to stop")
 	}
 
 	var allServices []swarm.Service
@@ -126,7 +133,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 	if isDockerSwarm {
 		allServices, err = s.cli.ServiceList(context.Background(), types.ServiceListOptions{})
 		if err != nil {
-			return noop, fmt.Errorf("(*script).stopContainersAndServices: error querying for services: %w", err)
+			return noop, errwrap.Wrap(err, "error querying for services")
 		}
 		matchingServices, err := s.cli.ServiceList(context.Background(), types.ServiceListOptions{
 			Filters: filters.NewArgs(filters.KeyValuePair{
@@ -142,7 +149,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 			})
 		}
 		if err != nil {
-			return noop, fmt.Errorf("(*script).stopContainersAndServices: error querying for services to scale down: %w", err)
+			return noop, errwrap.Wrap(err, "error querying for services to scale down")
 		}
 	}
 
@@ -155,14 +162,17 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 			if swarmServiceID, ok := container.Labels["com.docker.swarm.service.id"]; ok {
 				parentService, _, err := s.cli.ServiceInspectWithRaw(context.Background(), swarmServiceID, types.ServiceInspectOptions{})
 				if err != nil {
-					return noop, fmt.Errorf("(*script).stopContainersAndServices: error querying for parent service with ID %s: %w", swarmServiceID, err)
+					return noop, errwrap.Wrap(err, fmt.Sprintf("error querying for parent service with ID %s", swarmServiceID))
 				}
 				for label := range parentService.Spec.Labels {
 					if label == "docker-volume-backup.stop-during-backup" {
-						return noop, fmt.Errorf(
-							"(*script).stopContainersAndServices: container %s is labeled to stop but has parent service %s which is also labeled, cannot continue",
-							container.Names[0],
-							parentService.Spec.Name,
+						return noop, errwrap.Wrap(
+							nil,
+							fmt.Sprintf(
+								"container %s is labeled to stop but has parent service %s which is also labeled, cannot continue",
+								container.Names[0],
+								parentService.Spec.Name,
+							),
 						)
 					}
 				}
@@ -245,10 +255,12 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 	var initialErr error
 	allErrors := append(stopErrors, scaleDownErrors.value()...)
 	if len(allErrors) != 0 {
-		initialErr = fmt.Errorf(
-			"(*script).stopContainersAndServices: %d error(s) stopping containers: %w",
-			len(allErrors),
+		initialErr = errwrap.Wrap(
 			errors.Join(allErrors...),
+			fmt.Sprintf(
+				"%d error(s) stopping containers",
+				len(allErrors),
+			),
 		)
 	}
 
@@ -268,7 +280,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				if err != nil {
 					restartErrors = append(
 						restartErrors,
-						fmt.Errorf("(*script).stopContainersAndServices: error looking up parent service: %w", err),
+						errwrap.Wrap(err, "error looking up parent service"),
 					)
 					continue
 				}
@@ -311,10 +323,12 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 
 		allErrors := append(restartErrors, scaleUpErrors.value()...)
 		if len(allErrors) != 0 {
-			return fmt.Errorf(
-				"(*script).stopContainersAndServices: %d error(s) restarting containers and services: %w",
-				len(allErrors),
+			return errwrap.Wrap(
 				errors.Join(allErrors...),
+				fmt.Sprintf(
+					"%d error(s) restarting containers and services",
+					len(allErrors),
+				),
 			)
 		}
 

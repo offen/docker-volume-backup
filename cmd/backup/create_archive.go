@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"path/filepath"
 
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/otiai10/copy"
 )
 
@@ -27,7 +28,7 @@ func (s *script) createArchive() error {
 		// copy before compressing guard against a situation where backup folder's content are still growing.
 		s.registerHook(hookLevelPlumbing, func(error) error {
 			if err := remove(backupSources); err != nil {
-				return fmt.Errorf("createArchive: error removing snapshot: %w", err)
+				return errwrap.Wrap(err, "error removing snapshot")
 			}
 			s.logger.Info(
 				fmt.Sprintf("Removed snapshot `%s`.", backupSources),
@@ -38,7 +39,7 @@ func (s *script) createArchive() error {
 			PreserveTimes: true,
 			PreserveOwner: true,
 		}); err != nil {
-			return fmt.Errorf("createArchive: error creating snapshot: %w", err)
+			return errwrap.Wrap(err, "error creating snapshot")
 		}
 		s.logger.Info(
 			fmt.Sprintf("Created snapshot of `%s` at `%s`.", s.c.BackupSources, backupSources),
@@ -48,7 +49,7 @@ func (s *script) createArchive() error {
 	tarFile := s.file
 	s.registerHook(hookLevelPlumbing, func(error) error {
 		if err := remove(tarFile); err != nil {
-			return fmt.Errorf("createArchive: error removing tar file: %w", err)
+			return errwrap.Wrap(err, "error removing tar file")
 		}
 		s.logger.Info(
 			fmt.Sprintf("Removed tar file `%s`.", tarFile),
@@ -58,7 +59,7 @@ func (s *script) createArchive() error {
 
 	backupPath, err := filepath.Abs(stripTrailingSlashes(backupSources))
 	if err != nil {
-		return fmt.Errorf("createArchive: error getting absolute path: %w", err)
+		return errwrap.Wrap(err, "error getting absolute path")
 	}
 
 	var filesEligibleForBackup []string
@@ -73,11 +74,11 @@ func (s *script) createArchive() error {
 		filesEligibleForBackup = append(filesEligibleForBackup, path)
 		return nil
 	}); err != nil {
-		return fmt.Errorf("createArchive: error walking filesystem tree: %w", err)
+		return errwrap.Wrap(err, "error walking filesystem tree")
 	}
 
 	if err := createArchive(filesEligibleForBackup, backupSources, tarFile, s.c.BackupCompression.String(), s.c.GzipParallelism.Int()); err != nil {
-		return fmt.Errorf("createArchive: error compressing backup folder: %w", err)
+		return errwrap.Wrap(err, "error compressing backup folder")
 	}
 
 	s.logger.Info(

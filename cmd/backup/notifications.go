@@ -14,6 +14,7 @@ import (
 	"time"
 
 	sTypes "github.com/containrrr/shoutrrr/pkg/types"
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
 //go:embed notifications.tmpl
@@ -37,16 +38,16 @@ func (s *script) notify(titleTemplate string, bodyTemplate string, err error) er
 
 	titleBuf := &bytes.Buffer{}
 	if err := s.template.ExecuteTemplate(titleBuf, titleTemplate, params); err != nil {
-		return fmt.Errorf("notify: error executing %s template: %w", titleTemplate, err)
+		return errwrap.Wrap(err, fmt.Sprintf("error executing %s template", titleTemplate))
 	}
 
 	bodyBuf := &bytes.Buffer{}
 	if err := s.template.ExecuteTemplate(bodyBuf, bodyTemplate, params); err != nil {
-		return fmt.Errorf("notify: error executing %s template: %w", bodyTemplate, err)
+		return errwrap.Wrap(err, fmt.Sprintf("error executing %s template", bodyTemplate))
 	}
 
 	if err := s.sendNotification(titleBuf.String(), bodyBuf.String()); err != nil {
-		return fmt.Errorf("notify: error notifying: %w", err)
+		return errwrap.Wrap(err, "error sending notification")
 	}
 	return nil
 }
@@ -70,7 +71,7 @@ func (s *script) sendNotification(title, body string) error {
 		}
 	}
 	if len(errs) != 0 {
-		return fmt.Errorf("sendNotification: error sending message: %w", errors.Join(errs...))
+		return errwrap.Wrap(errors.Join(errs...), "error sending message")
 	}
 	return nil
 }

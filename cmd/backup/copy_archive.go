@@ -4,10 +4,10 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path"
 
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -16,7 +16,7 @@ import (
 func (s *script) copyArchive() error {
 	_, name := path.Split(s.file)
 	if stat, err := os.Stat(s.file); err != nil {
-		return fmt.Errorf("copyArchive: unable to stat backup file: %w", err)
+		return errwrap.Wrap(err, "unable to stat backup file")
 	} else {
 		size := stat.Size()
 		s.stats.BackupFile = BackupFileStats{
@@ -34,7 +34,7 @@ func (s *script) copyArchive() error {
 		})
 	}
 	if err := eg.Wait(); err != nil {
-		return fmt.Errorf("copyArchive: error copying archive: %w", err)
+		return errwrap.Wrap(err, "error copying archive")
 	}
 
 	return nil

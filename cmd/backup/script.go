@@ -12,6 +12,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"github.com/offen/docker-volume-backup/internal/storage/azure"
 	"github.com/offen/docker-volume-backup/internal/storage/dropbox"
@@ -80,14 +81,14 @@ func (s *script) init() error {
 
 	tmplFileName, tErr := template.New("extension").Parse(s.file)
 	if tErr != nil {
-		return fmt.Errorf("newScript: unable to parse backup file extension template: %w", tErr)
+		return errwrap.Wrap(tErr, "unable to parse backup file extension template")
 	}
 
 	var bf bytes.Buffer
 	if tErr := tmplFileName.Execute(&bf, map[string]string{
 		"Extension": fmt.Sprintf("tar.%s", s.c.BackupCompression),
 	}); tErr != nil {
-		return fmt.Errorf("newScript: error executing backup file extension template: %w", tErr)
+		return errwrap.Wrap(tErr, "error executing backup file extension template")
 	}
 	s.file = bf.String()
 
@@ -103,12 +104,12 @@ func (s *script) init() error {
 	if !os.IsNotExist(err) || dockerHostSet {
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
-			return fmt.Errorf("newScript: failed to create docker client")
+			return errwrap.Wrap(err, "failed to create docker client")
 		}
 		s.cli = cli
 		s.registerHook(hookLevelPlumbing, func(err error) error {
 			if err := s.cli.Close(); err != nil {
-				return fmt.Errorf("newScript: failed to close docker client: %w", err)
+				return errwrap.Wrap(err, "failed to close docker client")
 			}
 			return nil
 		})
@@ -118,8 +119,6 @@ func (s *script) init() error {
 		switch logType {
 		case storage.LogLevelWarning:
 			s.logger.Warn(fmt.Sprintf(msg, params...), "storage", context)
-		case storage.LogLevelError:
-			s.logger.Error(fmt.Sprintf(msg, params...), "storage", context)
 		default:
 			s.logger.Info(fmt.Sprintf(msg, params...), "storage", context)
 		}
@@ -141,7 +140,7 @@ func (s *script) init() error {
 		}
 		s3Backend, err := s3.NewStorageBackend(s3Config, logFunc)
 		if err != nil {
-			return fmt.Errorf("newScript: error creating s3 storage backend: %w", err)
+			return errwrap.Wrap(err, "error creating s3 storage backend")
 		}
 		s.storages = append(s.storages, s3Backend)
 	}
@@ -156,7 +155,7 @@ func (s *script) init() error {
 		}
 		webdavBackend, err := webdav.NewStorageBackend(webDavConfig, logFunc)
 		if err != nil {
-			return fmt.Errorf("newScript: error creating webdav storage backend: %w", err)
+			return errwrap.Wrap(err, "error creating webdav storage backend")
 		}
 		s.storages = append(s.storages, webdavBackend)
 	}
@@ -173,7 +172,7 @@ func (s *script) init() error {
 		}
 		sshBackend, err := ssh.NewStorageBackend(sshConfig, logFunc)
 		if err != nil {
-			return fmt.Errorf("newScript: error creating ssh storage backend: %w", err)
+			return errwrap.Wrap(err, "error creating ssh storage backend")
 		}
 		s.storages = append(s.storages, sshBackend)
 	}
@@ -197,7 +196,7 @@ func (s *script) init() error {
 		}
 		azureBackend, err := azure.NewStorageBackend(azureConfig, logFunc)
 		if err != nil {
-			return fmt.Errorf("newScript: error creating azure storage backend: %w", err)
+			return errwrap.Wrap(err, "error creating azure storage backend")
 		}
 		s.storages = append(s.storages, azureBackend)
 	}
@@ -214,7 +213,7 @@ func (s *script) init() error {
 		}
 		dropboxBackend, err := dropbox.NewStorageBackend(dropboxConfig, logFunc)
 		if err != nil {
-			return fmt.Errorf("newScript: error creating dropbox storage backend: %w", err)
+			return errwrap.Wrap(err, "error creating dropbox storage backend")
 		}
 		s.storages = append(s.storages, dropboxBackend)
 	}
@@ -240,14 +239,14 @@ func (s *script) init() error {
 
 	hookLevel, ok := hookLevels[s.c.NotificationLevel]
 	if !ok {
-		return fmt.Errorf("newScript: unknown NOTIFICATION_LEVEL %s", s.c.NotificationLevel)
+		return errwrap.Wrap(nil, fmt.Sprintf("unknown NOTIFICATION_LEVEL %s", s.c.NotificationLevel))
 	}
 	s.hookLevel = hookLevel
 
 	if len(s.c.NotificationURLs) > 0 {
 		sender, senderErr := shoutrrr.CreateSender(s.c.NotificationURLs...)
 		if senderErr != nil {
-			return fmt.Errorf("newScript: error creating sender: %w", senderErr)
+			return errwrap.Wrap(senderErr, "error creating sender")
 		}
 		s.sender = sender
 
@@ -255,13 +254,13 @@ func (s *script) init() error {
 		tmpl.Funcs(templateHelpers)
 		tmpl, err = tmpl.Parse(defaultNotifications)
 		if err != nil {
-			return fmt.Errorf("newScript: unable to parse default notifications templates: %w", err)
+			return errwrap.Wrap(err, "unable to parse default notifications templates")
 		}
 
 		if fi, err := os.Stat("/etc/dockervolumebackup/notifications.d"); err == nil && fi.IsDir() {
 			tmpl, err = tmpl.ParseGlob("/etc/dockervolumebackup/notifications.d/*.*")
 			if err != nil {
-				return fmt.Errorf("newScript: unable to parse user defined notifications templates: %w", err)
+				return errwrap.Wrap(err, "unable to parse user defined notifications templates")
 			}
 		}
 		s.template = tmpl

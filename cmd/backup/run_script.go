@@ -6,6 +6,8 @@ package main
 import (
 	"errors"
 	"fmt"
+
+	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
 // runScript instantiates a new script object and orchestrates a backup run.
@@ -15,7 +17,12 @@ import (
 func runScript(c *Config) (err error) {
 	defer func() {
 		if derr := recover(); derr != nil {
-			err = fmt.Errorf("runScript: unexpected panic running script: %v", derr)
+			asErr, ok := derr.(error)
+			if ok {
+				err = errwrap.Wrap(asErr, "unexpected panic running script")
+			} else {
+				err = errwrap.Wrap(nil, fmt.Sprintf("%v", derr))
+			}
 		}
 	}()
 
@@ -23,27 +30,27 @@ func runScript(c *Config) (err error) {
 
 	unlock, lockErr := s.lock("/var/lock/dockervolumebackup.lock")
 	if lockErr != nil {
-		err = fmt.Errorf("runScript: error acquiring file lock: %w", lockErr)
+		err = errwrap.Wrap(lockErr, "error acquiring file lock")
 		return
 	}
 	defer func() {
 		if derr := unlock(); derr != nil {
-			err = errors.Join(err, fmt.Errorf("runScript: error releasing file lock: %w", derr))
+			err = errors.Join(err, errwrap.Wrap(derr, "error releasing file lock"))
 		}
 	}()
 
 	unset, err := s.c.applyEnv()
 	if err != nil {
-		return fmt.Errorf("runScript: error applying env: %w", err)
+		return errwrap.Wrap(err, "error applying env")
 	}
 	defer func() {
 		if derr := unset(); derr != nil {
-			err = errors.Join(err, fmt.Errorf("runScript: error unsetting environment variables: %w", derr))
+			err = errors.Join(err, errwrap.Wrap(derr, "error unsetting environment variables"))
 		}
 	}()
 
 	if initErr := s.init(); initErr != nil {
-		err = fmt.Errorf("runScript: error instantiating script: %w", initErr)
+		err = errwrap.Wrap(initErr, "error instantiating script")
 		return
 	}
 
@@ -56,7 +63,7 @@ func runScript(c *Config) (err error) {
 				// similar).
 				defer func() {
 					if derr := restartContainersAndServices(); derr != nil {
-						err = errors.Join(err, fmt.Errorf("runScript: error restarting containers and services: %w", derr))
+						err = errors.Join(err, errwrap.Wrap(derr, "error restarting containers and services"))
 					}
 				}()
 				if err != nil {
@@ -82,19 +89,22 @@ func runScript(c *Config) (err error) {
 
 		if hookErr := s.runHooks(scriptErr); hookErr != nil {
 			if scriptErr != nil {
-				return fmt.Errorf(
-					"runScript: error %w executing the script followed by %w calling the registered hooks",
-					scriptErr,
-					hookErr,
+				return errwrap.Wrap(
+					nil,
+					fmt.Sprintf(
+						"error %v executing the script followed by %v calling the registered hooks",
+						scriptErr,
+						hookErr,
+					),
 				)
 			}
-			return fmt.Errorf(
-				"runScript: the script ran successfully, but an error occurred calling the registered hooks: %w",
+			return errwrap.Wrap(
 				hookErr,
+				"the script ran successfully, but an error occurred calling the registered hooks",
 			)
 		}
 		if scriptErr != nil {
-			return fmt.Errorf("runScript: error running script: %w", scriptErr)
+			return errwrap.Wrap(scriptErr, "error running script")
 		}
 		return nil
 	}()
