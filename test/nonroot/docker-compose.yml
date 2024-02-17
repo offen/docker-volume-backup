@@ -18,16 +18,9 @@ services:
     depends_on:
       - minio
     restart: always
-    environment:
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: GMusLtUmILge2by+z890kQ
-      AWS_ENDPOINT: minio:9000
-      AWS_ENDPOINT_PROTO: http
-      AWS_S3_BUCKET_NAME: backup
-      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
-      BACKUP_FILENAME: test.tar.gz
     volumes:
       - app_data:/backup/app_data:ro
+      - ./01conf.env:/etc/dockervolumebackup/conf.d/01conf.env
 
   offen:
     image: offen/offen:latest
