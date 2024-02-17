@@ -12,7 +12,7 @@ Running as a non-root user limits interaction with the Docker Daemon.
 If you want to stop and restart containers and services during backup, and the host's Docker daemon is running as root, you will also need to run this tool as root.
 
 By default, this image executes backups using the `root` user.
-In case you prefer to use a different user, you can use Docker's [`user` ](https://docs.docker.com/engine/reference/run/#user) option, passing the user and group id:
+In case you prefer to use a different user, you can use Docker's [`user`](https://docs.docker.com/engine/reference/run/#user) option, passing the user and group id:
 
 ```console
 docker run --rm \
