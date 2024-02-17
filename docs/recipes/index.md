@@ -371,3 +371,24 @@ volumes:
   data_1:
   data_2:
 ```
+
+## Running as a non-root user
+
+```yml
+version: '3'
+
+services:
+  # ... define other services using the `data` volume here
+  backup:
+    image: offen/docker-volume-backup:v2
+    user: 1000:1000
+    environment:
+      AWS_S3_BUCKET_NAME: backup-bucket
+      AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+      AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+    volumes:
+      - data:/backup/my-app-backup:ro
+
+volumes:
+  data:
+```

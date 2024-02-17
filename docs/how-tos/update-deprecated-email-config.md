@@ -2,7 +2,7 @@
 title: Update deprecated email configuration
 layout: default
 parent: How Tos
-nav_order: 18
+nav_order: 19
 ---
 
 # Update deprecated email configuration
