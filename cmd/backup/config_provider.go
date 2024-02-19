@@ -4,14 +4,14 @@
 package main
 
 import (
-	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/joho/godotenv"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/envconfig"
+	"mvdan.cc/sh/shell"
 )
 
 type configStrategy string
@@ -126,32 +126,13 @@ func loadConfigsFromEnvFiles(directory string) ([]*Config, error) {
 // source tries to mimic the pre v2.37.0 behavior of calling
 // `set +a; source $path; set -a` and returns the env vars as a map
 func source(path string) (map[string]string, error) {
-	f, err := os.Open(path)
+	vars, err := shell.SourceFile(context.Background(), path)
 	if err != nil {
-		return nil, errwrap.Wrap(err, fmt.Sprintf("error opening %s", path))
+		return nil, errwrap.Wrap(err, "error sourcing conf file")
 	}
-
 	result := map[string]string{}
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		line = expand(line, os.LookupEnv)
-		m, err := godotenv.Unmarshal(line)
-		if err != nil {
-			return nil, errwrap.Wrap(err, fmt.Sprintf("error sourcing %s", path))
-		}
-		for key, value := range m {
-			currentValue, currentOk := os.LookupEnv(key)
-			defer func() {
-				if currentOk {
-					os.Setenv(key, currentValue)
-					return
-				}
-				os.Unsetenv(key)
-			}()
-			result[key] = value
-			os.Setenv(key, value)
-		}
+	for key, value := range vars {
+		result[key] = value.String()
 	}
 	return result, nil
 }

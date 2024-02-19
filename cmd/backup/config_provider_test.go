@@ -33,8 +33,9 @@ func TestSource(t *testing.T) {
 			"testdata/braces.env",
 			false,
 			map[string]string{
-				"FOO": "${bar:-qux}",
+				"FOO": "qux",
 				"BAR": "xxx",
+				"BAZ": "",
 			},
 		},
 		{
