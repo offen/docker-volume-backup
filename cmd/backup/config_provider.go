@@ -123,6 +123,8 @@ func loadConfigsFromEnvFiles(directory string) ([]*Config, error) {
 	return configs, nil
 }
 
+// source tries to mimic the pre v2.37.0 behavior of calling
+// `set +a; source $path; set -a` and returns the env vars as a map
 func source(path string) (map[string]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
