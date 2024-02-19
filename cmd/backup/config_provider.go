@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -99,11 +100,7 @@ func loadConfigsFromEnvFiles(directory string) ([]*Config, error) {
 			continue
 		}
 		p := filepath.Join(directory, item.Name())
-		f, err := os.ReadFile(p)
-		if err != nil {
-			return nil, errwrap.Wrap(err, fmt.Sprintf("error reading %s", item.Name()))
-		}
-		envFile, err := godotenv.Unmarshal(os.ExpandEnv(string(f)))
+		envFile, err := source(p)
 		if err != nil {
 			return nil, errwrap.Wrap(err, fmt.Sprintf("error reading config file %s", p))
 		}
@@ -124,4 +121,35 @@ func loadConfigsFromEnvFiles(directory string) ([]*Config, error) {
 	}
 
 	return configs, nil
+}
+
+func source(path string) (map[string]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, errwrap.Wrap(err, fmt.Sprintf("error opening %s", path))
+	}
+
+	result := map[string]string{}
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = expand(line, os.LookupEnv)
+		m, err := godotenv.Unmarshal(line)
+		if err != nil {
+			return nil, errwrap.Wrap(err, fmt.Sprintf("error sourcing %s", path))
+		}
+		for key, value := range m {
+			currentValue, currentOk := os.LookupEnv(key)
+			defer func() {
+				if currentOk {
+					os.Setenv(key, currentValue)
+					return
+				}
+				os.Unsetenv(key)
+			}()
+			result[key] = value
+			os.Setenv(key, value)
+		}
+	}
+	return result, nil
 }
