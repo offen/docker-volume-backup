@@ -10,6 +10,7 @@ require (
 	github.com/docker/cli v24.0.9+incompatible
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/gofrs/flock v0.8.1
+	github.com/joho/godotenv v1.5.1
 	github.com/klauspost/compress v1.17.6
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.67
@@ -21,7 +22,6 @@ require (
 	golang.org/x/crypto v0.19.0
 	golang.org/x/oauth2 v0.17.0
 	golang.org/x/sync v0.6.0
-	mvdan.cc/sh v2.6.4+incompatible
 )
 
 require (
@@ -29,7 +29,6 @@ require (
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	golang.org/x/term v0.17.0 // indirect
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
