@@ -20,7 +20,7 @@ if [ ! -f "$LOCAL_DIR/conf.tar.gz" ]; then
 fi
 pass "Config from file was used."
 
-if [ ! -f "$LOCAL_DIR/override-other.tar.gz" ]; then
+if [ ! -f "$LOCAL_DIR/other.tar.gz" ]; then
   fail "Run on same schedule did not succeed."
 fi
 pass "Run on same schedule succeeded."
