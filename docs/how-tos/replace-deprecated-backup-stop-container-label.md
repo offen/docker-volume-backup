@@ -2,7 +2,7 @@
 title: Replace deprecated BACKUP_STOP_CONTAINER_LABEL setting
 layout: default
 parent: How Tos
-nav_order: 19
+nav_order: 20
 ---
 
 # Replace deprecated `BACKUP_STOP_CONTAINER_LABEL` setting
