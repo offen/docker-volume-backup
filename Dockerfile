@@ -13,8 +13,7 @@ FROM alpine:3.19
 
 WORKDIR /root
 
-RUN apk add --no-cache ca-certificates && \
-  chmod a+rw /var/lock
+RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /app/cmd/backup/backup /usr/bin/backup
 

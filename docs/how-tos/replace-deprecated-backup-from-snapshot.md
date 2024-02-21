@@ -2,7 +2,7 @@
 title: Replace deprecated BACKUP_FROM_SNAPSHOT usage
 layout: default
 parent: How Tos
-nav_order: 17
+nav_order: 16
 ---
 
 # Replace deprecated `BACKUP_FROM_SNAPSHOT` usage

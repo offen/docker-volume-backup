@@ -2,7 +2,7 @@
 title: Replace deprecated exec-pre and exec-post labels
 layout: default
 parent: How Tos
-nav_order: 18
+nav_order: 17
 ---
 
 # Replace deprecated `exec-pre` and `exec-post` labels
