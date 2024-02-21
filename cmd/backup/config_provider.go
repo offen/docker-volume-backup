@@ -4,13 +4,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/joho/godotenv"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/envconfig"
+	"mvdan.cc/sh/shell"
 )
 
 type configStrategy string
@@ -99,11 +100,7 @@ func loadConfigsFromEnvFiles(directory string) ([]*Config, error) {
 			continue
 		}
 		p := filepath.Join(directory, item.Name())
-		f, err := os.ReadFile(p)
-		if err != nil {
-			return nil, errwrap.Wrap(err, fmt.Sprintf("error reading %s", item.Name()))
-		}
-		envFile, err := godotenv.Unmarshal(os.ExpandEnv(string(f)))
+		envFile, err := source(p)
 		if err != nil {
 			return nil, errwrap.Wrap(err, fmt.Sprintf("error reading config file %s", p))
 		}
@@ -124,4 +121,18 @@ func loadConfigsFromEnvFiles(directory string) ([]*Config, error) {
 	}
 
 	return configs, nil
+}
+
+// source tries to mimic the pre v2.37.0 behavior of calling
+// `set +a; source $path; set -a` and returns the env vars as a map
+func source(path string) (map[string]string, error) {
+	vars, err := shell.SourceFile(context.Background(), path)
+	if err != nil {
+		return nil, errwrap.Wrap(err, "error sourcing conf file")
+	}
+	result := map[string]string{}
+	for key, value := range vars {
+		result[key] = value.String()
+	}
+	return result, nil
 }
