@@ -49,6 +49,15 @@ func TestSource(t *testing.T) {
 				"QUX": "yyy",
 			},
 		},
+		{
+			"comments",
+			"testdata/comments.env",
+			false,
+			map[string]string{
+				"BAR": "xxx",
+				"BAZ": "yyy",
+			},
+		},
 	}
 
 	os.Setenv("QUX", "yyy")

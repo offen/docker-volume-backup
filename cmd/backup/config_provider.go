@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
@@ -136,6 +137,10 @@ func source(path string) (map[string]string, error) {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
 		withExpansion, err := shell.Expand(line, nil)
 		if err != nil {
 			return nil, errwrap.Wrap(err, "error expanding env")
