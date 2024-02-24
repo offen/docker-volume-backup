@@ -1,5 +1,5 @@
-<a href="https://www.offen.dev/">
-    <img src="https://offen.github.io/press-kit/offen-material/gfx-GitHub-Offen-logo.svg" alt="Offen logo" title="Offen" width="150px"/>
+<a href="https://www.offen.software/">
+    <img src="https://offen.github.io/press-kit/avatars/avatar-OS-header.svg" alt="offen.software logo" title="offen.software" width="60px"/>
 </a>
 
 # docker-volume-backup
