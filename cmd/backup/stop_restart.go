@@ -81,6 +81,16 @@ func awaitContainerCountForService(cli *client.Client, serviceID string, count i
 	}
 }
 
+func isSwarm(c interface {
+	Info(context.Context) (types.Info, error)
+}) (bool, error) {
+	info, err := c.Info(context.Background())
+	if err != nil {
+		return false, errwrap.Wrap(err, "error getting docker info")
+	}
+	return info.Swarm.LocalNodeState != "" && info.Swarm.LocalNodeState != swarm.LocalNodeStateInactive, nil
+}
+
 // stopContainersAndServices stops all Docker containers that are marked as to being
 // stopped during the backup and returns a function that can be called to
 // restart everything that has been stopped.
@@ -89,11 +99,10 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		return noop, nil
 	}
 
-	dockerInfo, err := s.cli.Info(context.Background())
+	isDockerSwarm, err := isSwarm(s.cli)
 	if err != nil {
-		return noop, errwrap.Wrap(err, "error getting docker info")
+		return noop, errwrap.Wrap(err, "error determining swarm state")
 	}
-	isDockerSwarm := dockerInfo.Swarm.LocalNodeState != "inactive"
 
 	labelValue := s.c.BackupStopDuringBackupLabel
 	if s.c.BackupStopContainerLabel != "" {
