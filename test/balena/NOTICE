@@ -1,4 +1,0 @@
-Dockerfile and content in `config` is taken from
-https://github.com/balena-io-experimental/balena-engine-docker which is
-distributed under the Apache-2.0 license:
-https://github.com/balena-io-experimental/balena-engine-docker/blob/532d24e746240a5d26bcd55112e8cf68dd6b8227/LICENSE

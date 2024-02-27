@@ -100,6 +100,11 @@ docker pull ghcr.io/offen/docker-volume-backup:v2
 
 Documentation references Docker Hub, but all examples will work using ghcr.io just as well.
 
+### Supported Engines
+
+This tool is developed and tested against the Docker CE engine exclusively.
+While it may work against different implementations (e.g. Balena Engine), there are no guarantees about support for non-Docker engines.
+
 ## Differences to `jareware/docker-volume-backup`
 
 This image is heavily inspired by `jareware/docker-volume-backup`. We decided to publish this image as a simpler and more lightweight alternative because of the following requirements:
