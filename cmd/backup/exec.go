@@ -45,15 +45,23 @@ func (s *script) exec(containerRef string, command string, user string) ([]byte,
 	}
 	defer resp.Close()
 
-	var outBuf, errBuf bytes.Buffer
+	var outBuf, errBuf, fullRespBuf bytes.Buffer
 	outputDone := make(chan error)
 
+	tee := io.TeeReader(resp.Reader, &fullRespBuf)
+
 	go func() {
-		_, err := stdcopy.StdCopy(&outBuf, &errBuf, resp.Reader)
+		_, err := stdcopy.StdCopy(&outBuf, &errBuf, tee)
 		outputDone <- err
 	}()
 
 	if err := <-outputDone; err != nil {
+		if body, bErr := io.ReadAll(&fullRespBuf); bErr == nil {
+			// if possible, try to append the exec output to the error
+			// as it's likely to be more relevant for users than the error from
+			// calling stdcopy.Copy
+			err = errwrap.Wrap(errors.New(string(body)), err.Error())
+		}
 		return nil, nil, errwrap.Wrap(err, "error demultiplexing output")
 	}
 
