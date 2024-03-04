@@ -88,7 +88,7 @@ docker run --rm \
 
 Alternatively, pass a `--env-file` in order to use a full config as described below.
 
-### Available image registries
+## Available image registries
 
 This Docker image is published to both Docker Hub and the GitHub container registry.
 Depending on your preferences and needs, you can reference both `offen/docker-volume-backup` as well as `ghcr.io/offen/docker-volume-backup`:
@@ -100,7 +100,7 @@ docker pull ghcr.io/offen/docker-volume-backup:v2
 
 Documentation references Docker Hub, but all examples will work using ghcr.io just as well.
 
-### Supported Engines
+## Supported Engines
 
 This tool is developed and tested against the Docker CE engine exclusively.
 While it may work against different implementations (e.g. Balena Engine), there are no guarantees about support for non-Docker engines.

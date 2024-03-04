@@ -46,6 +46,10 @@ If you have more than one `docker-volume-backup` container (possibly across seve
 multiple backup schedules, you will need to use `EXEC_LABEL` in the configuration and a `docker-volume-backup.exec-label` label on each
 container using custom commands to ensure that the commands are only run by the correct `docker-volume-backup` instance.
 
+{: .important }
+In case you use `EXEC_LABEL` together with configuration mounted from `conf.d` it's important to understand that a distinct `EXEC_LABEL` __should be set in each configuration__.
+Else, schedules that do not specify an `EXEC_LABEL` will still trigger commands on all containers with such labels, no matter whether they specify `docker-volume-backup.exec-label` or not.
+
 ```yml
 version: '3'
 
