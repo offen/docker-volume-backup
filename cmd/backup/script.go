@@ -193,6 +193,7 @@ func (s *script) init() error {
 			PrimaryAccountKey: s.c.AzureStoragePrimaryAccountKey,
 			Endpoint:          s.c.AzureStorageEndpoint,
 			RemotePath:        s.c.AzureStoragePath,
+			ConnectionString:  s.c.AzureStorageConnectionString,
 		}
 		azureBackend, err := azure.NewStorageBackend(azureConfig, logFunc)
 		if err != nil {

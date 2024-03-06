@@ -33,6 +33,7 @@ type Config struct {
 	AccountName       string
 	ContainerName     string
 	PrimaryAccountKey string
+	ConnectionString  string
 	Endpoint          string
 	RemotePath        string
 }
@@ -58,7 +59,12 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 
 		client, err = azblob.NewClientWithSharedKeyCredential(normalizedEndpoint, cred, nil)
 		if err != nil {
-			return nil, errwrap.Wrap(err, "error creating Azure client")
+			return nil, errwrap.Wrap(err, "error creating azure client from primary account key")
+		}
+	} else if opts.ConnectionString != "" {
+		client, err = azblob.NewClientFromConnectionString(opts.ConnectionString, nil)
+		if err != nil {
+			return nil, errwrap.Wrap(err, "error creating azure client from connection string")
 		}
 	} else {
 		cred, err := azidentity.NewManagedIdentityCredential(nil)
@@ -67,7 +73,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		}
 		client, err = azblob.NewClient(normalizedEndpoint, cred, nil)
 		if err != nil {
-			return nil, errwrap.Wrap(err, "error creating Azure client")
+			return nil, errwrap.Wrap(err, "error creating azure client from managed identity")
 		}
 	}
 
