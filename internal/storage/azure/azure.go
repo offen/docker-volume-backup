@@ -40,6 +40,10 @@ type Config struct {
 
 // NewStorageBackend creates and initializes a new Azure Blob Storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
+	if opts.PrimaryAccountKey != "" && opts.ConnectionString != "" {
+		return nil, errwrap.Wrap(nil, "using primary account key and connection string are mutually exclusive")
+	}
+
 	endpointTemplate, err := template.New("endpoint").Parse(opts.Endpoint)
 	if err != nil {
 		return nil, errwrap.Wrap(err, "error parsing endpoint template")
