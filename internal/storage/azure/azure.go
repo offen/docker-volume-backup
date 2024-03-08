@@ -33,12 +33,17 @@ type Config struct {
 	AccountName       string
 	ContainerName     string
 	PrimaryAccountKey string
+	ConnectionString  string
 	Endpoint          string
 	RemotePath        string
 }
 
 // NewStorageBackend creates and initializes a new Azure Blob Storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
+	if opts.PrimaryAccountKey != "" && opts.ConnectionString != "" {
+		return nil, errwrap.Wrap(nil, "using primary account key and connection string are mutually exclusive")
+	}
+
 	endpointTemplate, err := template.New("endpoint").Parse(opts.Endpoint)
 	if err != nil {
 		return nil, errwrap.Wrap(err, "error parsing endpoint template")
@@ -58,7 +63,12 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 
 		client, err = azblob.NewClientWithSharedKeyCredential(normalizedEndpoint, cred, nil)
 		if err != nil {
-			return nil, errwrap.Wrap(err, "error creating Azure client")
+			return nil, errwrap.Wrap(err, "error creating azure client from primary account key")
+		}
+	} else if opts.ConnectionString != "" {
+		client, err = azblob.NewClientFromConnectionString(opts.ConnectionString, nil)
+		if err != nil {
+			return nil, errwrap.Wrap(err, "error creating azure client from connection string")
 		}
 	} else {
 		cred, err := azidentity.NewManagedIdentityCredential(nil)
@@ -67,7 +77,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		}
 		client, err = azblob.NewClient(normalizedEndpoint, cred, nil)
 		if err != nil {
-			return nil, errwrap.Wrap(err, "error creating Azure client")
+			return nil, errwrap.Wrap(err, "error creating azure client from managed identity")
 		}
 	}
 

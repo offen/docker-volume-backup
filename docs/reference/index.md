@@ -245,9 +245,16 @@ You can populate below template according to your requirements and use it as you
 # AZURE_STORAGE_ACCOUNT_NAME="account-name"
 
 # The credential's primary account key when using Azure Blob Storage. If this
-# is not given, the command tries to fall back to using a managed identity.
+# is not given, the command tries to fall back to using a connection string
+# (if given) or a managed identity (if nothing is given).
 
 # AZURE_STORAGE_PRIMARY_ACCOUNT_KEY="<xxx>"
+
+# A connection string for accessing Azure Blob Storage. If this
+# is not given, the command tries to fall back to using a primary account key
+# (if given) or a managed identity (if nothing is given).
+
+# AZURE_STORAGE_CONNECTION_STRING="<xxx>"
 
 # The container name when using Azure Blob Storage.
 
