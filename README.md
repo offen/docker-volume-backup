@@ -77,3 +77,8 @@ docker run --rm \
 ```
 
 Alternatively, pass a `--env-file` in order to use a full config as described below.
+
+---
+
+Copyright &copy; 2024 <a target="_blank" href="https://www.offen.software">offen.software</a> and contributors.
+Distributed under the <a href="https://github.com/offen/docker-volume-backup/tree/main/LICENSE">MPL-2.0 License</a>.

@@ -1,4 +1,4 @@
-// Copyright 2022 - Offen Authors <hioffen@posteo.de>
+// Copyright 2022 - offen.software <hioffen@posteo.de>
 // SPDX-License-Identifier: MPL-2.0
 
 package main
