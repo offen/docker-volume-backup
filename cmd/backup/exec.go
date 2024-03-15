@@ -1,4 +1,4 @@
-// Copyright 2022 - Offen Authors <hioffen@posteo.de>
+// Copyright 2022 - offen.software <hioffen@posteo.de>
 // SPDX-License-Identifier: MPL-2.0
 
 // Portions of this file are taken and adapted from `moby`, Copyright 2012-2017 Docker, Inc.

@@ -30,6 +30,6 @@ nav_external_links:
     url: https://github.com/offen/docker-volume-backup
 
 footer_content: >-
-  Copyright &copy; 2021 Offen Authors and contributors.
+  Copyright &copy; 2024 <a target="_blank" href="https://www.offen.software">offen.software</a> and contributors.
   Distributed under the <a href="https://github.com/offen/docker-volume-backup/tree/main/LICENSE">MPL-2.0 License.</a><br>
   Something missing, unclear or not working? Open <a href="https://github.com/offen/docker-volume-backup/issues">an issue</a>.
