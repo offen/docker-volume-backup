@@ -28,34 +28,36 @@ func runScript(c *Config) (err error) {
 
 	s := newScript(c)
 
-	unlock, lockErr := s.lock("/var/lock/dockervolumebackup.lock")
-	if lockErr != nil {
-		err = errwrap.Wrap(lockErr, "error acquiring file lock")
-		return
-	}
-	defer func() {
-		if derr := unlock(); derr != nil {
-			err = errors.Join(err, errwrap.Wrap(derr, "error releasing file lock"))
-		}
-	}()
-
-	unset, err := s.c.applyEnv()
-	if err != nil {
-		return errwrap.Wrap(err, "error applying env")
-	}
-	defer func() {
-		if derr := unset(); derr != nil {
-			err = errors.Join(err, errwrap.Wrap(derr, "error unsetting environment variables"))
-		}
-	}()
-
-	if initErr := s.init(); initErr != nil {
-		err = errwrap.Wrap(initErr, "error instantiating script")
-		return
-	}
-
 	return func() (err error) {
-		scriptErr := func() error {
+		scriptErr := func() (err error) {
+			unset, err := s.c.applyEnv()
+			if err != nil {
+				err = errwrap.Wrap(err, "error applying env")
+				return
+			}
+			defer func() {
+				if derr := unset(); derr != nil {
+					err = errors.Join(err, errwrap.Wrap(derr, "error unsetting environment variables"))
+				}
+			}()
+
+			if initErr := s.init(); initErr != nil {
+				err = errwrap.Wrap(initErr, "error instantiating script")
+				return
+			}
+
+			unlock, lockErr := s.lock("/var/lock/dockervolumebackup.lock")
+			if lockErr != nil {
+				err = errwrap.Wrap(lockErr, "error acquiring file lock")
+				return
+			}
+
+			defer func() {
+				if derr := unlock(); derr != nil {
+					err = errors.Join(err, errwrap.Wrap(derr, "error releasing file lock"))
+				}
+			}()
+
 			if err := s.withLabeledCommands(lifecyclePhaseArchive, func() (err error) {
 				restartContainersAndServices, err := s.stopContainersAndServices()
 				// The mechanism for restarting containers is not using hooks as it
@@ -75,16 +77,23 @@ func runScript(c *Config) (err error) {
 				return err
 			}
 
-			if err := s.withLabeledCommands(lifecyclePhaseProcess, s.encryptArchive)(); err != nil {
-				return err
+			err = s.withLabeledCommands(lifecyclePhaseProcess, s.encryptArchive)()
+			if err != nil {
+				err = errwrap.Wrap(err, "error encrypting archive")
+				return
 			}
-			if err := s.withLabeledCommands(lifecyclePhaseCopy, s.copyArchive)(); err != nil {
-				return err
+			err = s.withLabeledCommands(lifecyclePhaseCopy, s.copyArchive)()
+			if err != nil {
+				err = errwrap.Wrap(err, "error copying archive")
+				return
 			}
-			if err := s.withLabeledCommands(lifecyclePhasePrune, s.pruneBackups)(); err != nil {
-				return err
+			err = s.withLabeledCommands(lifecyclePhasePrune, s.pruneBackups)()
+			if err != nil {
+				err = errwrap.Wrap(err, "error pruning backups")
+				return
 			}
-			return nil
+
+			return
 		}()
 
 		if hookErr := s.runHooks(scriptErr); hookErr != nil {
