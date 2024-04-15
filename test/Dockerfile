@@ -1,4 +1,4 @@
-FROM docker:24-dind
+FROM docker:26-dind
 
 RUN apk add \
   coreutils \
