@@ -151,14 +151,14 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 			}),
 			Status: true,
 		})
+		if err != nil {
+			return noop, errwrap.Wrap(err, "error querying for services to scale down")
+		}
 		for _, s := range matchingServices {
 			servicesToScaleDown = append(servicesToScaleDown, handledSwarmService{
 				serviceID:           s.ID,
 				initialReplicaCount: *s.Spec.Mode.Replicated.Replicas,
 			})
-		}
-		if err != nil {
-			return noop, errwrap.Wrap(err, "error querying for services to scale down")
 		}
 	}
 
