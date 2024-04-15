@@ -6,6 +6,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"runtime/debug"
 
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
@@ -17,6 +18,7 @@ import (
 func runScript(c *Config) (err error) {
 	defer func() {
 		if derr := recover(); derr != nil {
+			fmt.Printf("%s: %s\n", derr, debug.Stack())
 			asErr, ok := derr.(error)
 			if ok {
 				err = errwrap.Wrap(asErr, "unexpected panic running script")
