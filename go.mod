@@ -8,7 +8,7 @@ require (
 	github.com/containrrr/shoutrrr v0.7.1
 	github.com/cosiner/argv v0.1.0
 	github.com/docker/cli v26.0.1+incompatible
-	github.com/docker/docker v24.0.7+incompatible
+	github.com/docker/docker v26.0.1+incompatible
 	github.com/gofrs/flock v0.8.1
 	github.com/joho/godotenv v1.5.1
 	github.com/klauspost/compress v1.17.8
