@@ -14,9 +14,11 @@ import (
 
 	"github.com/docker/cli/cli/command/service/progress"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	ctr "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
+	"github.com/docker/docker/api/types/system"
 	"github.com/docker/docker/client"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
@@ -65,7 +67,7 @@ func awaitContainerCountForService(cli *client.Client, serviceID string, count i
 				),
 			)
 		case <-poll.C:
-			containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{
+			containers, err := cli.ContainerList(context.Background(), container.ListOptions{
 				Filters: filters.NewArgs(filters.KeyValuePair{
 					Key:   "label",
 					Value: fmt.Sprintf("com.docker.swarm.service.id=%s", serviceID),
@@ -82,7 +84,7 @@ func awaitContainerCountForService(cli *client.Client, serviceID string, count i
 }
 
 func isSwarm(c interface {
-	Info(context.Context) (types.Info, error)
+	Info(context.Context) (system.Info, error)
 }) (bool, error) {
 	info, err := c.Info(context.Background())
 	if err != nil {
@@ -123,11 +125,11 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		labelValue,
 	)
 
-	allContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{})
+	allContainers, err := s.cli.ContainerList(context.Background(), container.ListOptions{})
 	if err != nil {
 		return noop, errwrap.Wrap(err, "error querying for containers")
 	}
-	containersToStop, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
+	containersToStop, err := s.cli.ContainerList(context.Background(), container.ListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "label",
 			Value: filterMatchLabel,
@@ -309,7 +311,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				continue
 			}
 
-			if err := s.cli.ContainerStart(context.Background(), container.ID, types.ContainerStartOptions{}); err != nil {
+			if err := s.cli.ContainerStart(context.Background(), container.ID, ctr.StartOptions{}); err != nil {
 				restartErrors = append(restartErrors, err)
 			}
 		}
