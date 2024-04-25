@@ -5,16 +5,16 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/swarm"
+	"github.com/docker/docker/api/types/system"
 )
 
 type mockInfoClient struct {
-	result types.Info
+	result system.Info
 	err    error
 }
 
-func (m *mockInfoClient) Info(context.Context) (types.Info, error) {
+func (m *mockInfoClient) Info(context.Context) (system.Info, error) {
 	return m.result, m.err
 }
 
@@ -28,7 +28,7 @@ func TestIsSwarm(t *testing.T) {
 		{
 			"swarm",
 			&mockInfoClient{
-				result: types.Info{
+				result: system.Info{
 					Swarm: swarm.Info{
 						LocalNodeState: swarm.LocalNodeStateActive,
 					},
@@ -40,7 +40,7 @@ func TestIsSwarm(t *testing.T) {
 		{
 			"compose",
 			&mockInfoClient{
-				result: types.Info{
+				result: system.Info{
 					Swarm: swarm.Info{
 						LocalNodeState: swarm.LocalNodeStateInactive,
 					},
@@ -52,7 +52,7 @@ func TestIsSwarm(t *testing.T) {
 		{
 			"balena",
 			&mockInfoClient{
-				result: types.Info{
+				result: system.Info{
 					Swarm: swarm.Info{
 						LocalNodeState: "",
 					},

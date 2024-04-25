@@ -17,6 +17,7 @@ import (
 
 	"github.com/cosiner/argv"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
@@ -96,7 +97,7 @@ func (s *script) runLabeledCommands(label string) error {
 			Value: fmt.Sprintf("docker-volume-backup.exec-label=%s", s.c.ExecLabel),
 		})
 	}
-	containersWithCommand, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
+	containersWithCommand, err := s.cli.ContainerList(context.Background(), container.ListOptions{
 		Filters: filters.NewArgs(f...),
 	})
 	if err != nil {
@@ -109,7 +110,7 @@ func (s *script) runLabeledCommands(label string) error {
 			Key:   "label",
 			Value: "docker-volume-backup.exec-pre",
 		}
-		deprecatedContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
+		deprecatedContainers, err := s.cli.ContainerList(context.Background(), container.ListOptions{
 			Filters: filters.NewArgs(f...),
 		})
 		if err != nil {
@@ -126,7 +127,7 @@ func (s *script) runLabeledCommands(label string) error {
 			Key:   "label",
 			Value: "docker-volume-backup.exec-post",
 		}
-		deprecatedContainers, err := s.cli.ContainerList(context.Background(), types.ContainerListOptions{
+		deprecatedContainers, err := s.cli.ContainerList(context.Background(), container.ListOptions{
 			Filters: filters.NewArgs(f...),
 		})
 		if err != nil {
