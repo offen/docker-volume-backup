@@ -30,12 +30,13 @@ func runScript(c *Config) (err error) {
 
 	s := newScript(c)
 
+	if initErr := s.initNotifications(); initErr != nil {
+		err = errwrap.Wrap(initErr, "error initializing notifications")
+		return
+	}
+
 	unlock, lockErr := s.lock("/var/lock/dockervolumebackup.lock")
 	if lockErr != nil {
-		if initErr := s.initNotificationsOnly(); initErr != nil {
-			err = errwrap.Wrap(initErr, "error initializing notifications")
-			return
-		}
 		err = errwrap.Wrap(lockErr, "error acquiring file lock")
 		return
 	}

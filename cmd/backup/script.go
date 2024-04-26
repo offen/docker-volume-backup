@@ -219,17 +219,10 @@ func (s *script) init() error {
 		s.storages = append(s.storages, dropboxBackend)
 	}
 
-	if err := s.initNotificationsOnly(); err != nil {
-		return errwrap.Wrap(err, "error initializing configuration setup")
-	}
-
 	return nil
 }
 
-// initNotificationsOnly lives outside of the main init routine so that script
-// runs that fail early can try to send notifications without having to
-// invoke a full initialization
-func (s *script) initNotificationsOnly() error {
+func (s *script) initNotifications() error {
 	if s.c.EmailNotificationRecipient != "" {
 		emailURL := fmt.Sprintf(
 			"smtp://%s:%s@%s:%d/?from=%s&to=%s",
