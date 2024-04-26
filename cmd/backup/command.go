@@ -131,12 +131,8 @@ func (c *command) schedule(strategy configStrategy) error {
 			c.logger.Warn(
 				fmt.Sprintf("Scheduled cron expression %s will never run, is this intentional?", config.BackupCronExpression),
 			)
-
-			if err != nil {
-				return errwrap.Wrap(err, "error scheduling")
-			}
-			c.schedules = append(c.schedules, id)
 		}
+		c.schedules = append(c.schedules, id)
 	}
 
 	return nil

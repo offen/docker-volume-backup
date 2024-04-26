@@ -22,8 +22,7 @@ import (
 )
 
 func createArchive(files []string, inputFilePath, outputFilePath string, compression string, compressionConcurrency int) error {
-	inputFilePath = stripTrailingSlashes(inputFilePath)
-	inputFilePath, outputFilePath, err := makeAbsolute(inputFilePath, outputFilePath)
+	_, outputFilePath, err := makeAbsolute(stripTrailingSlashes(inputFilePath), outputFilePath)
 	if err != nil {
 		return errwrap.Wrap(err, "error transposing given file paths")
 	}
@@ -31,7 +30,7 @@ func createArchive(files []string, inputFilePath, outputFilePath string, compres
 		return errwrap.Wrap(err, "error creating output file path")
 	}
 
-	if err := compress(files, outputFilePath, filepath.Dir(inputFilePath), compression, compressionConcurrency); err != nil {
+	if err := compress(files, outputFilePath, compression, compressionConcurrency); err != nil {
 		return errwrap.Wrap(err, "error creating archive")
 	}
 
@@ -55,7 +54,7 @@ func makeAbsolute(inputFilePath, outputFilePath string) (string, string, error) 
 	return inputFilePath, outputFilePath, err
 }
 
-func compress(paths []string, outFilePath, subPath string, algo string, concurrency int) error {
+func compress(paths []string, outFilePath, algo string, concurrency int) error {
 	file, err := os.Create(outFilePath)
 	if err != nil {
 		return errwrap.Wrap(err, "error creating out file")
