@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/offen/docker-volume-backup/internal/errwrap"
-	"github.com/offen/docker-volume-backup/internal/storage"
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/storage"
 	"github.com/studio-b12/gowebdav"
 )
 

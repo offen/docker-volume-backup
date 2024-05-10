@@ -8,7 +8,7 @@ import (
 	"io/fs"
 	"path/filepath"
 
-	"github.com/offen/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
 	"github.com/otiai10/copy"
 )
 

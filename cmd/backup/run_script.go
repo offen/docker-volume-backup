@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/offen/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
 )
 
 // runScript instantiates a new script object and orchestrates a backup run.

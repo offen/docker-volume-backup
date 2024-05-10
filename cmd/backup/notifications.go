@@ -14,7 +14,7 @@ import (
 	"time"
 
 	sTypes "github.com/containrrr/shoutrrr/pkg/types"
-	"github.com/offen/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
 )
 
 //go:embed notifications.tmpl

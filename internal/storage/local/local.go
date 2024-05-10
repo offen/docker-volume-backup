@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/offen/docker-volume-backup/internal/errwrap"
-	"github.com/offen/docker-volume-backup/internal/storage"
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/storage"
 )
 
 type localStorage struct {

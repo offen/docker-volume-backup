@@ -16,9 +16,9 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
 	"github.com/klauspost/compress/zstd"
 	"github.com/klauspost/pgzip"
-	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
 func createArchive(files []string, inputFilePath, outputFilePath string, compression string, compressionConcurrency int) error {

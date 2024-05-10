@@ -13,10 +13,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/storage"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/offen/docker-volume-backup/internal/errwrap"
-	"github.com/offen/docker-volume-backup/internal/storage"
 )
 
 type s3Storage struct {

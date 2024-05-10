@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/offen/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
 )
 
 // Config holds all configuration values that are expected to be set

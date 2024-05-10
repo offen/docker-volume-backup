@@ -10,7 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/offen/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
 	"github.com/robfig/cron/v3"
 )
 

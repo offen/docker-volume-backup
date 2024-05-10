@@ -14,8 +14,8 @@ import (
 
 	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox"
 	"github.com/dropbox/dropbox-sdk-go-unofficial/v6/dropbox/files"
-	"github.com/offen/docker-volume-backup/internal/errwrap"
-	"github.com/offen/docker-volume-backup/internal/storage"
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/storage"
 	"golang.org/x/oauth2"
 )
 

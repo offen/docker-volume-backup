@@ -20,7 +20,7 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/api/types/system"
 	"github.com/docker/docker/client"
-	"github.com/offen/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
 )
 
 func scaleService(cli *client.Client, serviceID string, replicas uint64) ([]string, error) {
@@ -129,12 +129,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 	if err != nil {
 		return noop, errwrap.Wrap(err, "error querying for containers")
 	}
-	containersToStop, err := s.cli.ContainerList(context.Background(), container.ListOptions{
-		Filters: filters.NewArgs(filters.KeyValuePair{
-			Key:   "label",
-			Value: filterMatchLabel,
-		}),
-	})
+	containersToStop, err := s.cli.ContainerList(context.Background(), container.ListOptions{All: true})
 	if err != nil {
 		return noop, errwrap.Wrap(err, "error querying for containers to stop")
 	}

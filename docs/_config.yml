@@ -23,11 +23,11 @@ callouts:
 
 aux_links:
   'GitHub Repository':
-    - https://github.com/offen/docker-volume-backup
+    - https://github.com/jattento/docker-volume-backup
 
 nav_external_links:
   - title: GitHub Repository
-    url: https://github.com/offen/docker-volume-backup
+    url: https://github.com/jattento/docker-volume-backup
 
 footer_content: >-
   Copyright &copy; 2024 <a target="_blank" href="https://www.offen.software">offen.software</a> and contributors.

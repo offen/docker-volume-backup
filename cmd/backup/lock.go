@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
-	"github.com/offen/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
 )
 
 // lock opens a lockfile at the given location, keeping it locked until the

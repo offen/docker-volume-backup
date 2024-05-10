@@ -18,8 +18,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
-	"github.com/offen/docker-volume-backup/internal/errwrap"
-	"github.com/offen/docker-volume-backup/internal/storage"
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/storage"
 )
 
 type azureBlobStorage struct {

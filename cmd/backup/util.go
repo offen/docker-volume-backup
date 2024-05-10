@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/offen/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
 	"github.com/robfig/cron/v3"
 )
 

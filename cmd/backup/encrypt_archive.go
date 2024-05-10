@@ -10,7 +10,7 @@ import (
 	"path"
 
 	openpgp "github.com/ProtonMail/go-crypto/openpgp/v2"
-	"github.com/offen/docker-volume-backup/internal/errwrap"
+	"github.com/jattento/docker-volume-backup/internal/errwrap"
 )
 
 // encryptArchive encrypts the backup file using PGP and the configured passphrase.
