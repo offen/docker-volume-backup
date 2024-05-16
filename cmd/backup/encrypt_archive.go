@@ -51,6 +51,7 @@ func (s *script) encryptArchive() error {
 	if err != nil {
 		return errwrap.Wrap(err, fmt.Sprintf("error opening backup file `%s`", s.file))
 	}
+	defer src.Close()
 
 	if _, err := io.Copy(dst, src); err != nil {
 		return errwrap.Wrap(err, "error writing ciphertext to file")
