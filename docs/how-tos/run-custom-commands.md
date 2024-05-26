@@ -9,6 +9,11 @@ parent: How Tos
 
 In certain scenarios it can be required to run specific commands before and after a backup is taken (e.g. dumping a database).
 When mounting the Docker socket into the `docker-volume-backup` container, you can define pre- and post-commands that will be run in the context of the target container (it is also possible to run commands inside the `docker-volume-backup` container itself using this feature).
+
+{: .important }
+In a multi-node Swarm setup, commands can currently only be run on the node the `offen/docker-volume-backup` container is running on.
+Labeled containers on other nodes are not visible to the backup command.
+
 Such commands are defined by specifying the command in a `docker-volume-backup.[step]-[pre|post]` label where `step` can be any of the following phases of a backup lifecycle:
 
 - `archive` (the tar archive is created)
