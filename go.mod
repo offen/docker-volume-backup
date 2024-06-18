@@ -3,6 +3,7 @@ module github.com/offen/docker-volume-backup
 go 1.22
 
 require (
+	filippo.io/age v1.2.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.2.1
 	github.com/containrrr/shoutrrr v0.7.1
