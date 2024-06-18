@@ -48,6 +48,8 @@ type Config struct {
 	BackupSkipBackendsFromPrune   []string        `split_words:"true"`
 	GpgPassphrase                 string          `split_words:"true"`
 	GpgPublicKeyRing              string          `split_words:"true"`
+	AgePassphrase                 string          `split_words:"true"`
+	AgePublicKeys                 []string        `split_words:"true"`
 	NotificationURLs              []string        `envconfig:"NOTIFICATION_URLS"`
 	NotificationLevel             string          `split_words:"true" default:"error"`
 	EmailNotificationRecipient    string          `split_words:"true"`

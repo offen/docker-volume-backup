@@ -1,0 +1,24 @@
+services:
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    restart: always
+    environment:
+      BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
+      BACKUP_FILENAME: test.tar.gz
+      BACKUP_LATEST_SYMLINK: test-latest.tar.gz.age
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      AGE_PUBLIC_KEYS: "${BACKUP_AGE_PUBLIC_KEYS}"
+    volumes:
+      - ${LOCAL_DIR:-./local}:/archive
+      - app_data:/backup/app_data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  offen:
+    image: offen/offen:latest
+    labels:
+      - docker-volume-backup.stop-during-backup=true
+    volumes:
+      - app_data:/var/opt/offen
+
+volumes:
+  app_data:
