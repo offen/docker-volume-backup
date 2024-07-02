@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	"github.com/cosiner/argv"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -29,7 +28,7 @@ func (s *script) exec(containerRef string, command string, user string) ([]byte,
 	commandEnv := []string{
 		fmt.Sprintf("COMMAND_RUNTIME_ARCHIVE_FILEPATH=%s", s.file),
 	}
-	execID, err := s.cli.ContainerExecCreate(context.Background(), containerRef, types.ExecConfig{
+	execID, err := s.cli.ContainerExecCreate(context.Background(), containerRef, container.ExecOptions{
 		Cmd:          args[0],
 		AttachStdin:  true,
 		AttachStderr: true,
@@ -40,7 +39,7 @@ func (s *script) exec(containerRef string, command string, user string) ([]byte,
 		return nil, nil, errwrap.Wrap(err, "error creating container exec")
 	}
 
-	resp, err := s.cli.ContainerExecAttach(context.Background(), execID.ID, types.ExecStartCheck{})
+	resp, err := s.cli.ContainerExecAttach(context.Background(), execID.ID, container.ExecStartOptions{})
 	if err != nil {
 		return nil, nil, errwrap.Wrap(err, "error attaching container exec")
 	}
