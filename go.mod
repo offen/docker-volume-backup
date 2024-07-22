@@ -9,7 +9,7 @@ require (
 	github.com/cosiner/argv v0.1.0
 	github.com/docker/cli v27.1.0+incompatible
 	github.com/docker/docker v27.0.3+incompatible
-	github.com/gofrs/flock v0.12.0
+	github.com/gofrs/flock v0.12.1
 	github.com/joho/godotenv v1.5.1
 	github.com/klauspost/compress v1.17.9
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
@@ -78,7 +78,7 @@ require (
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	golang.org/x/net v0.26.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	gotest.tools/v3 v3.0.3 // indirect
 )
