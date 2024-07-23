@@ -1,8 +1,6 @@
 # Copyright 2020-2021 - offen.software <hioffen@posteo.de>
 # SPDX-License-Identifier: Unlicense
 
-version: '3.8'
-
 services:
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
