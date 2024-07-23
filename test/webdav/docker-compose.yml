@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   webdav:
     image: bytemark/webdav:2.4

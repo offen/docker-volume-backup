@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}

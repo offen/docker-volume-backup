@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   ssh:
     image: linuxserver/openssh-server:version-8.6_p1-r3
