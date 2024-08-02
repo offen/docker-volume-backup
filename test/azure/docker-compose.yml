@@ -34,6 +34,7 @@ services:
       AZURE_STORAGE_CONTAINER_NAME: test-container
       AZURE_STORAGE_ENDPOINT: http://storage:10000/{{ .AccountName }}/
       AZURE_STORAGE_PATH: 'path/to/backup'
+      AZURE_STORAGE_ACCESS_TIER: Hot
       BACKUP_FILENAME: test.tar.gz
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}

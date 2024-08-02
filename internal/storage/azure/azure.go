@@ -17,6 +17,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blockblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/docker-volume-backup/internal/storage"
@@ -24,8 +26,9 @@ import (
 
 type azureBlobStorage struct {
 	*storage.StorageBackend
-	client        *azblob.Client
-	containerName string
+	client              *azblob.Client
+	uploadStreamOptions *blockblob.UploadStreamOptions
+	containerName       string
 }
 
 // Config contains values that define the configuration of an Azure Blob Storage.
@@ -36,6 +39,7 @@ type Config struct {
 	ConnectionString  string
 	Endpoint          string
 	RemotePath        string
+	AccessTier        string
 }
 
 // NewStorageBackend creates and initializes a new Azure Blob Storage backend.
@@ -81,9 +85,26 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		}
 	}
 
+	var uploadStreamOptions *blockblob.UploadStreamOptions
+	if opts.AccessTier != "" {
+		var found bool
+		for _, t := range blob.PossibleAccessTierValues() {
+			if string(t) == opts.AccessTier {
+				found = true
+				uploadStreamOptions = &blockblob.UploadStreamOptions{
+					AccessTier: &t,
+				}
+			}
+		}
+		if !found {
+			return nil, errwrap.Wrap(nil, fmt.Sprintf("%s is not a possible access tier value", opts.AccessTier))
+		}
+	}
+
 	storage := azureBlobStorage{
-		client:        client,
-		containerName: opts.ContainerName,
+		client:              client,
+		uploadStreamOptions: uploadStreamOptions,
+		containerName:       opts.ContainerName,
 		StorageBackend: &storage.StorageBackend{
 			DestinationPath: opts.RemotePath,
 			Log:             logFunc,
@@ -103,12 +124,13 @@ func (b *azureBlobStorage) Copy(file string) error {
 	if err != nil {
 		return errwrap.Wrap(err, fmt.Sprintf("error opening file %s", file))
 	}
+
 	_, err = b.client.UploadStream(
 		context.Background(),
 		b.containerName,
 		filepath.Join(b.DestinationPath, filepath.Base(file)),
 		fileReader,
-		nil,
+		b.uploadStreamOptions,
 	)
 	if err != nil {
 		return errwrap.Wrap(err, fmt.Sprintf("error uploading file %s", file))
