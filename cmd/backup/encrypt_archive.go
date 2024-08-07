@@ -4,20 +4,82 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"path"
 
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
 	openpgp "github.com/ProtonMail/go-crypto/openpgp/v2"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
+
+func readArmoredKey(data []byte) (openpgp.EntityList, error) {
+	block, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
+}
+
+func (s *script) encryptAsymmetrically(outFile *os.File) (io.WriteCloser, func() error, error) {
+	if s.c.GpgPublicKeys == "" {
+		return nil, nil, nil
+	}
+
+	entityList, err := readArmoredKey([]byte(s.c.GpgPublicKeys))
+	if err != nil {
+		return nil, nil, errwrap.Wrap(err, fmt.Sprintf("Error parsing key: %v", err))
+	}
+
+	armoredWriter, err := armor.Encode(outFile, "PGP MESSAGE", nil)
+	if err != nil {
+		return nil, nil, errwrap.Wrap(err, "error reading public key")
+	}
+
+	_, name := path.Split(s.file)
+	dst, err := openpgp.Encrypt(armoredWriter, entityList, nil, nil, &openpgp.FileHints{
+		FileName: name,
+	}, nil)
+	if err != nil {
+		return nil, nil, errwrap.Wrap(err, "error encrypting backup file")
+	}
+
+	return dst, func() error {
+		dst.Close()
+		armoredWriter.Close()
+		return nil
+	}, err
+}
+
+func (s *script) encryptSymmetrically(outFile *os.File) (io.WriteCloser, func() error, error) {
+	if s.c.GpgPassphrase == "" {
+		return nil, nil, nil
+	}
+
+	_, name := path.Split(s.file)
+	dst, err := openpgp.SymmetricallyEncrypt(outFile, []byte(s.c.GpgPassphrase), &openpgp.FileHints{
+		FileName: name,
+	}, nil)
+	if err != nil {
+		return nil, nil, errwrap.Wrap(err, "error encrypting backup file")
+	}
+
+	return dst, dst.Close, nil
+}
 
 // encryptArchive encrypts the backup file using PGP and the configured passphrase.
 // In case no passphrase is given it returns early, leaving the backup file
 // untouched.
 func (s *script) encryptArchive() error {
-	if s.c.GpgPassphrase == "" {
+
+	var encrypt func(outFile *os.File) (io.WriteCloser, func() error, error)
+	if s.c.GpgPassphrase != "" {
+		encrypt = s.encryptSymmetrically
+	} else if s.c.GpgPublicKeys != "" {
+		encrypt = s.encryptAsymmetrically
+	} else {
 		return nil
 	}
 
@@ -38,14 +100,11 @@ func (s *script) encryptArchive() error {
 	}
 	defer outFile.Close()
 
-	_, name := path.Split(s.file)
-	dst, err := openpgp.SymmetricallyEncrypt(outFile, []byte(s.c.GpgPassphrase), &openpgp.FileHints{
-		FileName: name,
-	}, nil)
+	dst, closeCallback, err := encrypt(outFile)
 	if err != nil {
-		return errwrap.Wrap(err, "error encrypting backup file")
+		return err
 	}
-	defer dst.Close()
+	defer closeCallback()
 
 	src, err := os.Open(s.file)
 	if err != nil {
