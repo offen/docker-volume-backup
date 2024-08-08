@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -35,7 +36,7 @@ func (s *script) encryptAsymmetrically(outFile *os.File) (io.WriteCloser, func()
 
 	armoredWriter, err := armor.Encode(outFile, "PGP MESSAGE", nil)
 	if err != nil {
-		return nil, nil, errwrap.Wrap(err, "error reading public key")
+		return nil, nil, errwrap.Wrap(err, "error reading public key(s)")
 	}
 
 	_, name := path.Split(s.file)
@@ -75,11 +76,15 @@ func (s *script) encryptSymmetrically(outFile *os.File) (io.WriteCloser, func() 
 func (s *script) encryptArchive() error {
 
 	var encrypt func(outFile *os.File) (io.WriteCloser, func() error, error)
-	if s.c.GpgPassphrase != "" {
+
+	switch {
+	case s.c.GpgPassphrase != "" && s.c.GpgPublicKeys != "":
+		return errors.New("error in selecting asymmetric and symmetric encryption methods: env vars are set")
+	case s.c.GpgPassphrase != "":
 		encrypt = s.encryptSymmetrically
-	} else if s.c.GpgPublicKeys != "" {
+	case s.c.GpgPublicKeys != "":
 		encrypt = s.encryptAsymmetrically
-	} else {
+	default:
 		return nil
 	}
 
