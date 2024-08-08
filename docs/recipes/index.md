@@ -289,7 +289,7 @@ volumes:
   data:
 ```
 
-## Encrypting your backups using GPG
+## Encrypting your backups symmetrically using GPG
 
 ```yml
 version: '3'
@@ -303,6 +303,33 @@ services:
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
       GPG_PASSPHRASE: somesecretstring
+    volumes:
+      - data:/backup/my-app-backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  data:
+```
+
+## Encrypting your backups asymmetrically using GPG
+
+```yml
+version: '3'
+
+services:
+  # ... define other services using the `data` volume here
+  backup:
+    image: offen/docker-volume-backup:v2
+    environment:
+      AWS_S3_BUCKET_NAME: backup-bucket
+      AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+      AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      GPG_PUBLIC_KEYS: | 
+        -----BEGIN PGP PUBLIC KEY BLOCK-----
+
+        D/cIHu6GH/0ghlcUVSbgMg5RRI5QKNNKh04uLAPxr75mKwUg0xPUaWgyyrAChVBi
+        ...
+        -----END PGP PUBLIC KEY BLOCK-----
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
