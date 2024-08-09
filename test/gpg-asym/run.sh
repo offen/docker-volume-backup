@@ -7,7 +7,6 @@ cd "$(dirname "$0")"
 current_test=$(basename $(pwd))
 
 export LOCAL_DIR=$(mktemp -d)
-gpg-agent --daemon
 
 export KEY_DIR=$(mktemp -d)
 
