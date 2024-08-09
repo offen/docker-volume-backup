@@ -79,7 +79,7 @@ func (s *script) encryptArchive() error {
 
 	switch {
 	case s.c.GpgPassphrase != "" && s.c.GpgPublicKeys != "":
-		return errors.New("error in selecting asymmetric and symmetric encryption methods: conflicting env vars are set")
+		return errwrap.Wrap(nil, "error in selecting asymmetric and symmetric encryption methods: conflicting env vars are set")
 	case s.c.GpgPassphrase != "":
 		encrypt = s.encryptSymmetrically
 	case s.c.GpgPublicKeys != "":
