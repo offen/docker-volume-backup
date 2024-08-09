@@ -92,7 +92,7 @@ type CompressionType string
 
 func (c *CompressionType) Decode(v string) error {
 	switch v {
-	case "gz", "zst":
+	case "none", "gz", "zst":
 		*c = CompressionType(v)
 		return nil
 	default:

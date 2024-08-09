@@ -86,7 +86,12 @@ func (s *script) init() error {
 
 	var bf bytes.Buffer
 	if tErr := tmplFileName.Execute(&bf, map[string]string{
-		"Extension": fmt.Sprintf("tar.%s", s.c.BackupCompression),
+		"Extension": func() string {
+			if s.c.BackupCompression == "none" {
+				return "tar"
+			}
+			return fmt.Sprintf("tar.%s", s.c.BackupCompression)
+		}(),
 	}); tErr != nil {
 		return errwrap.Wrap(tErr, "error executing backup file extension template")
 	}
