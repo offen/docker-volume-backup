@@ -337,9 +337,18 @@ You can populate below template according to your requirements and use it as you
 
 ########### BACKUP ENCRYPTION
 
-# Backups can be encrypted using gpg in case a passphrase is given.
+# Backups can be encrypted symmetrically using gpg in case a passphrase is given.
 
 # GPG_PASSPHRASE="<xxx>"
+
+# Backups can be encrypted asymmetrically using gpg in case publickeys are given.
+
+# GPG_PUBLIC_KEY_RING= | 
+#-----BEGIN PGP PUBLIC KEY BLOCK-----
+#
+#D/cIHu6GH/0ghlcUVSbgMg5RRI5QKNNKh04uLAPxr75mKwUg0xPUaWgyyrAChVBi
+#...
+#-----END PGP PUBLIC KEY BLOCK-----
 
 ########### STOPPING CONTAINERS AND SERVICES DURING BACKUP
 

@@ -4,6 +4,7 @@ RUN apk add \
   coreutils \
   curl \
   gpg \
+  gpg-agent \
   jq \
   moreutils \
   tar \
