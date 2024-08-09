@@ -70,8 +70,8 @@ func (s *script) encryptSymmetrically(outFile *os.File) (io.WriteCloser, func() 
 	return dst, dst.Close, nil
 }
 
-// encryptArchive encrypts the backup file using PGP and the configured passphrase.
-// In case no passphrase is given it returns early, leaving the backup file
+// encryptArchive encrypts the backup file using PGP and the configured passphrase or publickey(s).
+// In case no passphrase or publickey is given it returns early, leaving the backup file
 // untouched.
 func (s *script) encryptArchive() error {
 
