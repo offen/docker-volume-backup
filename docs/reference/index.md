@@ -338,7 +338,7 @@ You can populate below template according to your requirements and use it as you
 
 # Backups can be encrypted asymmetrically using gpg in case publickeys are given.
 
-# GPG_PASSPHRASE= | 
+# GPG_PUBLIC_KEYS= | 
 #-----BEGIN PGP PUBLIC KEY BLOCK-----
 #
 #D/cIHu6GH/0ghlcUVSbgMg5RRI5QKNNKh04uLAPxr75mKwUg0xPUaWgyyrAChVBi
