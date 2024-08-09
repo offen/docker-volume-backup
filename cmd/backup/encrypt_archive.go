@@ -16,7 +16,7 @@ import (
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
-func readArmoredKey(data []byte) (openpgp.EntityList, error) {
+func readArmoredKeys(data []byte) (openpgp.EntityList, error) {
 	block, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(data))
 	if err != nil {
 		return nil, err
@@ -29,14 +29,14 @@ func (s *script) encryptAsymmetrically(outFile *os.File) (io.WriteCloser, func()
 		return nil, nil, nil
 	}
 
-	entityList, err := readArmoredKey([]byte(s.c.GpgPublicKeys))
+	entityList, err := readArmoredKeys([]byte(s.c.GpgPublicKeys))
 	if err != nil {
 		return nil, nil, errwrap.Wrap(err, fmt.Sprintf("Error parsing key: %v", err))
 	}
 
 	armoredWriter, err := armor.Encode(outFile, "PGP MESSAGE", nil)
 	if err != nil {
-		return nil, nil, errwrap.Wrap(err, "error reading public key(s)")
+		return nil, nil, errwrap.Wrap(err, "error preparing encryption")
 	}
 
 	_, name := path.Split(s.file)
@@ -44,7 +44,7 @@ func (s *script) encryptAsymmetrically(outFile *os.File) (io.WriteCloser, func()
 		FileName: name,
 	}, nil)
 	if err != nil {
-		return nil, nil, errwrap.Wrap(err, "error encrypting backup file")
+		return nil, nil, err
 	}
 
 	return dst, func() error {
@@ -64,7 +64,7 @@ func (s *script) encryptSymmetrically(outFile *os.File) (io.WriteCloser, func() 
 		FileName: name,
 	}, nil)
 	if err != nil {
-		return nil, nil, errwrap.Wrap(err, "error encrypting backup file")
+		return nil, nil, err
 	}
 
 	return dst, dst.Close, nil
@@ -79,7 +79,7 @@ func (s *script) encryptArchive() error {
 
 	switch {
 	case s.c.GpgPassphrase != "" && s.c.GpgPublicKeys != "":
-		return errors.New("error in selecting asymmetric and symmetric encryption methods: env vars are set")
+		return errors.New("error in selecting asymmetric and symmetric encryption methods: conflicting env vars are set")
 	case s.c.GpgPassphrase != "":
 		encrypt = s.encryptSymmetrically
 	case s.c.GpgPublicKeys != "":
@@ -107,7 +107,7 @@ func (s *script) encryptArchive() error {
 
 	dst, closeCallback, err := encrypt(outFile)
 	if err != nil {
-		return err
+		return errwrap.Wrap(err, "error encrypting backup file")
 	}
 	defer closeCallback()
 
