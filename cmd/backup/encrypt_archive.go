@@ -15,19 +15,11 @@ import (
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
-func readArmoredKeys(data []byte) (openpgp.EntityList, error) {
-	block, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(data))
-	if err != nil {
-		return nil, err
-	}
-	return block, nil
-}
-
 func (s *script) encryptAsymmetrically(outFile *os.File) (io.WriteCloser, func() error, error) {
 
-	entityList, err := readArmoredKeys([]byte(s.c.GpgPublicKeys))
+	entityList, err := openpgp.ReadArmoredKeyRing(bytes.NewReader([]byte(s.c.GpgPublicKeys)))
 	if err != nil {
-		return nil, nil, errwrap.Wrap(err, fmt.Sprintf("Error parsing key: %v", err))
+		return nil, nil, errwrap.Wrap(err, fmt.Sprintf("error parsing key: %v", err))
 	}
 
 	armoredWriter, err := armor.Encode(outFile, "PGP MESSAGE", nil)
