@@ -269,6 +269,11 @@ You can populate below template according to your requirements and use it as you
 # Note: Use your app's subpath in Dropbox, if it doesn't have global access.
 # Consulte the README for further information.
 
+# The access tier when using Azure Blob Storage. Possible values are
+# https://github.com/Azure/azure-sdk-for-go/blob/sdk/storage/azblob/v1.3.2/sdk/storage/azblob/internal/generated/zz_constants.go#L14-L30
+
+# AZURE_STORAGE_ACCESS_TIER="Cold"
+
 # DROPBOX_REMOTE_PATH="/my/directory"
 
 # Number of concurrent chunked uploads for Dropbox.
