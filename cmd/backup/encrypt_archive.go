@@ -36,9 +36,10 @@ func (s *script) encryptAsymmetrically(outFile *os.File) (io.WriteCloser, func()
 	}
 
 	return dst, func() error {
-		dst.Close()
-		armoredWriter.Close()
-		return nil
+		if err := dst.Close(); err != nil {
+			return err
+		}
+		return armoredWriter.Close()
 	}, err
 }
 
