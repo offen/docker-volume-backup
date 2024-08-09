@@ -33,7 +33,7 @@ expect_running_containers "2"
 
 TMP_DIR=$(mktemp -d)
 
-echo "test" | gpg -d --pinentry-mode loopback --yes --passphrase-fd 0 "$LOCAL_DIR/test.tar.gz.gpg" > "$LOCAL_DIR/decrypted.tar.gz"
+gpg -d --pinentry-mode loopback --yes --passphrase $PASSPHRASE "$LOCAL_DIR/test.tar.gz.gpg" > "$LOCAL_DIR/decrypted.tar.gz"
 
 tar -xf "$LOCAL_DIR/decrypted.tar.gz" -C $TMP_DIR
 
