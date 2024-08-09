@@ -17,7 +17,7 @@ import (
 
 func (s *script) encryptAsymmetrically(outFile *os.File) (io.WriteCloser, func() error, error) {
 
-	entityList, err := openpgp.ReadArmoredKeyRing(bytes.NewReader([]byte(s.c.GpgPublicKeys)))
+	entityList, err := openpgp.ReadArmoredKeyRing(bytes.NewReader([]byte(s.c.GpgPublicKeyRing)))
 	if err != nil {
 		return nil, nil, errwrap.Wrap(err, fmt.Sprintf("error parsing key: %v", err))
 	}
@@ -63,11 +63,11 @@ func (s *script) encryptArchive() error {
 	var encrypt func(outFile *os.File) (io.WriteCloser, func() error, error)
 
 	switch {
-	case s.c.GpgPassphrase != "" && s.c.GpgPublicKeys != "":
+	case s.c.GpgPassphrase != "" && s.c.GpgPublicKeyRing != "":
 		return errwrap.Wrap(nil, "error in selecting asymmetric and symmetric encryption methods: conflicting env vars are set")
 	case s.c.GpgPassphrase != "":
 		encrypt = s.encryptSymmetrically
-	case s.c.GpgPublicKeys != "":
+	case s.c.GpgPublicKeyRing != "":
 		encrypt = s.encryptAsymmetrically
 	default:
 		return nil
