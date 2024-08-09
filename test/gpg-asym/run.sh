@@ -9,6 +9,23 @@ current_test=$(basename $(pwd))
 export LOCAL_DIR=$(mktemp -d)
 gpg-agent --daemon
 
+export KEY_DIR=$(mktemp -d)
+
+export PASSPHRASE="test"
+
+gpg --batch --gen-key <<EOF
+Key-Type: RSA
+Key-Length: 4096
+Name-Real: offen
+Name-Email: docker-volume-backup@local
+Expire-Date: 0
+Passphrase: $PASSPHRASE
+%commit
+EOF
+
+gpg --export --armor --batch --yes --pinentry-mode loopback --passphrase $PASSPHRASE --output $KEY_DIR/public_key.asc
+gpg --export-secret-keys --armor --batch --yes --pinentry-mode loopback --passphrase $PASSPHRASE --output $KEY_DIR/private_key.asc
+
 docker compose up -d --quiet-pull
 sleep 5
 
@@ -18,7 +35,7 @@ expect_running_containers "2"
 
 TMP_DIR=$(mktemp -d)
 
-gpg --import --batch --yes test-priv.asc
+gpg --import --batch --yes $KEY_DIR/private_key.asc
 
 echo "test" | gpg -d --pinentry-mode loopback --yes --passphrase-fd 0 "$LOCAL_DIR/test.tar.gz.gpg" > "$LOCAL_DIR/decrypted.tar.gz"
 

@@ -7,21 +7,9 @@ services:
       BACKUP_FILENAME: test.tar.gz
       BACKUP_LATEST_SYMLINK: test-latest.tar.gz.gpg
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
-      GPG_PUBLIC_KEY_RING: | 
-        -----BEGIN PGP PUBLIC KEY BLOCK-----
-
-        mDMEZrUn2hYJKwYBBAHaRw8BAQdA2GarNdpWXzJLwB8tFh9qMW/IuFZP778+v5UW
-        2n1ZR4G0EXRlc3QgPHRlc3RAb2ZmZW4+iJMEExYKADsWIQQ04d9NrLFOGFTCtbpV
-        1KG2IsZa+QUCZrUn2gIbAwULCQgHAgIiAgYVCgkICwIEFgIDAQIeBwIXgAAKCRBV
-        1KG2IsZa+S+fAP9bRs5RDi/o7pcXHg0XoHFHCDWTQ98/8y6RIyKZeGflEwD/bUPy
-        R8e0GwCL6IctZocLYHVbpPW02sm4lEBlpKtsvgi4OARmtSfaEgorBgEEAZdVAQUB
-        AQdAPDOMk+PhIlU3KcUK0qztB/LrRDSD+4mBYmEtTiLzYQ4DAQgHiHgEGBYKACAW
-        IQQ04d9NrLFOGFTCtbpV1KG2IsZa+QUCZrUn2gIbDAAKCRBV1KG2IsZa+YKxAQDF
-        /KhUg0xPxgMg5RRI5QKNgyyrAC04ur75mKwhVBiNLAD/cIHuPUaW0ghlcUVSb6GH
-        ZlPpYen1NukcEYU9oSzLggc=
-        =MfsX
-        -----END PGP PUBLIC KEY BLOCK-----
+      GPG_PUBLIC_KEY_RING_FILE: /keys/public_key.asc
     volumes:
+      - ${KEY_DIR:-.}/public_key.asc:/keys/public_key.asc
       - ${LOCAL_DIR:-./local}:/archive
       - app_data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock
