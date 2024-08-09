@@ -5,7 +5,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -25,9 +24,6 @@ func readArmoredKeys(data []byte) (openpgp.EntityList, error) {
 }
 
 func (s *script) encryptAsymmetrically(outFile *os.File) (io.WriteCloser, func() error, error) {
-	if s.c.GpgPublicKeys == "" {
-		return nil, nil, nil
-	}
 
 	entityList, err := readArmoredKeys([]byte(s.c.GpgPublicKeys))
 	if err != nil {
@@ -55,9 +51,6 @@ func (s *script) encryptAsymmetrically(outFile *os.File) (io.WriteCloser, func()
 }
 
 func (s *script) encryptSymmetrically(outFile *os.File) (io.WriteCloser, func() error, error) {
-	if s.c.GpgPassphrase == "" {
-		return nil, nil, nil
-	}
 
 	_, name := path.Split(s.file)
 	dst, err := openpgp.SymmetricallyEncrypt(outFile, []byte(s.c.GpgPassphrase), &openpgp.FileHints{
