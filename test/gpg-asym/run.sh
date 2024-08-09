@@ -23,7 +23,6 @@ Passphrase: $PASSPHRASE
 EOF
 
 gpg --export --armor --batch --yes --pinentry-mode loopback --passphrase $PASSPHRASE --output $KEY_DIR/public_key.asc
-gpg --export-secret-keys --armor --batch --yes --pinentry-mode loopback --passphrase $PASSPHRASE --output $KEY_DIR/private_key.asc
 
 docker compose up -d --quiet-pull
 sleep 5
@@ -33,8 +32,6 @@ docker compose exec backup backup
 expect_running_containers "2"
 
 TMP_DIR=$(mktemp -d)
-
-gpg --import --batch --yes $KEY_DIR/private_key.asc
 
 echo "test" | gpg -d --pinentry-mode loopback --yes --passphrase-fd 0 "$LOCAL_DIR/test.tar.gz.gpg" > "$LOCAL_DIR/decrypted.tar.gz"
 
