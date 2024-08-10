@@ -83,11 +83,9 @@ func compress(paths []string, outFilePath, algo string, concurrency int) error {
 		return errwrap.Wrap(err, "error closing compression writer")
 	}
 
-	if file != compressWriter {
-		err = file.Close()
-		if err != nil {
-			return errwrap.Wrap(err, "error closing file")
-		}
+	err = file.Close()
+	if err != nil {
+		return errwrap.Wrap(err, "error closing file")
 	}
 
 	return nil
@@ -96,7 +94,7 @@ func compress(paths []string, outFilePath, algo string, concurrency int) error {
 func getCompressionWriter(file *os.File, algo string, concurrency int) (io.WriteCloser, error) {
 	switch algo {
 	case "none":
-		return file, nil
+		return &passThroughWriteCloser{file}, nil
 	case "gz":
 		w, err := pgzip.NewWriterLevel(file, 5)
 		if err != nil {
