@@ -43,7 +43,7 @@ You can populate below template according to your requirements and use it as you
 # BACKUP_CRON_EXPRESSION="0 2 * * *"
 
 # The compression algorithm used in conjunction with tar.
-# Valid options are: "gz" (Gzip) and "zst" (Zstd).
+# Valid options are: "none" (tar-only), "gz" (Gzip), and "zst" (Zstd).
 # Note that the selection affects the file extension.
 
 # BACKUP_COMPRESSION="gz"
