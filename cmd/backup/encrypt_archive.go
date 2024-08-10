@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -62,6 +63,7 @@ func (s *script) encryptSymmetrically(outFile *os.File) (io.WriteCloser, func() 
 func (s *script) encryptArchive() error {
 
 	var encrypt func(outFile *os.File) (io.WriteCloser, func() error, error)
+	var cleanUpErr error
 
 	switch {
 	case s.c.GpgPassphrase != "" && s.c.GpgPublicKeyRing != "":
@@ -89,19 +91,31 @@ func (s *script) encryptArchive() error {
 	if err != nil {
 		return errwrap.Wrap(err, "error opening out file")
 	}
-	defer outFile.Close()
+	defer func() {
+		if err := outFile.Close(); err != nil {
+			cleanUpErr = errors.Join(cleanUpErr, errwrap.Wrap(err, "error closing out file"))
+		}
+	}()
 
-	dst, closeCallback, err := encrypt(outFile)
+	dst, dstCloseCallback, err := encrypt(outFile)
 	if err != nil {
 		return errwrap.Wrap(err, "error encrypting backup file")
 	}
-	defer closeCallback()
+	defer func() {
+		if err := dstCloseCallback(); err != nil {
+			cleanUpErr = errors.Join(cleanUpErr, errwrap.Wrap(err, "error closing encrypted backup file"))
+		}
+	}()
 
 	src, err := os.Open(s.file)
 	if err != nil {
 		return errwrap.Wrap(err, fmt.Sprintf("error opening backup file `%s`", s.file))
 	}
-	defer src.Close()
+	defer func() {
+		if err := src.Close(); err != nil {
+			cleanUpErr = errors.Join(cleanUpErr, errwrap.Wrap(err, "error closing backup file"))
+		}
+	}()
 
 	if _, err := io.Copy(dst, src); err != nil {
 		return errwrap.Wrap(err, "error writing ciphertext to file")
@@ -111,5 +125,5 @@ func (s *script) encryptArchive() error {
 	s.logger.Info(
 		fmt.Sprintf("Encrypted backup using given passphrase, saving as `%s`.", s.file),
 	)
-	return nil
+	return cleanUpErr
 }
