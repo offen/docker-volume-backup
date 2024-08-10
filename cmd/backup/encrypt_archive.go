@@ -20,7 +20,7 @@ func (s *script) encryptAsymmetrically(outFile *os.File) (io.WriteCloser, func()
 
 	entityList, err := openpgp.ReadArmoredKeyRing(bytes.NewReader([]byte(s.c.GpgPublicKeyRing)))
 	if err != nil {
-		return nil, nil, errwrap.Wrap(err, fmt.Sprintf("error parsing key: %v", err))
+		return nil, nil, errwrap.Wrap(err, "error parsing armored keyring")
 	}
 
 	armoredWriter, err := armor.Encode(outFile, "PGP MESSAGE", nil)
@@ -123,7 +123,7 @@ func (s *script) encryptArchive() error {
 
 	s.file = gpgFile
 	s.logger.Info(
-		fmt.Sprintf("Encrypted backup using given passphrase, saving as `%s`.", s.file),
+		fmt.Sprintf("Encrypted backup using gpg, saving as `%s`.", s.file),
 	)
 	return cleanUpErr
 }
