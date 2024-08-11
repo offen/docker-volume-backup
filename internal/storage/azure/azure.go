@@ -39,15 +39,11 @@ type Config struct {
 	ConnectionString  string
 	Endpoint          string
 	RemotePath        string
-	AccessTier        string
+	AccessTier        *blob.AccessTier
 }
 
 // NewStorageBackend creates and initializes a new Azure Blob Storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
-	if opts.PrimaryAccountKey != "" && opts.ConnectionString != "" {
-		return nil, errwrap.Wrap(nil, "using primary account key and connection string are mutually exclusive")
-	}
-
 	endpointTemplate, err := template.New("endpoint").Parse(opts.Endpoint)
 	if err != nil {
 		return nil, errwrap.Wrap(err, "error parsing endpoint template")
@@ -85,26 +81,12 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		}
 	}
 
-	var uploadStreamOptions *blockblob.UploadStreamOptions
-	if opts.AccessTier != "" {
-		var found bool
-		for _, t := range blob.PossibleAccessTierValues() {
-			if string(t) == opts.AccessTier {
-				found = true
-				uploadStreamOptions = &blockblob.UploadStreamOptions{
-					AccessTier: &t,
-				}
-			}
-		}
-		if !found {
-			return nil, errwrap.Wrap(nil, fmt.Sprintf("%s is not a possible access tier value", opts.AccessTier))
-		}
-	}
-
 	storage := azureBlobStorage{
-		client:              client,
-		uploadStreamOptions: uploadStreamOptions,
-		containerName:       opts.ContainerName,
+		client: client,
+		uploadStreamOptions: &blockblob.UploadStreamOptions{
+			AccessTier: opts.AccessTier,
+		},
+		containerName: opts.ContainerName,
 		StorageBackend: &storage.StorageBackend{
 			DestinationPath: opts.RemotePath,
 			Log:             logFunc,

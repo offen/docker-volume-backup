@@ -199,7 +199,7 @@ func (s *script) init() error {
 			Endpoint:          s.c.AzureStorageEndpoint,
 			RemotePath:        s.c.AzureStoragePath,
 			ConnectionString:  s.c.AzureStorageConnectionString,
-			AccessTier:        s.c.AzureStorageAccessTier,
+			AccessTier:        s.c.AzureStorageAccessTier.AccessTier(),
 		}
 		azureBackend, err := azure.NewStorageBackend(azureConfig, logFunc)
 		if err != nil {

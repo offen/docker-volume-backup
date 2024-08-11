@@ -36,6 +36,9 @@ func (c *command) runAsCommand() error {
 	}
 
 	for _, config := range configurations {
+		if err := config.validate(); err != nil {
+			return errwrap.Wrap(err, "error validating config")
+		}
 		if err := runScript(config); err != nil {
 			return errwrap.Wrap(err, "error running script")
 		}
@@ -101,6 +104,12 @@ func (c *command) schedule(strategy configStrategy) error {
 	}
 
 	for _, cfg := range configurations {
+		if err := cfg.validate(); err != nil {
+			return errwrap.Wrap(
+				err,
+				fmt.Sprintf("error validating config for schedule %s", cfg.BackupCronExpression),
+			)
+		}
 		config := cfg
 		id, err := c.cr.AddFunc(config.BackupCronExpression, func() {
 			c.logger.Info(
