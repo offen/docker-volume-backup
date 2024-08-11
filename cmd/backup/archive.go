@@ -93,6 +93,8 @@ func compress(paths []string, outFilePath, algo string, concurrency int) error {
 
 func getCompressionWriter(file *os.File, algo string, concurrency int) (io.WriteCloser, error) {
 	switch algo {
+	case "none":
+		return &passThroughWriteCloser{file}, nil
 	case "gz":
 		w, err := pgzip.NewWriterLevel(file, 5)
 		if err != nil {
@@ -163,5 +165,17 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string) error {
 		return errwrap.Wrap(err, fmt.Sprintf("error copying %s to tar writer", path))
 	}
 
+	return nil
+}
+
+type passThroughWriteCloser struct {
+	target io.WriteCloser
+}
+
+func (p *passThroughWriteCloser) Write(b []byte) (int, error) {
+	return p.target.Write(b)
+}
+
+func (p *passThroughWriteCloser) Close() error {
 	return nil
 }
