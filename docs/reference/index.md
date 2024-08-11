@@ -43,8 +43,8 @@ You can populate below template according to your requirements and use it as you
 # BACKUP_CRON_EXPRESSION="0 2 * * *"
 
 # The compression algorithm used in conjunction with tar.
-# Valid options are: "none" (tar-only), "gz" (Gzip), and "zst" (Zstd).
-# Note that the selection affects the file extension.
+# Valid options are: "gz" (Gzip), "zst" (Zstd) or "none" (tar only).
+# Default is "gz". Note that the selection affects the file extension.
 
 # BACKUP_COMPRESSION="gz"
 
@@ -60,7 +60,7 @@ You can populate below template according to your requirements and use it as you
 # will result in the same filename for every backup run, which means previous
 # versions will be overwritten on subsequent runs.
 # Extension can be defined literally or via "{{ .Extension }}" template,
-# in which case it will become either "tar.gz" or "tar.zst" (depending
+# in which case it will become either "tar.gz", "tar.zst" or ".tar" (depending
 # on your BACKUP_COMPRESSION setting).
 # The default results in filenames like: `backup-2021-08-29T04-00-00.tar.gz`.
 

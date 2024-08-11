@@ -167,3 +167,15 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string) error {
 
 	return nil
 }
+
+type passThroughWriteCloser struct {
+	target io.WriteCloser
+}
+
+func (p *passThroughWriteCloser) Write(b []byte) (int, error) {
+	return p.target.Write(b)
+}
+
+func (p *passThroughWriteCloser) Close() error {
+	return nil
+}

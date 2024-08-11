@@ -1,0 +1,21 @@
+services:
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    restart: always
+    environment:
+      BACKUP_FILENAME: test.{{ .Extension }}
+      BACKUP_COMPRESSION: none
+    volumes:
+      - app_data:/backup/app_data:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${LOCAL_DIR:-./local}:/archive
+
+  offen:
+    image: offen/offen:latest
+    labels:
+      - docker-volume-backup.stop-during-backup=true
+    volumes:
+      - app_data:/var/opt/offen
+
+volumes:
+  app_data:
