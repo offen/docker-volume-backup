@@ -1,8 +1,10 @@
 FROM docker:27-dind
 
 RUN apk add \
+  age \
   coreutils \
   curl \
+  expect \
   gpg \
   gpg-agent \
   jq \
