@@ -23,7 +23,7 @@ require (
 	golang.org/x/crypto v0.25.0
 	golang.org/x/oauth2 v0.22.0
 	golang.org/x/sync v0.8.0
-	mvdan.cc/sh/v3 v3.8.0
+	mvdan.cc/sh/v3 v3.9.0
 )
 
 require (
@@ -79,7 +79,7 @@ require (
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	golang.org/x/net v0.27.0 // indirect
-	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/sys v0.23.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	gotest.tools/v3 v3.0.3 // indirect
 )
