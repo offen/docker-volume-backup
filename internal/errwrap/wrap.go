@@ -21,7 +21,7 @@ func Wrap(err error, msg string) error {
 	chunks := strings.Split(frame.Function, "/")
 	withCaller := fmt.Sprintf("%s: %s", chunks[len(chunks)-1], msg)
 	if err == nil {
-		return fmt.Errorf(withCaller)
+		return errors.New(withCaller)
 	}
 	return fmt.Errorf("%s: %w", withCaller, err)
 }

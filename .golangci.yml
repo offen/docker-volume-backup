@@ -6,4 +6,4 @@ linters:
     - govet
 output:
   formats:
-    - format: github-actions
+    - format: colored-line-number
