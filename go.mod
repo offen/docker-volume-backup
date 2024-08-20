@@ -1,6 +1,6 @@
 module github.com/offen/docker-volume-backup
 
-go 1.22
+go 1.23
 
 require (
 	filippo.io/age v1.2.0

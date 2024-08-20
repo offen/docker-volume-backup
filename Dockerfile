@@ -1,7 +1,7 @@
 # Copyright 2022 - offen.software <hioffen@posteo.de>
 # SPDX-License-Identifier: MPL-2.0
 
-FROM golang:1.22-alpine as builder
+FROM golang:1.23-alpine as builder
 
 WORKDIR /app
 COPY . .
