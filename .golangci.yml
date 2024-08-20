@@ -5,4 +5,5 @@ linters:
     - staticcheck
     - govet
 output:
-  format: github-actions
+  formats:
+    - format: github-actions
