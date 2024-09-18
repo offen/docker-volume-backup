@@ -190,7 +190,7 @@ services:
       DROPBOX_REFRESH_TOKEN: REFRESH_KEY  # replace
       DROPBOX_APP_KEY: APP_KEY  # replace
       DROPBOX_APP_SECRET: APP_SECRET  # replace
-      DROPBOX_REMOTE_PATH: /Apps/my-test-app/some_subdir  # replace
+      DROPBOX_REMOTE_PATH: /somedir  # replace
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
