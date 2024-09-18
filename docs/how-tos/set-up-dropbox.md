@@ -33,5 +33,7 @@ Note: Using the "Generated access token" in the app console is not supported, as
 
 ## Other parameters
 
-Important: If you chose `App folder` access during the creation of your Dropbox app in step 1 above, you can only write in the app's directory!
-This means, that `DROPBOX_REMOTE_PATH` must start with e.g. `/Apps/YOUR_APP_NAME` or `/Apps/YOUR_APP_NAME/some_sub_dir`
+Important: If you chose `App folder` access during the creation of your Dropbox app in step 1 above, `DROPBOX_REMOTE_PATH` will be a relative path under the App folder!
+(_For example, DROPBOX_REMOTE_PATH=/somedir means the backup file will be uploaded to /Apps/myapp/somedir_)
+On the other hand if you chose `Full Dropbox` access, the value for `DROPBOX_REMOTE_PATH` will represent an absolute path inside your Dropbox storage area.
+(_Still considering the same example above, the backup file will be uploaded to /somedir in your Dropbox root_)
