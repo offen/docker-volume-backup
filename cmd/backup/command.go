@@ -132,6 +132,11 @@ func (c *command) schedule(strategy configStrategy) error {
 				fmt.Sprintf("Scheduled cron expression %s will never run, is this intentional?", config.BackupCronExpression),
 			)
 		}
+		if description, ok := explainCronExpression(config.BackupCronExpression, "en"); ok {
+			c.logger.Info(
+				fmt.Sprintf("The backup will start %s", description),
+			)
+		}
 		c.schedules = append(c.schedules, id)
 	}
 

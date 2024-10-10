@@ -10,9 +10,11 @@ import (
 	"os"
 	"sync"
 	"time"
-
+	"strings"
+	
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/robfig/cron/v3"
+	cron_explain "github.com/lnquy/cron"
 )
 
 var noop = func() error { return nil }
@@ -101,4 +103,67 @@ func checkCronSchedule(expression string) (ok bool) {
 	sched.Next(now) // panics when the cron would never run
 	ok = true
 	return
+}
+
+// explainCronExpression describes the cron expression in plain text.
+func explainCronExpression(expression string, locale string) (description string, ok bool) {
+    predefinedMap := map[string]string{
+        "@yearly":  "0 0 1 1 *",
+        "@annually": "0 0 1 1 *",
+        "@monthly": "0 0 1 * *",
+        "@weekly":  "0 0 * * 0",
+        "@daily":   "0 0 * * *",
+        "@hourly":  "0 * * * *",
+    }
+
+    if translated, exists := predefinedMap[expression]; exists {
+        expression = translated
+    }
+
+    localeMap := map[string]cron_explain.LocaleType{
+        "cs": cron_explain.Locale_cs,
+        "da": cron_explain.Locale_da,
+        "de": cron_explain.Locale_de,
+        "en": cron_explain.Locale_en,
+        "es": cron_explain.Locale_es,
+        "fa": cron_explain.Locale_fa,
+        "fi": cron_explain.Locale_fi,
+        "fr": cron_explain.Locale_fr,
+        "he": cron_explain.Locale_he,
+        "it": cron_explain.Locale_it,
+        "ja": cron_explain.Locale_ja,
+        "ko": cron_explain.Locale_ko,
+        "nb": cron_explain.Locale_nb,
+        "nl": cron_explain.Locale_nl,
+        "pl": cron_explain.Locale_pl,
+        "pt_BR": cron_explain.Locale_pt_BR,
+        "ro": cron_explain.Locale_ro,
+        "ru": cron_explain.Locale_ru,
+        "sk": cron_explain.Locale_sk,
+        "sl": cron_explain.Locale_sl,
+        "sv": cron_explain.Locale_sv,
+        "sw": cron_explain.Locale_sw,
+        "tr": cron_explain.Locale_tr,
+        "uk": cron_explain.Locale_uk,
+        "zh_CN": cron_explain.Locale_zh_CN,
+        "zh_TW": cron_explain.Locale_zh_TW,
+    }
+
+    selectedLocale, exists := localeMap[locale]
+    if !exists {
+        selectedLocale = cron_explain.Locale_en
+    }
+
+    exprDesc, _ := cron_explain.NewDescriptor()
+    desc, err := exprDesc.ToDescription(expression, selectedLocale)
+    if err != nil {
+        return "", false
+    }
+
+    // Ensure the first letter of the description is lowercase
+    if len(desc) > 0 {
+        desc = strings.ToLower(string(desc[0])) + desc[1:]
+    }
+
+    return desc, true
 }
