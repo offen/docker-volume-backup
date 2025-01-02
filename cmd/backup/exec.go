@@ -24,10 +24,18 @@ import (
 )
 
 func (s *script) exec(containerRef string, command string, user string) ([]byte, []byte, error) {
-	args, _ := argv.Argv(command, nil, nil)
+	args, err := argv.Argv(command, nil, nil)
+	if err != nil {
+		return nil, nil, errwrap.Wrap(err, fmt.Sprintf("error parsing argv from '%s'", command))
+	}
+	if len(args) == 0 {
+		return nil, nil, errwrap.Wrap(nil, "received unexpected empty command")
+	}
+
 	commandEnv := []string{
 		fmt.Sprintf("COMMAND_RUNTIME_ARCHIVE_FILEPATH=%s", s.file),
 	}
+
 	execID, err := s.cli.ContainerExecCreate(context.Background(), containerRef, container.ExecOptions{
 		Cmd:          args[0],
 		AttachStdin:  true,
