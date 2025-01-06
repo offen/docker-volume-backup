@@ -338,7 +338,7 @@ volumes:
   data:
 ```
 
-## Using mysqldump to prepare the backup
+## Using mariadb-dump/mysqldump to prepare the backup
 
 ```yml
 version: '3'
@@ -347,7 +347,7 @@ services:
   database:
     image: mariadb:latest
     labels:
-      - docker-volume-backup.archive-pre=/bin/sh -c 'mysqldump -psecret --all-databases > /tmp/dumps/dump.sql'
+      - docker-volume-backup.archive-pre=/bin/sh -c 'mariadb-dump -psecret --all-databases > /tmp/dumps/dump.sql'
     volumes:
       - data:/tmp/dumps
   backup:
