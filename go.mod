@@ -16,7 +16,7 @@ require (
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.83
 	github.com/offen/envconfig v1.5.0
-	github.com/otiai10/copy v1.14.0
+	github.com/otiai10/copy v1.14.1
 	github.com/pkg/sftp v1.13.7
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/studio-b12/gowebdav v0.10.0
@@ -39,6 +39,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
+	github.com/otiai10/mint v1.6.3 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.51.0 // indirect
 	go.opentelemetry.io/otel v1.26.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.26.0 // indirect
