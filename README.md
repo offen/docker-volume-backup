@@ -76,7 +76,7 @@ docker run --rm \
   offen/docker-volume-backup:v2
 ```
 
-Alternatively, pass a `--env-file` in order to use a full config as described below.
+Alternatively, pass a `--env-file` in order to use a full config as described [in the docs](https://offen.github.io/docker-volume-backup/reference/).
 
 ---
 
