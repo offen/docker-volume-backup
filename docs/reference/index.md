@@ -337,6 +337,9 @@ You can populate below template according to your requirements and use it as you
 
 ########### BACKUP ENCRYPTION
 
+# All of the encryption options are mutually exclusive. Provide a single option
+# for the encryption scheme of your choice.
+
 # Backups can be encrypted symmetrically using gpg in case a passphrase is given.
 
 # GPG_PASSPHRASE="<xxx>"
@@ -349,6 +352,16 @@ You can populate below template according to your requirements and use it as you
 #D/cIHu6GH/0ghlcUVSbgMg5RRI5QKNNKh04uLAPxr75mKwUg0xPUaWgyyrAChVBi
 #...
 #-----END PGP PUBLIC KEY BLOCK-----
+
+# Backups can be encrypted symmetrically using age in case a passphrase is given.
+
+# AGE_PASSPHRASE="<xxx>"
+
+# Backups can be encrypted asymmetrically using age in case publickeys are given.
+# Multiple keys need to be provided as a comma separated list. Right now, this only
+# support passing age keys, with no support for ssh keys.
+
+# AGE_PUBLIC_KEYS="<xxx>"
 
 ########### STOPPING CONTAINERS AND SERVICES DURING BACKUP
 
