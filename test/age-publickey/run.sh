@@ -13,7 +13,10 @@ PK_A="$(grep -E 'public key' <"$LOCAL_DIR/pk-a.txt" | cut -d: -f2 | xargs)"
 age-keygen >"$LOCAL_DIR/pk-b.txt"
 PK_B="$(grep -E 'public key' <"$LOCAL_DIR/pk-b.txt" | cut -d: -f2 | xargs)"
 
-export BACKUP_AGE_PUBLIC_KEYS="$PK_A,$PK_B"
+ssh-keygen -t ed25519 -m pem -f "$LOCAL_DIR/id_ed25519" -C "docker-volume-backup@local"
+PK_C="$(cat $LOCAL_DIR/id_ed25519.pub)"
+
+export BACKUP_AGE_PUBLIC_KEYS="$PK_A,$PK_B,$PK_C"
 
 docker compose up -d --quiet-pull
 sleep 5
@@ -41,3 +44,4 @@ do_decrypt() {
 
 do_decrypt "$LOCAL_DIR/pk-a.txt"
 do_decrypt "$LOCAL_DIR/pk-b.txt"
+do_decrypt "$LOCAL_DIR/id_ed25519"
