@@ -225,7 +225,7 @@ func (s *script) init() error {
 		s.storages = append(s.storages, dropboxBackend)
 	}
 
-	if s.c.BackupRetentionDays > 0 && s.c.BackupRetentionPeriod > 0 {
+	if s.c.BackupRetentionDays > -1 && s.c.BackupRetentionPeriod > 0 {
 		return errwrap.Wrap(nil, "both BACKUP_RETENTION_DAYS and BACKUP_RETENTION_PERIOD were configured, which are mutually exclusive")
 	}
 

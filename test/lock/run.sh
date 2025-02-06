@@ -13,7 +13,7 @@ sleep 5
 
 ec=0
 
-docker compose exec -e BACKUP_RETENTION_DAYS=7 -e BACKUP_FILENAME=test.tar.gz backup backup & \
+docker compose exec -e BACKUP_RETENTION_PERIOD=168h -e BACKUP_FILENAME=test.tar.gz backup backup & \
   { set +e; sleep 0.1; docker compose exec -e BACKUP_FILENAME=test2.tar.gz -e LOCK_TIMEOUT=1s backup backup; ec=$?;}
 
 if [ "$ec" = "0" ]; then

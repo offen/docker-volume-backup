@@ -29,7 +29,7 @@ fi
 
 # The second part of this test checks if backups get deleted when the retention
 # is set to 0 days (which it should not as it would mean all backups get deleted)
-BACKUP_RETENTION_DAYS="0" docker compose up -d
+BACKUP_RETENTION_PERIOD="1s" docker compose up -d
 sleep 5
 
 logs=$(docker compose exec -T backup backup)
@@ -43,7 +43,7 @@ fi
 
 # The third part of this test checks if old backups get deleted when the retention
 # is set to 7 days (which it should)
-BACKUP_RETENTION_DAYS="7" docker compose up -d
+BACKUP_RETENTION_PERIOD="168h" docker compose up -d
 sleep 5
 
 info "Create second backup and prune"

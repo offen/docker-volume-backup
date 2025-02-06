@@ -4,7 +4,7 @@ services:
     restart: always
     environment:
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
-      BACKUP_RETENTION_DAYS: '7'
+      BACKUP_RETENTION_PERIOD: 168h
     volumes:
       - app_data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock

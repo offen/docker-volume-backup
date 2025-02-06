@@ -6,7 +6,7 @@ services:
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
       BACKUP_FILENAME: test.tar.gz
       BACKUP_LATEST_SYMLINK: test-latest.tar.gz.age
-      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_RETENTION_PERIOD: ${BACKUP_RETENTION_PERIOD:-168h}
       AGE_PASSPHRASE: "Dance.0Tonight.Go.Typical"
     volumes:
       - ${LOCAL_DIR:-./local}:/archive

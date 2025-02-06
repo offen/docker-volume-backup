@@ -313,7 +313,7 @@ You can populate below template according to your requirements and use it as you
 
 # Define this value to enable automatic rotation of old backups. The value
 # declares the duration for which a backup is kept. It is formatted as per
-# https://pkg.go.dev/time#ParseDuration
+# https://pkg.go.dev/time#ParseDuration, e.g. 1 day turns into `24h`
 
 # BACKUP_RETENTION_PERIOD="168h"
 

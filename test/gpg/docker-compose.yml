@@ -6,7 +6,7 @@ services:
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
       BACKUP_FILENAME: test.tar.gz
       BACKUP_LATEST_SYMLINK: test-latest.tar.gz.gpg
-      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_RETENTION_PERIOD: ${BACKUP_RETENTION_PERIOD:-168h}
       GPG_PASSPHRASE: 1234#$$ecret
     volumes:
       - ${LOCAL_DIR:-./local}:/archive

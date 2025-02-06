@@ -31,7 +31,7 @@ services:
       AWS_S3_BUCKET_NAME: backup
       BACKUP_FILENAME: test.tar.gz
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
-      BACKUP_RETENTION_DAYS: 7
+      BACKUP_RETENTION_PERIOD: 168h
       BACKUP_PRUNING_LEEWAY: 5s
     volumes:
       - pg_data:/backup/pg_data:ro

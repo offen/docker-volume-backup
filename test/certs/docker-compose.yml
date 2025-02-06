@@ -26,7 +26,7 @@ services:
       AWS_ENDPOINT_CA_CERT: /root/minio-rootCA.crt
       AWS_S3_BUCKET_NAME: backup
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
-      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_RETENTION_PERIOD: ${BACKUP_RETENTION_PERIOD:-168h}
       BACKUP_PRUNING_LEEWAY: 5s
     volumes:
       - app_data:/backup/app_data:ro
