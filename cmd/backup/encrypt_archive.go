@@ -10,8 +10,10 @@ import (
 	"io"
 	"os"
 	"path"
+	"strings"
 
 	"filippo.io/age"
+	"filippo.io/age/agessh"
 	"github.com/ProtonMail/go-crypto/openpgp/armor"
 	openpgp "github.com/ProtonMail/go-crypto/openpgp/v2"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
@@ -73,7 +75,7 @@ func (s *script) getConfiguredAgeRecipients() ([]age.Recipient, error) {
 	recipients := []age.Recipient{}
 	if len(s.c.AgePublicKeys) > 0 {
 		for _, pk := range s.c.AgePublicKeys {
-			pkr, err := age.ParseX25519Recipient(pk)
+			pkr, err := parseAgeRecipient(pk)
 			if err != nil {
 				return nil, errwrap.Wrap(err, "failed to parse age public key")
 			}
@@ -92,6 +94,18 @@ func (s *script) getConfiguredAgeRecipients() ([]age.Recipient, error) {
 		recipients = append(recipients, r)
 	}
 	return recipients, nil
+}
+
+func parseAgeRecipient(arg string) (age.Recipient, error) {
+	// This logic is adapted from what the age CLI is doing
+	// stripping some special cases
+	switch {
+	case strings.HasPrefix(arg, "age1"):
+		return age.ParseX25519Recipient(arg)
+	case strings.HasPrefix(arg, "ssh-"):
+		return agessh.ParseRecipient(arg)
+	}
+	return nil, fmt.Errorf("unknown recipient type: %q", arg)
 }
 
 func (s *script) encryptWithAge(rec []age.Recipient) error {
