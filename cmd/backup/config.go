@@ -38,6 +38,7 @@ type Config struct {
 	BackupArchive                 string          `split_words:"true" default:"/archive"`
 	BackupCronExpression          string          `split_words:"true" default:"@daily"`
 	BackupRetentionDays           int32           `split_words:"true" default:"-1"`
+	BackupRetentionPeriod         time.Duration   `split_words:"true"`
 	BackupPruningLeeway           time.Duration   `split_words:"true" default:"1m"`
 	BackupPruningPrefix           string          `split_words:"true"`
 	BackupStopContainerLabel      string          `split_words:"true"`

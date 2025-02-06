@@ -312,9 +312,10 @@ You can populate below template according to your requirements and use it as you
 # removal to certain files.
 
 # Define this value to enable automatic rotation of old backups. The value
-# declares the number of days for which a backup is kept.
+# declares the duration for which a backup is kept. It is formatted as per
+# https://pkg.go.dev/time#ParseDuration
 
-# BACKUP_RETENTION_DAYS="7"
+# BACKUP_RETENTION_PERIOD="168h"
 
 # In case the duration a backup takes fluctuates noticeably in your setup
 # you can adjust this setting to make sure there are no race conditions

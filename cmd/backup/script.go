@@ -225,6 +225,10 @@ func (s *script) init() error {
 		s.storages = append(s.storages, dropboxBackend)
 	}
 
+	if s.c.BackupRetentionDays > 0 && s.c.BackupRetentionPeriod > 0 {
+		return errwrap.Wrap(nil, "both BACKUP_RETENTION_DAYS and BACKUP_RETENTION_PERIOD were configured, which are mutually exclusive")
+	}
+
 	if s.c.EmailNotificationRecipient != "" {
 		emailURL := fmt.Sprintf(
 			"smtp://%s:%s@%s:%d/?from=%s&to=%s",

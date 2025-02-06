@@ -280,7 +280,7 @@ services:
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
       BACKUP_FILENAME: backup-%Y-%m-%dT%H-%M-%S.tar.gz
       BACKUP_PRUNING_PREFIX: backup-
-      BACKUP_RETENTION_DAYS: 7
+      BACKUP_RETENTION_PERIOD: 168h
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro

@@ -17,11 +17,18 @@ import (
 // the given configuration. In case the given configuration would delete all
 // backups, it does nothing instead and logs a warning.
 func (s *script) pruneBackups() error {
-	if s.c.BackupRetentionDays < 0 {
+	if s.c.BackupRetentionDays < 0 && s.c.BackupRetentionPeriod == 0 {
 		return nil
 	}
 
-	deadline := time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays)).Add(s.c.BackupPruningLeeway)
+	var deadline time.Time
+	if s.c.BackupRetentionPeriod != 0 {
+		deadline = time.Now().Add(-s.c.BackupRetentionPeriod)
+	} else {
+		s.logger.Warn("Using BACKUP_RETENTION_DAYS has been deprecated and will be removed in the next major version. Please use BACKUP_RETENTION_PERIOD instead.")
+		deadline = time.Now().AddDate(0, 0, -int(s.c.BackupRetentionDays))
+	}
+	deadline = deadline.Add(s.c.BackupPruningLeeway)
 
 	eg := errgroup.Group{}
 	for _, backend := range s.storages {
