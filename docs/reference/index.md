@@ -358,8 +358,8 @@ You can populate below template according to your requirements and use it as you
 # AGE_PASSPHRASE="<xxx>"
 
 # Backups can be encrypted asymmetrically using age in case publickeys are given.
-# Multiple keys need to be provided as a comma separated list. Right now, this only
-# support passing age keys, with no support for ssh keys.
+# Multiple keys need to be provided as a comma separated list. Right now, this
+# supports `age` and `ssh` keys
 
 # AGE_PUBLIC_KEYS="<xxx>"
 
