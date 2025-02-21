@@ -31,7 +31,7 @@ services:
       BACKUP_STOP_DURING_BACKUP_LABEL: service1
     volumes:
       - data:/backup/my-app-backup:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   data:
