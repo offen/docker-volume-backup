@@ -28,7 +28,7 @@ services:
       WEBDAV_PASSWORD: test
     volumes:
       - app_data:/backup/app_data:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   offen:
     image: offen/offen:latest

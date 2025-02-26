@@ -9,7 +9,7 @@ services:
     volumes:
       - offen_data:/backup/offen_data:ro
       - ${LOCAL_DIR:-./local}:/archive
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   offen:
     image: offen/offen:latest

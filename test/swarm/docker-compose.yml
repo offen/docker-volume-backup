@@ -35,7 +35,7 @@ services:
       BACKUP_PRUNING_LEEWAY: 5s
     volumes:
       - pg_data:/backup/pg_data:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   offen:
     image: offen/offen:latest

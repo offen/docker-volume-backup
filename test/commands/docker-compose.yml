@@ -42,7 +42,7 @@ services:
     volumes:
       - ${LOCAL_DIR:-./local}:/archive
       - app_data:/backup/data:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
 volumes:
   app_data:

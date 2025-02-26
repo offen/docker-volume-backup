@@ -30,7 +30,7 @@ services:
     volumes:
       - ${KEY_DIR:-.}/id_rsa:/root/.ssh/id_rsa
       - app_data:/backup/app_data:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   offen:
     image: offen/offen:latest

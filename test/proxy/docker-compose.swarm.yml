@@ -22,7 +22,7 @@ services:
       TASKS: ${ALLOW_TASKS:-1}
       NODES: ${ALLOW_NODES:-1}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   pg:
     image: postgres:14-alpine

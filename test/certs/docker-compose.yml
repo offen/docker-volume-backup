@@ -30,7 +30,7 @@ services:
       BACKUP_PRUNING_LEEWAY: 5s
     volumes:
       - app_data:/backup/app_data:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${CERT_DIR:-.}/rootCA.crt:/root/minio-rootCA.crt
 
   offen:

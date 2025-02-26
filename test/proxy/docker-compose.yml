@@ -19,7 +19,7 @@ services:
       CONTAINERS: ${ALLOW_CONTAINERS:-1}
       POST: ${ALLOW_POST:-1}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   pg:
     image: postgres:14-alpine
