@@ -23,7 +23,7 @@ docker run --rm -q \
   --network test_network \
   -v app_data:/backup/app_data \
   -v $LOCAL_DIR:/archive \
-  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
   --env BACKUP_COMPRESSION=zst \
   --env BACKUP_FILENAME='test.{{ .Extension }}' \
   --entrypoint backup \

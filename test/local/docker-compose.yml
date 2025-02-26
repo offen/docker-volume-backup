@@ -13,7 +13,7 @@ services:
       BACKUP_PRUNING_PREFIX: test
     volumes:
       - app_data:/backup/app_data:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${LOCAL_DIR:-./local}:/archive
 
   offen:

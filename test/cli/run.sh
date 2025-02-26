@@ -37,7 +37,7 @@ docker run --rm -q \
   --network test_network \
   -v app_data:/backup/app_data \
   -v empty_data:/backup/empty_data \
-  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
   --env AWS_ACCESS_KEY_ID=test \
   --env AWS_SECRET_ACCESS_KEY=GMusLtUmILge2by+z890kQ \
   --env AWS_ENDPOINT=minio:9000 \

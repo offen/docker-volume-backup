@@ -32,7 +32,7 @@ services:
       BACKUP_SKIP_BACKENDS_FROM_PRUNE: 's3'
     volumes:
       - app_data:/backup/app_data:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${LOCAL_DIR:-./local}:/archive
 
   offen:

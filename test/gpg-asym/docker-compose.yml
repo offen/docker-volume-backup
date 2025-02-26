@@ -12,7 +12,7 @@ services:
       - ${KEY_DIR:-.}/public_key.asc:/keys/public_key.asc
       - ${LOCAL_DIR:-./local}:/archive
       - app_data:/backup/app_data:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   offen:
     image: offen/offen:latest
