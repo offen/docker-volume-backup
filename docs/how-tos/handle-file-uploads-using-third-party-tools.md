@@ -33,7 +33,7 @@ services:
       - docker-volume-backup.copy-post=/bin/sh -c 'rsync $$COMMAND_RUNTIME_ARCHIVE_FILEPATH /destination'
     volumes:
       - app_data:/backup/app_data:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   # other services defined here ...
 volumes:

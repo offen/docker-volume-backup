@@ -358,7 +358,7 @@ services:
     volumes:
       - ./local:/archive
       - data:/backup/data:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
 volumes:
   data:
