@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -195,7 +194,7 @@ loop:
 	_, err = b.client.UploadSessionFinish(
 		files.NewUploadSessionFinishArg(
 			files.NewUploadSessionCursor(sessionId, 0),
-			files.NewCommitInfo(filepath.Join(b.DestinationPath, name)),
+			files.NewCommitInfo(path.Join(b.DestinationPath, name)),
 		), nil)
 	if err != nil {
 		return errwrap.Wrap(err, "error finishing the upload session")
@@ -247,7 +246,7 @@ func (b *dropboxStorage) Prune(deadline time.Time, pruningPrefix string) (*stora
 
 	pruneErr := b.DoPrune(b.Name(), len(matches), lenCandidates, deadline, func() error {
 		for _, match := range matches {
-			if _, err := b.client.DeleteV2(files.NewDeleteArg(filepath.Join(b.DestinationPath, match.Name))); err != nil {
+			if _, err := b.client.DeleteV2(files.NewDeleteArg(path.Join(b.DestinationPath, match.Name))); err != nil {
 				return errwrap.Wrap(err, "error removing file from Dropbox storage")
 			}
 		}

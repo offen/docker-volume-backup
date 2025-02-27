@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -124,7 +123,7 @@ func (b *s3Storage) Copy(file string) error {
 		putObjectOptions.PartSize = uint64(partSize)
 	}
 
-	if _, err := b.client.FPutObject(context.Background(), b.bucket, filepath.Join(b.DestinationPath, name), file, putObjectOptions); err != nil {
+	if _, err := b.client.FPutObject(context.Background(), b.bucket, path.Join(b.DestinationPath, name), file, putObjectOptions); err != nil {
 		if errResp := minio.ToErrorResponse(err); errResp.Message != "" {
 			return errwrap.Wrap(
 				nil,
@@ -147,7 +146,7 @@ func (b *s3Storage) Copy(file string) error {
 // Prune rotates away backups according to the configuration and provided deadline for the S3/Minio storage backend.
 func (b *s3Storage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
 	candidates := b.client.ListObjects(context.Background(), b.bucket, minio.ListObjectsOptions{
-		Prefix:    filepath.Join(b.DestinationPath, pruningPrefix),
+		Prefix:    path.Join(b.DestinationPath, pruningPrefix),
 		Recursive: true,
 	})
 

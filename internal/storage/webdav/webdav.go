@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -77,7 +76,7 @@ func (b *webDavStorage) Copy(file string) error {
 		return errwrap.Wrap(err, "error opening the file to be uploaded")
 	}
 
-	if err := b.client.WriteStream(filepath.Join(b.DestinationPath, name), r, 0644); err != nil {
+	if err := b.client.WriteStream(path.Join(b.DestinationPath, name), r, 0644); err != nil {
 		return errwrap.Wrap(err, "error uploading the file")
 	}
 	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup '%s' to '%s' at path '%s'.", file, b.url, b.DestinationPath)
@@ -110,7 +109,7 @@ func (b *webDavStorage) Prune(deadline time.Time, pruningPrefix string) (*storag
 
 	pruneErr := b.DoPrune(b.Name(), len(matches), lenCandidates, deadline, func() error {
 		for _, match := range matches {
-			if err := b.client.Remove(filepath.Join(b.DestinationPath, match.Name())); err != nil {
+			if err := b.client.Remove(path.Join(b.DestinationPath, match.Name())); err != nil {
 				return errwrap.Wrap(err, "error removing file")
 			}
 		}
