@@ -179,8 +179,9 @@ func (b *sshStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.P
 
 	pruneErr := b.DoPrune(b.Name(), len(matches), len(candidates), deadline, func() error {
 		for _, match := range matches {
-			if err := b.sftpClient.Remove(path.Join(b.DestinationPath, match)); err != nil {
-				return errwrap.Wrap(err, "error removing file")
+			p := path.Join(b.DestinationPath, match)
+			if err := b.sftpClient.Remove(p); err != nil {
+				return errwrap.Wrap(err, fmt.Sprintf("error removing file %s", p))
 			}
 		}
 		return nil
