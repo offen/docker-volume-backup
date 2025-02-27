@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -115,7 +114,7 @@ func (b *sshStorage) Copy(file string) error {
 	}
 	defer source.Close()
 
-	destination, err := b.sftpClient.Create(filepath.Join(b.DestinationPath, name))
+	destination, err := b.sftpClient.Create(path.Join(b.DestinationPath, name))
 	if err != nil {
 		return errwrap.Wrap(err, "error creating file")
 	}
@@ -180,7 +179,7 @@ func (b *sshStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.P
 
 	pruneErr := b.DoPrune(b.Name(), len(matches), len(candidates), deadline, func() error {
 		for _, match := range matches {
-			if err := b.sftpClient.Remove(filepath.Join(b.DestinationPath, match)); err != nil {
+			if err := b.sftpClient.Remove(path.Join(b.DestinationPath, match)); err != nil {
 				return errwrap.Wrap(err, "error removing file")
 			}
 		}

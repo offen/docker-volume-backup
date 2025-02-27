@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -128,7 +129,7 @@ func (b *azureBlobStorage) Copy(file string) error {
 	_, err = b.client.UploadStream(
 		context.Background(),
 		b.containerName,
-		filepath.Join(b.DestinationPath, filepath.Base(file)),
+		path.Join(b.DestinationPath, filepath.Base(file)),
 		fileReader,
 		b.uploadStreamOptions,
 	)
@@ -141,7 +142,7 @@ func (b *azureBlobStorage) Copy(file string) error {
 // Prune rotates away backups according to the configuration and provided
 // deadline for the Azure Blob storage backend.
 func (b *azureBlobStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
-	lookupPrefix := filepath.Join(b.DestinationPath, pruningPrefix)
+	lookupPrefix := path.Join(b.DestinationPath, pruningPrefix)
 	pager := b.client.NewListBlobsFlatPager(b.containerName, &container.ListBlobsFlatOptions{
 		Prefix: &lookupPrefix,
 	})
