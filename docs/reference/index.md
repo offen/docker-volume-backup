@@ -17,7 +17,8 @@ Note that secrets will not be trimmed of leading or trailing whitespace.
 In case you encounter double quoted values in your runtime configuration you might still be using an [older version of `docker-compose`][compose-issue].
 You can work around this by either updating `docker-compose` or unquoting your configuration values.
 
-You can populate below template according to your requirements and use it as your `env_file`:
+You can populate below template according to your requirements and use it as your `env_file`.
+The values for each key currently match its default.
 
 {% raw %}
 ```
@@ -40,7 +41,7 @@ You can populate below template according to your requirements and use it as you
 # If no value is set, `@daily` will be used.
 # If you do not want the cron to ever run, use `0 0 5 31 2 ?`.
 
-# BACKUP_CRON_EXPRESSION="0 2 * * *"
+# BACKUP_CRON_EXPRESSION="@daily"
 
 # The compression algorithm used in conjunction with tar.
 # Valid options are: "gz" (Gzip), "zst" (Zstd) or "none" (tar only).
@@ -53,7 +54,7 @@ You can populate below template according to your requirements and use it as you
 # Higher values result in faster compression. No effect on decompression
 # Default = 1. Setting this to 0 will use all available threads.
 
-# GZIP_PARALLELISM=1
+# GZIP_PARALLELISM="1"
 
 # The name of the backup file including the extension.
 # Format verbs will be replaced as in `strftime`. Omitting them
@@ -78,8 +79,9 @@ You can populate below template according to your requirements and use it as you
 
 # When storing local backups, a symlink to the latest backup can be created
 # in case a value is given for this key. This has no effect on remote backups.
+# Example: "backup.latest.tar.gz"
 
-# BACKUP_LATEST_SYMLINK="backup.latest.tar.gz"
+# BACKUP_LATEST_SYMLINK=""
 
 # ************************************************************************
 # The BACKUP_FROM_SNAPSHOT option has been deprecated and will be removed
@@ -95,56 +97,62 @@ You can populate below template according to your requirements and use it as you
 
 # By default, the `/backup` directory inside the container will be backed up.
 # In case you need to use a custom location, set `BACKUP_SOURCES`.
+# Example: "/other/location"
 
-# BACKUP_SOURCES="/other/location"
+# BACKUP_SOURCES="/backup"
 
 # When given, all files in BACKUP_SOURCES whose full path matches the given
 # regular expression will be excluded from the archive. Regular Expressions
 # can be used as from the Go standard library https://pkg.go.dev/regexp
+# Example: "\.log$"
 
-# BACKUP_EXCLUDE_REGEXP="\.log$"
+# BACKUP_EXCLUDE_REGEXP=""
 
 # Exclude one or many storage backends from the pruning process.
 # E.g. with one backend excluded: BACKUP_SKIP_BACKENDS_FROM_PRUNE=s3
 # E.g. with multiple backends excluded: BACKUP_SKIP_BACKENDS_FROM_PRUNE=s3,webdav
 # Available backends are: S3, WebDAV, SSH, Local, Dropbox, Azure
-# Note: The name of the backends is case insensitive. 
+# Note: The names of the backends are case insensitive. 
 # Default: All backends get pruned.
 
-# BACKUP_SKIP_BACKENDS_FROM_PRUNE=
+# BACKUP_SKIP_BACKENDS_FROM_PRUNE=""
 
 ########### BACKUP STORAGE
 
+### S3-COMPATIBLE STORAGE ###
+
 # The name of the remote bucket that should be used for storing backups. If
 # this is not set, no remote backups will be stored.
+# Example: "backup-bucket"
 
-# AWS_S3_BUCKET_NAME="backup-bucket"
+# AWS_S3_BUCKET_NAME=""
 
 # If you want to store the backup in a non-root location on your bucket
 # you can provide a path. The path must not contain a leading slash.
+# Example: "my/backup/location"
 
-# AWS_S3_PATH="my/backup/location"
+# AWS_S3_PATH=""
 
 # Define credentials for authenticating against the backup storage and a bucket
 # name. Although all of these keys are `AWS`-prefixed, the setup can be used
 # with any S3 compatible storage.
 
-# AWS_ACCESS_KEY_ID="<xxx>"
-# AWS_SECRET_ACCESS_KEY="<xxx>"
+# AWS_ACCESS_KEY_ID=""
+# AWS_SECRET_ACCESS_KEY=""
 
 # Instead of providing static credentials, you can also use IAM instance profiles
 # or similar to provide authentication. Some possible configuration options on AWS:
 # - EC2: http://169.254.169.254
 # - ECS: http://169.254.170.2
 
-# AWS_IAM_ROLE_ENDPOINT="http://169.254.169.254"
+# AWS_IAM_ROLE_ENDPOINT=""
 
 # This is the FQDN of your storage server, e.g. `storage.example.com`.
-# Do not set this when working against AWS S3 (the default value is
-# `s3.amazonaws.com`). If you need to set a specific (non-https) protocol, you
-# will need to use the option below.
+# There is no need to set this when working against AWS S3 (the default value is
+# `s3.amazonaws.com`).
+# If you need to set a specific (non-https) protocol, you will need to use the option below.
 
-# AWS_ENDPOINT="storage.example.com"
+# AWS_ENDPOINT="s3.amazonaws.com"
 
 # The protocol to be used when communicating with your storage server.
 # Defaults to "https". You can set this to "http" when communicating with
@@ -157,19 +165,21 @@ You can populate below template according to your requirements and use it as you
 # self-signed certificates for your remote storage backend. This can only be
 # used when AWS_ENDPOINT_PROTO is set to `https`.
 
-# AWS_ENDPOINT_INSECURE="true"
+# AWS_ENDPOINT_INSECURE="false"
 
 # If you wish to use self signed certificates your S3 server, you can pass
 # the location of a PEM encoded CA certificate and it will be used for
 # validating your certificates.
 # Alternatively, pass a PEM encoded string containing the certificate.
+# Example: "/path/to/cert.pem"
 
-# AWS_ENDPOINT_CA_CERT="/path/to/cert.pem"
+# AWS_ENDPOINT_CA_CERT=""
 
 # Setting this variable will change the S3 storage class header.
-# Defaults to "STANDARD", you can set this value according to your needs.
+# Defaults to using the standard class when no value is given.
+# Example: "GLACIER"
 
-# AWS_STORAGE_CLASS="GLACIER"
+# AWS_STORAGE_CLASS=""
 
 # Setting this variable will change the S3 default part size for the copy step.
 # This value is useful when you want to upload large files.
@@ -178,87 +188,98 @@ You can populate below template according to your requirements and use it as you
 # Defaults to "16" (MB) if unset (from minio), you can set this value according to your needs.
 # The unit is in MB and an integer.
 
-# AWS_PART_SIZE=16
+# AWS_PART_SIZE="16"
 
-# You can also backup files to any WebDAV server:
+### WEBDAV STORAGE ###
 
 # The URL of the remote WebDAV server
+# Example: "https://webdav.example.com"
 
-# WEBDAV_URL="https://webdav.example.com"
+# WEBDAV_URL=""
 
 # The Directory to place the backups to on the WebDAV server.
 # If the path is not present on the server it will be created.
+# Example: "/my/directory/"
 
-# WEBDAV_PATH="/my/directory/"
+# WEBDAV_PATH=""
 
 # The username for the WebDAV server
+# Example: "user"
 
-# WEBDAV_USERNAME="user"
+# WEBDAV_USERNAME=""
 
 # The password for the WebDAV server
+# Example: "password"
 
-# WEBDAV_PASSWORD="password"
+# WEBDAV_PASSWORD=""
 
 # Setting this variable to `true` will disable verification of
 # SSL certificates for WEBDAV_URL. You shouldn't use this unless you use
 # self-signed certificates for your remote storage backend.
 
-# WEBDAV_URL_INSECURE="true"
+# WEBDAV_URL_INSECURE="false"
 
-# You can also backup files to any SSH server:
+### SSH STORAGE ###
 
 # The URL of the remote SSH server
+# Example: "server.local"
 
-# SSH_HOST_NAME="server.local"
+# SSH_HOST_NAME=""
 
 # The port of the remote SSH server
-# Optional variable default value is `22`
 
-# SSH_PORT=2222
+# SSH_PORT="22"
 
 # The Directory to place the backups to on the SSH server.
+# Example: "/home/user/backups"
 
-# SSH_REMOTE_PATH="/my/directory/"
+# SSH_REMOTE_PATH=""
 
 # The username for the SSH server
+# Example: "user"
 
-# SSH_USER="user"
+# SSH_USER=""
 
 # The password for the SSH server
+# Example: "password"
 
-# SSH_PASSWORD="password"
+# SSH_PASSWORD=""
 
 # The private key path in container for SSH server
-# Default value: /root/.ssh/id_rsa
 # If file is mounted to /root/.ssh/id_rsa path it will be used. Non-RSA keys will
 # also work.
 
 # SSH_IDENTITY_FILE="/root/.ssh/id_rsa"
 
 # The passphrase for the identity file
+# Example: "pass"
 
-# SSH_IDENTITY_PASSPHRASE="pass"
+# SSH_IDENTITY_PASSPHRASE=""
+
+### AZURE BLOB STORAGE ###
 
 # The credential's account name when using Azure Blob Storage. This has to be
 # set when using Azure Blob Storage.
+# Example: "account-name"
 
-# AZURE_STORAGE_ACCOUNT_NAME="account-name"
+# AZURE_STORAGE_ACCOUNT_NAME=""
 
 # The credential's primary account key when using Azure Blob Storage. If this
 # is not given, the command tries to fall back to using a connection string
 # (if given) or a managed identity (if nothing is given).
 
-# AZURE_STORAGE_PRIMARY_ACCOUNT_KEY="<xxx>"
+# AZURE_STORAGE_PRIMARY_ACCOUNT_KEY=""
 
 # A connection string for accessing Azure Blob Storage. If this
 # is not given, the command tries to fall back to using a primary account key
 # (if given) or a managed identity (if nothing is given).
 
-# AZURE_STORAGE_CONNECTION_STRING="<xxx>"
+# AZURE_STORAGE_CONNECTION_STRING=""
 
 # The container name when using Azure Blob Storage.
+# Example: "container-name"
 
-# AZURE_STORAGE_CONTAINER_NAME="container-name"
+# AZURE_STORAGE_CONTAINER_NAME=""
 
 # The service endpoint when using Azure Blob Storage. This is a template that
 # can be passed the account name as shown in the default value below.
@@ -271,10 +292,16 @@ You can populate below template according to your requirements and use it as you
 
 # The access tier when using Azure Blob Storage. Possible values are
 # https://github.com/Azure/azure-sdk-for-go/blob/sdk/storage/azblob/v1.3.2/sdk/storage/azblob/internal/generated/zz_constants.go#L14-L30
+# Example: "Cold"
 
-# AZURE_STORAGE_ACCESS_TIER="Cold"
+# AZURE_STORAGE_ACCESS_TIER=""
 
-# DROPBOX_REMOTE_PATH="/my/directory"
+### DROPBOX ###
+
+# The remote path to the directory backups will be stored in.
+# Example: "/my/directory"
+
+# DROPBOX_REMOTE_PATH=""
 
 # Number of concurrent chunked uploads for Dropbox.
 # Values above 6 usually result in no enhancements.
@@ -289,6 +316,8 @@ You can populate below template according to your requirements and use it as you
 # Refresh token to request new short-lived tokens (OAuth2). Consult README to see how to get one.
 
 # DROPBOX_REFRESH_TOKEN=""
+
+### LOCAL FILESTORAGE ###
 
 # In addition to storing backups remotely, you can also keep local copies.
 # Pass a container-local path to store your backups if needed. You also need to
@@ -311,10 +340,10 @@ You can populate below template according to your requirements and use it as you
 # for such files, or to configure BACKUP_PRUNING_PREFIX to limit
 # removal to certain files.
 
-# Define this value to enable automatic rotation of old backups. The value
+# Pass a positive integer value to enable automatic rotation of old backups. The value
 # declares the number of days for which a backup is kept.
 
-# BACKUP_RETENTION_DAYS="7"
+# BACKUP_RETENTION_DAYS="-1"
 
 # In case the duration a backup takes fluctuates noticeably in your setup
 # you can adjust this setting to make sure there are no race conditions
@@ -333,7 +362,7 @@ You can populate below template according to your requirements and use it as you
 # you can set BACKUP_PRUNING_PREFIX to `db-backup-` and make sure
 # unrelated files are not affected by the rotation mechanism.
 
-# BACKUP_PRUNING_PREFIX="backup-"
+# BACKUP_PRUNING_PREFIX=""
 
 ########### BACKUP ENCRYPTION
 
@@ -342,26 +371,22 @@ You can populate below template according to your requirements and use it as you
 
 # Backups can be encrypted symmetrically using gpg in case a passphrase is given.
 
-# GPG_PASSPHRASE="<xxx>"
+# GPG_PASSPHRASE=""
 
 # Backups can be encrypted asymmetrically using gpg in case publickeys are given.
+# You can use pipe syntax to pass a multiline value.
 
-# GPG_PUBLIC_KEY_RING= | 
-#-----BEGIN PGP PUBLIC KEY BLOCK-----
-#
-#D/cIHu6GH/0ghlcUVSbgMg5RRI5QKNNKh04uLAPxr75mKwUg0xPUaWgyyrAChVBi
-#...
-#-----END PGP PUBLIC KEY BLOCK-----
+# GPG_PUBLIC_KEY_RING=""
 
 # Backups can be encrypted symmetrically using age in case a passphrase is given.
 
-# AGE_PASSPHRASE="<xxx>"
+# AGE_PASSPHRASE=""
 
 # Backups can be encrypted asymmetrically using age in case publickeys are given.
 # Multiple keys need to be provided as a comma separated list. Right now, this
 # supports `age` and `ssh` keys
 
-# AGE_PUBLIC_KEYS="<xxx>"
+# AGE_PUBLIC_KEYS=""
 
 ########### STOPPING CONTAINERS AND SERVICES DURING BACKUP
 
@@ -369,14 +394,13 @@ You can populate below template according to your requirements and use it as you
 # `docker-volume-backup.stop-during-backup` label. By default, all containers and
 # services that are labeled with `true` will be stopped. If you need more fine
 # grained control (e.g. when running multiple containers based on this image),
-# you can override this default by specifying a different value here.
-# BACKUP_STOP_DURING_BACKUP_LABEL="service1"
+# you can override this default by specifying a different string value here.
+# BACKUP_STOP_DURING_BACKUP_LABEL="true"
 
 # When trying to scale down Docker Swarm services, give up after
 # the specified amount of time in case the service has not converged yet.
 # In case you need to adjust this timeout, supply a duration
 # value as per https://pkg.go.dev/time#ParseDuration to `BACKUP_STOP_SERVICE_TIMEOUT`.
-# Defaults to 5 minutes.
 
 # BACKUP_STOP_SERVICE_TIMEOUT="5m"
 
@@ -391,13 +415,13 @@ You can populate below template according to your requirements and use it as you
 # is configured to be "true", command execution output will be forwarded to
 # the backup container's stdout and stderr.
 
-# EXEC_FORWARD_OUTPUT="true"
+# EXEC_FORWARD_OUTPUT="false"
 
 # Without any further configuration, all commands defined in labels will be
 # run before and after a backup. If you need more fine grained control, you
 # can use this option to set a label that will be used for narrowing down
-# the set of eligible containers. When set, an eligible container will also need
-# to be labeled as `docker-volume-backup.exec-label=database`.
+# the set of eligible containers. E.g. when setting this to `database`,
+# an eligible container will also need to be labeled as `docker-volume-backup.exec-label=database`.
 
 # EXEC_LABEL="database"
 
@@ -410,10 +434,11 @@ You can populate below template according to your requirements and use it as you
 # on how to do this can be found in the README. When providing multiple URLs or
 # an URL that contains a comma, the values can be URL encoded to avoid ambiguities.
 
-# The below URL demonstrates how to send an email using the provided SMTP
+# The following example URL demonstrates how to send an email using the provided SMTP
 # configuration and credentials.
+# Example: "smtp://username:password@host:587/?fromAddress=sender@example.com&toAddresses=recipient@example.com"
 
-# NOTIFICATION_URLS=smtp://username:password@host:587/?fromAddress=sender@example.com&toAddresses=recipient@example.com
+# NOTIFICATION_URLS=""
 
 # By default, notifications would only be sent out when a backup run fails
 # To receive notifications for every run, set `NOTIFICATION_LEVEL` to `info`
@@ -425,8 +450,9 @@ You can populate below template according to your requirements and use it as you
 
 # If you are interfacing with Docker via TCP you can set the Docker host here
 # instead of mounting the Docker socket as a volume. This is unset by default.
+# Example: "tcp://docker_socket_proxy:2375"
 
-# DOCKER_HOST="tcp://docker_socket_proxy:2375"
+# DOCKER_HOST=""
 
 ########### LOCK_TIMEOUT
 
@@ -453,20 +479,21 @@ You can populate below template according to your requirements and use it as you
 # The recipient(s) of the notification. Supply a comma separated list
 # of addresses if you want to notify multiple recipients. If this is
 # not set, no emails will be sent.
+# Example: "you@example.com"
 
-# EMAIL_NOTIFICATION_RECIPIENT="you@example.com"
+# EMAIL_NOTIFICATION_RECIPIENT=""
 
-# The "From" header of the sent email. Defaults to `noreply@nohost`.
+# The "From" header of the sent email.
+# Example: "no-reply@example.com"
 
-# EMAIL_NOTIFICATION_SENDER="no-reply@example.com"
+# EMAIL_NOTIFICATION_SENDER="noreply@nohost"
 
 # Configuration and credentials for the SMTP server to be used.
-# EMAIL_SMTP_PORT defaults to 587.
 
-# EMAIL_SMTP_HOST="posteo.de"
-# EMAIL_SMTP_PASSWORD="<xxx>"
-# EMAIL_SMTP_USERNAME="no-reply@example.com"
-# EMAIL_SMTP_PORT="<port>"
+# EMAIL_SMTP_HOST=""
+# EMAIL_SMTP_PASSWORD=""
+# EMAIL_SMTP_USERNAME=""
+# EMAIL_SMTP_PORT="587"
 ```
 {% endraw %}
 
