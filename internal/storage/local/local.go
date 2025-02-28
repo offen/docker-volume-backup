@@ -96,7 +96,7 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 			)
 		}
 
-		if fi.Mode()&os.ModeSymlink != os.ModeSymlink {
+		if !fi.IsDir() && fi.Mode()&os.ModeSymlink != os.ModeSymlink {
 			candidates = append(candidates, candidate)
 		}
 	}

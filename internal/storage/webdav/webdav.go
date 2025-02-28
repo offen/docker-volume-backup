@@ -90,24 +90,25 @@ func (b *webDavStorage) Prune(deadline time.Time, pruningPrefix string) (*storag
 	if err != nil {
 		return nil, errwrap.Wrap(err, "error looking up candidates from remote storage")
 	}
+
 	var matches []fs.FileInfo
-	var lenCandidates int
+	var numCandidates int
 	for _, candidate := range candidates {
-		if !strings.HasPrefix(candidate.Name(), pruningPrefix) {
+		if candidate.IsDir() || !strings.HasPrefix(candidate.Name(), pruningPrefix) {
 			continue
 		}
-		lenCandidates++
+		numCandidates++
 		if candidate.ModTime().Before(deadline) {
 			matches = append(matches, candidate)
 		}
 	}
 
 	stats := &storage.PruneStats{
-		Total:  uint(lenCandidates),
+		Total:  uint(numCandidates),
 		Pruned: uint(len(matches)),
 	}
 
-	pruneErr := b.DoPrune(b.Name(), len(matches), lenCandidates, deadline, func() error {
+	pruneErr := b.DoPrune(b.Name(), len(matches), numCandidates, deadline, func() error {
 		for _, match := range matches {
 			if err := b.client.Remove(path.Join(b.DestinationPath, match.Name())); err != nil {
 				return errwrap.Wrap(err, "error removing file")
