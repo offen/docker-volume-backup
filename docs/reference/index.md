@@ -9,7 +9,7 @@ nav_order: 2
 Backup targets, schedule and retention are configured using environment variables.
 
 {: .note }
-You can use any environment variable from below also with a `_FILE` suffix to be able to load the value from a file.
+As per established convention, you can use any environment variable key from below with a `_FILE` suffix in order to load the value from a file instead.
 This is typically useful when using [Docker Secrets](https://docs.docker.com/engine/swarm/secrets/) or similar.
 Note that secrets will not be trimmed of leading or trailing whitespace.
 
@@ -24,7 +24,7 @@ The values for each key currently match its default.
 ```
 ########### BACKUP SCHEDULE
 
-
+# Backups can be run on fixed scheduled that are defined as a cron expression.
 # A cron expression represents a set of times, using 5 or 6 space-separated fields.
 #
 # Field name   | Mandatory? | Allowed values  | Allowed special characters
@@ -38,16 +38,22 @@ The values for each key currently match its default.
 #
 # Month and Day-of-week field values are case insensitive.
 # "SUN", "Sun", and "sun" are equally accepted.
-# If no value is set, `@daily` will be used.
 # If you do not want the cron to ever run, use `0 0 5 31 2 ?`.
+# Refer to sites like <https://crontab.guru> for help.
+# If no value is set, `@daily` will be used, which runs every
+# day at midnight.
 
 # BACKUP_CRON_EXPRESSION="@daily"
+
+# ---
 
 # The compression algorithm used in conjunction with tar.
 # Valid options are: "gz" (Gzip), "zst" (Zstd) or "none" (tar only).
 # Default is "gz". Note that the selection affects the file extension.
 
 # BACKUP_COMPRESSION="gz"
+
+# ---
 
 # Parallelism level for "gz" (Gzip) compression.
 # Defines how many blocks of data are concurrently processed.
@@ -56,8 +62,10 @@ The values for each key currently match its default.
 
 # GZIP_PARALLELISM="1"
 
-# The name of the backup file including the extension.
-# Format verbs will be replaced as in `strftime`. Omitting them
+# ---
+
+# The desired name of the backup file including the extension.
+# Format verbs will be replaced as in `strftime`. Omitting all verbs
 # will result in the same filename for every backup run, which means previous
 # versions will be overwritten on subsequent runs.
 # Extension can be defined literally or via "{{ .Extension }}" template,
@@ -66,6 +74,8 @@ The values for each key currently match its default.
 # The default results in filenames like: `backup-2021-08-29T04-00-00.tar.gz`.
 
 # BACKUP_FILENAME="backup-%Y-%m-%dT%H-%M-%S.{{ .Extension }}"
+
+# ---
 
 # Setting BACKUP_FILENAME_EXPAND to true allows for environment variable
 # placeholders in BACKUP_FILENAME, BACKUP_LATEST_SYMLINK and in
@@ -77,11 +87,15 @@ The values for each key currently match its default.
 
 # BACKUP_FILENAME_EXPAND="true"
 
+# ---
+
 # When storing local backups, a symlink to the latest backup can be created
 # in case a value is given for this key. This has no effect on remote backups.
 # Example: "backup.latest.tar.gz"
 
 # BACKUP_LATEST_SYMLINK=""
+
+# ---
 
 # ************************************************************************
 # The BACKUP_FROM_SNAPSHOT option has been deprecated and will be removed
@@ -95,31 +109,35 @@ The values for each key currently match its default.
 
 # BACKUP_FROM_SNAPSHOT="false"
 
-# By default, the `/backup` directory inside the container will be backed up.
-# In case you need to use a custom location, set `BACKUP_SOURCES`.
+# ---
+
+# By default, the contents of the `/backup` directory inside the container
+# will be backed up. In case you need to use a custom location, set `BACKUP_SOURCES`.
 # Example: "/other/location"
 
 # BACKUP_SOURCES="/backup"
 
-# When given, all files in BACKUP_SOURCES whose full path matches the given
+# ---
+
+# When a value is given, all files in BACKUP_SOURCES whose full path matches the
 # regular expression will be excluded from the archive. Regular Expressions
 # can be used as from the Go standard library https://pkg.go.dev/regexp
 # Example: "\.log$"
 
 # BACKUP_EXCLUDE_REGEXP=""
 
+# ---
+
 # Exclude one or many storage backends from the pruning process.
+# Available backends are: S3, WebDAV, SSH, Local, Dropbox, Azure
 # E.g. with one backend excluded: BACKUP_SKIP_BACKENDS_FROM_PRUNE=s3
 # E.g. with multiple backends excluded: BACKUP_SKIP_BACKENDS_FROM_PRUNE=s3,webdav
-# Available backends are: S3, WebDAV, SSH, Local, Dropbox, Azure
 # Note: The names of the backends are case insensitive. 
 # Default: All backends get pruned.
 
 # BACKUP_SKIP_BACKENDS_FROM_PRUNE=""
 
-########### BACKUP STORAGE
-
-### S3-COMPATIBLE STORAGE ###
+########### S3 COMPATIBLE STORAGE
 
 # The name of the remote bucket that should be used for storing backups. If
 # this is not set, no remote backups will be stored.
@@ -127,11 +145,15 @@ The values for each key currently match its default.
 
 # AWS_S3_BUCKET_NAME=""
 
+# ---
+
 # If you want to store the backup in a non-root location on your bucket
 # you can provide a path. The path must not contain a leading slash.
 # Example: "my/backup/location"
 
 # AWS_S3_PATH=""
+
+# ---
 
 # Define credentials for authenticating against the backup storage and a bucket
 # name. Although all of these keys are `AWS`-prefixed, the setup can be used
@@ -140,6 +162,8 @@ The values for each key currently match its default.
 # AWS_ACCESS_KEY_ID=""
 # AWS_SECRET_ACCESS_KEY=""
 
+# ---
+
 # Instead of providing static credentials, you can also use IAM instance profiles
 # or similar to provide authentication. Some possible configuration options on AWS:
 # - EC2: http://169.254.169.254
@@ -147,18 +171,23 @@ The values for each key currently match its default.
 
 # AWS_IAM_ROLE_ENDPOINT=""
 
+# ---
+
 # This is the FQDN of your storage server, e.g. `storage.example.com`.
-# There is no need to set this when working against AWS S3 (the default value is
-# `s3.amazonaws.com`).
 # If you need to set a specific (non-https) protocol, you will need to use the option below.
+# The default value points to the standard AWS S3 endpoint.
 
 # AWS_ENDPOINT="s3.amazonaws.com"
 
-# The protocol to be used when communicating with your storage server.
+# ---
+
+# The protocol to be used when communicating with your S3 storage server.
 # Defaults to "https". You can set this to "http" when communicating with
-# a different Docker container on the same host for example.
+# a different Docker container in the same virtual network for example.
 
 # AWS_ENDPOINT_PROTO="https"
+
+# ---
 
 # Setting this variable to `true` will disable verification of
 # SSL certificates for AWS_ENDPOINT. You shouldn't use this unless you use
@@ -167,35 +196,43 @@ The values for each key currently match its default.
 
 # AWS_ENDPOINT_INSECURE="false"
 
+# ---
+
 # If you wish to use self signed certificates your S3 server, you can pass
 # the location of a PEM encoded CA certificate and it will be used for
-# validating your certificates.
-# Alternatively, pass a PEM encoded string containing the certificate.
+# validating your certificates. Alternatively, pass a PEM encoded string
+# containing the certificate.
 # Example: "/path/to/cert.pem"
 
 # AWS_ENDPOINT_CA_CERT=""
 
-# Setting this variable will change the S3 storage class header.
-# Defaults to using the standard class when no value is given.
+# ---
+
+# Setting a value for this key will change the S3 storage class header.
+# Default behavior is to use the standard class when no value is given.
 # Example: "GLACIER"
 
 # AWS_STORAGE_CLASS=""
 
+# ---
+
 # Setting this variable will change the S3 default part size for the copy step.
 # This value is useful when you want to upload large files.
-# NB : While using Scaleway as S3 provider, be aware that the parts counter is set to 1.000.
+# NB: While using Scaleway as S3 provider, be aware that the parts counter is set to 1.000.
 # While Minio uses a hard coded value to 10.000. As a workaround, try to set a higher value.
 # Defaults to "16" (MB) if unset (from minio), you can set this value according to your needs.
 # The unit is in MB and an integer.
 
 # AWS_PART_SIZE="16"
 
-### WEBDAV STORAGE ###
+########### WEBDAV STORAGE
 
 # The URL of the remote WebDAV server
 # Example: "https://webdav.example.com"
 
 # WEBDAV_URL=""
+
+# ---
 
 # The Directory to place the backups to on the WebDAV server.
 # If the path is not present on the server it will be created.
@@ -203,60 +240,78 @@ The values for each key currently match its default.
 
 # WEBDAV_PATH=""
 
+# ---
+
 # The username for the WebDAV server
 # Example: "user"
 
 # WEBDAV_USERNAME=""
+
+# ---
 
 # The password for the WebDAV server
 # Example: "password"
 
 # WEBDAV_PASSWORD=""
 
-# Setting this variable to `true` will disable verification of
+# ---
+
+# Setting this variable to "true" will disable verification of
 # SSL certificates for WEBDAV_URL. You shouldn't use this unless you use
 # self-signed certificates for your remote storage backend.
 
 # WEBDAV_URL_INSECURE="false"
 
-### SSH STORAGE ###
+########### SSH/SFTP STORAGE
 
-# The URL of the remote SSH server
+# The FQDN of the remote SSH server
 # Example: "server.local"
 
 # SSH_HOST_NAME=""
 
+# ---
+
 # The port of the remote SSH server
 
 # SSH_PORT="22"
+
+# ---
 
 # The Directory to place the backups to on the SSH server.
 # Example: "/home/user/backups"
 
 # SSH_REMOTE_PATH=""
 
+# ---
+
 # The username for the SSH server
 # Example: "user"
 
 # SSH_USER=""
+
+# ---
 
 # The password for the SSH server
 # Example: "password"
 
 # SSH_PASSWORD=""
 
-# The private key path in container for SSH server
-# If file is mounted to /root/.ssh/id_rsa path it will be used. Non-RSA keys will
-# also work.
+# ---
+
+# The private key path in container for SSH server.
+# Consumers can mount a file into /root/.ssh/id_rsa (or the respective value)
+# in order to have it being used. Non-RSA keys (e.g. ed25519) will also work.
 
 # SSH_IDENTITY_FILE="/root/.ssh/id_rsa"
 
-# The passphrase for the identity file
+# ---
+
+# The passphrase for the identity file if applicable
 # Example: "pass"
 
 # SSH_IDENTITY_PASSPHRASE=""
 
-### AZURE BLOB STORAGE ###
+########### AZURE BLOB STORAGE
 
 # The credential's account name when using Azure Blob Storage. This has to be
 # set when using Azure Blob Storage.
@@ -264,31 +319,37 @@ The values for each key currently match its default.
 
 # AZURE_STORAGE_ACCOUNT_NAME=""
 
+# ---
+
 # The credential's primary account key when using Azure Blob Storage. If this
 # is not given, the command tries to fall back to using a connection string
-# (if given) or a managed identity (if nothing is given).
+# (if given) or a managed identity (if neither is set).
 
 # AZURE_STORAGE_PRIMARY_ACCOUNT_KEY=""
 
+# ---
+
 # A connection string for accessing Azure Blob Storage. If this
 # is not given, the command tries to fall back to using a primary account key
-# (if given) or a managed identity (if nothing is given).
+# (if given) or a managed identity (if neither is set).
 
 # AZURE_STORAGE_CONNECTION_STRING=""
+
+# ---
 
 # The container name when using Azure Blob Storage.
 # Example: "container-name"
 
 # AZURE_STORAGE_CONTAINER_NAME=""
 
+# ---
+
 # The service endpoint when using Azure Blob Storage. This is a template that
 # can be passed the account name as shown in the default value below.
 
 # AZURE_STORAGE_ENDPOINT="https://{{ .AccountName }}.blob.core.windows.net/"
 
-# Absolute remote path in your Dropbox where the backups shall be stored.
-# Note: Use your app's subpath in Dropbox, if it doesn't have global access.
-# Consulte the README for further information.
+# ---
 
 # The access tier when using Azure Blob Storage. Possible values are
 # https://github.com/Azure/azure-sdk-for-go/blob/sdk/storage/azblob/v1.3.2/sdk/storage/azblob/internal/generated/zz_constants.go#L14-L30
@@ -296,28 +357,36 @@ The values for each key currently match its default.
 
 # AZURE_STORAGE_ACCESS_TIER=""
 
-### DROPBOX ###
+########### DROPBOX STORAGE
 
-# The remote path to the directory backups will be stored in.
+# Absolute remote path in your Dropbox where the backups shall be stored.
+# Note: Use your app's subpath in Dropbox, if it doesn't have global access.
+# Consult the README for further information.
 # Example: "/my/directory"
 
 # DROPBOX_REMOTE_PATH=""
 
-# Number of concurrent chunked uploads for Dropbox.
-# Values above 6 usually result in no enhancements.
-
-# DROPBOX_CONCURRENCY_LEVEL="6"
+# ---
 
 # App key and app secret from your app created at https://www.dropbox.com/developers/apps/info
 
 # DROPBOX_APP_KEY=""
 # DROPBOX_APP_SECRET=""
 
+# ---
+
+# Number of concurrent chunked uploads for Dropbox.
+# Values above 6 usually result in no enhancements.
+
+# DROPBOX_CONCURRENCY_LEVEL="6"
+
+# ---
+
 # Refresh token to request new short-lived tokens (OAuth2). Consult README to see how to get one.
 
 # DROPBOX_REFRESH_TOKEN=""
 
-### LOCAL FILESTORAGE ###
+########### LOCAL FILE STORAGE
 
 # In addition to storing backups remotely, you can also keep local copies.
 # Pass a container-local path to store your backups if needed. You also need to
@@ -340,10 +409,12 @@ The values for each key currently match its default.
 # for such files, or to configure BACKUP_PRUNING_PREFIX to limit
 # removal to certain files.
 
-# Pass a positive integer value to enable automatic rotation of old backups. The value
-# declares the number of days for which a backup is kept.
+# Pass zero or a positive integer value to enable automatic rotation of
+# old backups. The value declares the number of days for which a backup is kept.
 
 # BACKUP_RETENTION_DAYS="-1"
+
+# ---
 
 # In case the duration a backup takes fluctuates noticeably in your setup
 # you can adjust this setting to make sure there are no race conditions
@@ -354,6 +425,8 @@ The values for each key currently match its default.
 # one minute is used.
 
 # BACKUP_PRUNING_LEEWAY="1m"
+
+# ---
 
 # In case your target bucket or directory contains other files than the ones
 # managed by this container, you can limit the scope of rotation by setting
@@ -373,14 +446,20 @@ The values for each key currently match its default.
 
 # GPG_PASSPHRASE=""
 
+# ---
+
 # Backups can be encrypted asymmetrically using gpg in case publickeys are given.
 # You can use pipe syntax to pass a multiline value.
 
 # GPG_PUBLIC_KEY_RING=""
 
+# ---
+
 # Backups can be encrypted symmetrically using age in case a passphrase is given.
 
 # AGE_PASSPHRASE=""
+
+# ---
 
 # Backups can be encrypted asymmetrically using age in case publickeys are given.
 # Multiple keys need to be provided as a comma separated list. Right now, this
@@ -404,7 +483,7 @@ The values for each key currently match its default.
 
 # BACKUP_STOP_SERVICE_TIMEOUT="5m"
 
-########### EXECUTING COMMANDS IN CONTAINERS PRE/POST BACKUP
+########### EXECUTING COMMANDS IN CONTAINERS DURING THE BACKUP LIFECYCLE
 
 # It is possible to define commands to be run in any container before and after
 # a backup is conducted. The commands themselves are defined in labels like
@@ -417,13 +496,15 @@ The values for each key currently match its default.
 
 # EXEC_FORWARD_OUTPUT="false"
 
+# ---
+
 # Without any further configuration, all commands defined in labels will be
 # run before and after a backup. If you need more fine grained control, you
 # can use this option to set a label that will be used for narrowing down
 # the set of eligible containers. E.g. when setting this to `database`,
 # an eligible container will also need to be labeled as `docker-volume-backup.exec-label=database`.
 
-# EXEC_LABEL="database"
+# EXEC_LABEL=""
 
 ########### NOTIFICATIONS
 
@@ -439,6 +520,8 @@ The values for each key currently match its default.
 # Example: "smtp://username:password@host:587/?fromAddress=sender@example.com&toAddresses=recipient@example.com"
 
 # NOTIFICATION_URLS=""
+
+# ---
 
 # By default, notifications would only be sent out when a backup run fails
 # To receive notifications for every run, set `NOTIFICATION_LEVEL` to `info`
@@ -483,10 +566,14 @@ The values for each key currently match its default.
 
 # EMAIL_NOTIFICATION_RECIPIENT=""
 
+# ---
+
 # The "From" header of the sent email.
 # Example: "no-reply@example.com"
 
 # EMAIL_NOTIFICATION_SENDER="noreply@nohost"
+
+# ---
 
 # Configuration and credentials for the SMTP server to be used.
 
