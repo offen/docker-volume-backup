@@ -163,21 +163,24 @@ func (b *sshStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.P
 	}
 
 	var matches []string
+	var numCandidates int
 	for _, candidate := range candidates {
-		if !strings.HasPrefix(candidate.Name(), pruningPrefix) {
+		if candidate.IsDir() || !strings.HasPrefix(candidate.Name(), pruningPrefix) {
 			continue
 		}
+
+		numCandidates++
 		if candidate.ModTime().Before(deadline) {
 			matches = append(matches, candidate.Name())
 		}
 	}
 
 	stats := &storage.PruneStats{
-		Total:  uint(len(candidates)),
+		Total:  uint(numCandidates),
 		Pruned: uint(len(matches)),
 	}
 
-	pruneErr := b.DoPrune(b.Name(), len(matches), len(candidates), deadline, func() error {
+	pruneErr := b.DoPrune(b.Name(), len(matches), numCandidates, deadline, func() error {
 		for _, match := range matches {
 			if err := b.sftpClient.Remove(path.Join(b.DestinationPath, match)); err != nil {
 				return errwrap.Wrap(err, "error removing file")
