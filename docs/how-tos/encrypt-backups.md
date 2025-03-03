@@ -21,12 +21,10 @@ gpg -o backup.tar.gz -d backup.tar.gz.gpg
 
 ## Using age encryption
 
-{: .note }
-Even though the `age` CLI tools supports encryption using SSH keys, this is not supported by this tool.
-`AGE_PUBLIC_KEYS` currently expects `age` keys to be given.
-
 age allows backups to be encrypted with either a symmetric key (password) or a public key. One of those options are available for use.
 
 Given `AGE_PASSPHRASE` being provided, the backup archive will be encrypted with the passphrase and saved as a `.age` file instead. Refer to age documentation for how to properly decrypt.
 
 Given `AGE_PUBLIC_KEYS` being provided (allowing multiple by separating each public key with `,`), the backup archive will be encrypted with the provided public keys. It will also result in the archive being saved as a `.age` file.
+
+You can use SSH keys in addition to `age` keys for encryption; `AGE_PUBLIC_KEYS` accepts both.
