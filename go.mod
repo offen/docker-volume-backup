@@ -23,7 +23,7 @@ require (
 	golang.org/x/crypto v0.33.0
 	golang.org/x/oauth2 v0.28.0
 	golang.org/x/sync v0.11.0
-	mvdan.cc/sh/v3 v3.10.0
+	mvdan.cc/sh/v3 v3.11.0
 )
 
 require (
