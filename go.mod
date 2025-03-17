@@ -17,7 +17,7 @@ require (
 	github.com/minio/minio-go/v7 v7.0.88
 	github.com/offen/envconfig v1.5.0
 	github.com/otiai10/copy v1.14.1
-	github.com/pkg/sftp v1.13.7
+	github.com/pkg/sftp v1.13.8
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/studio-b12/gowebdav v0.10.0
 	golang.org/x/crypto v0.35.0
