@@ -368,7 +368,7 @@ The values for each key currently match its default.
 
 # ---
 
-# App key and app secret from your app created at https://www.dropbox.com/developers/apps/info
+# App key and app secret from your app created at https://www.dropbox.com/developers/apps
 
 # DROPBOX_APP_KEY=""
 # DROPBOX_APP_SECRET=""
