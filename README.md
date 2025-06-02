@@ -78,6 +78,10 @@ docker run --rm \
 
 Alternatively, pass a `--env-file` in order to use a full config as described [in the docs](https://offen.github.io/docker-volume-backup/reference/).
 
+### Looking for help?
+
+In case your are looking for help or guidance on how to incorporate docker-volume-backup into your existing setup, consider [becoming a sponsor](https://github.com/sponsors/offen?frequency=one-time) and book a one hour consulting session.
+
 ---
 
 Copyright &copy; 2024 <a target="_blank" href="https://www.offen.software">offen.software</a> and contributors.
