@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/docker/cli/cli/command/service/progress"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	ctr "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -24,7 +23,7 @@ import (
 )
 
 func scaleService(cli *client.Client, serviceID string, replicas uint64) ([]string, error) {
-	service, _, err := cli.ServiceInspectWithRaw(context.Background(), serviceID, types.ServiceInspectOptions{})
+	service, _, err := cli.ServiceInspectWithRaw(context.Background(), serviceID, swarm.ServiceInspectOptions{})
 	if err != nil {
 		return nil, errwrap.Wrap(err, fmt.Sprintf("error inspecting service %s", serviceID))
 	}
@@ -36,7 +35,7 @@ func scaleService(cli *client.Client, serviceID string, replicas uint64) ([]stri
 		return nil, errwrap.Wrap(nil, fmt.Sprintf("service to be scaled %s has to be in replicated mode", service.Spec.Name))
 	}
 
-	response, err := cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, types.ServiceUpdateOptions{})
+	response, err := cli.ServiceUpdate(context.Background(), service.ID, service.Version, service.Spec, swarm.ServiceUpdateOptions{})
 	if err != nil {
 		return nil, errwrap.Wrap(err, "error updating service")
 	}
@@ -142,11 +141,11 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 	var allServices []swarm.Service
 	var servicesToScaleDown []handledSwarmService
 	if isDockerSwarm {
-		allServices, err = s.cli.ServiceList(context.Background(), types.ServiceListOptions{})
+		allServices, err = s.cli.ServiceList(context.Background(), swarm.ServiceListOptions{})
 		if err != nil {
 			return noop, errwrap.Wrap(err, "error querying for services")
 		}
-		matchingServices, err := s.cli.ServiceList(context.Background(), types.ServiceListOptions{
+		matchingServices, err := s.cli.ServiceList(context.Background(), swarm.ServiceListOptions{
 			Filters: filters.NewArgs(filters.KeyValuePair{
 				Key:   "label",
 				Value: filterMatchLabel,
@@ -177,7 +176,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 	if isDockerSwarm {
 		for _, container := range containersToStop {
 			if swarmServiceID, ok := container.Labels["com.docker.swarm.service.id"]; ok {
-				parentService, _, err := s.cli.ServiceInspectWithRaw(context.Background(), swarmServiceID, types.ServiceInspectOptions{})
+				parentService, _, err := s.cli.ServiceInspectWithRaw(context.Background(), swarmServiceID, swarm.ServiceInspectOptions{})
 				if err != nil {
 					return noop, errwrap.Wrap(err, fmt.Sprintf("error querying for parent service with ID %s", swarmServiceID))
 				}
@@ -216,7 +215,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		)
 	}
 
-	var stoppedContainers []types.Container
+	var stoppedContainers []container.Summary
 	var stopErrors []error
 	for _, container := range containersToStop {
 		if err := s.cli.ContainerStop(context.Background(), container.ID, ctr.StopOptions{}); err != nil {
@@ -293,7 +292,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				// in case a container was part of a swarm service, the service requires to
 				// be force updated instead of restarting the container as it would otherwise
 				// remain in a "completed" state
-				service, _, err := s.cli.ServiceInspectWithRaw(context.Background(), swarmServiceID, types.ServiceInspectOptions{})
+				service, _, err := s.cli.ServiceInspectWithRaw(context.Background(), swarmServiceID, swarm.ServiceInspectOptions{})
 				if err != nil {
 					restartErrors = append(
 						restartErrors,
@@ -304,7 +303,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				service.Spec.TaskTemplate.ForceUpdate += 1
 				if _, err := s.cli.ServiceUpdate(
 					context.Background(), service.ID,
-					service.Version, service.Spec, types.ServiceUpdateOptions{},
+					service.Version, service.Spec, swarm.ServiceUpdateOptions{},
 				); err != nil {
 					restartErrors = append(restartErrors, err)
 				}
