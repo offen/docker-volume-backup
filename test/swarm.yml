@@ -1,0 +1,28 @@
+services:
+  node1:
+    image: docker:24-dind
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=
+    networks:
+      - dindnet
+
+  node2:
+    image: docker:24-dind
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=
+    networks:
+      - dindnet
+
+  node3:
+    image: docker:24-dind
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=
+    networks:
+      - dindnet
+
+networks:
+  dindnet:
+    driver: bridge

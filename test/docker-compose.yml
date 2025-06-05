@@ -1,0 +1,15 @@
+services:
+  manager:
+    privileged: true
+    image: offen/docker-volume-backup:test-sandbox
+    environment:
+      DOCKER_TLS_CERTDIR: ''
+    volumes:
+    - $SOURCE:/code
+    - $TARBALL:/cache/image.tar.gz
+    - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
+    - docker_volume_backup_test_sandbox_overlay2:/var/lib/docker/overlay2
+
+volumes:
+  docker_volume_backup_test_sandbox_image:
+  docker_volume_backup_test_sandbox_overlay2:

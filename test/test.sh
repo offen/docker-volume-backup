@@ -12,12 +12,7 @@ trap finish EXIT INT TERM
 
 finish () {
   rm -rf $(dirname $tarball)
-  if [ ! -z $(docker ps -aq --filter=name=$sandbox) ]; then
-    docker rm -f $(docker stop $sandbox)
-  fi
-  if [ ! -z $(docker volume ls -q --filter=name="^${sandbox}\$") ]; then
-    docker volume rm $sandbox
-  fi
+  docker compose down
 }
 
 docker build -t offen/docker-volume-backup:test-sandbox .
@@ -41,41 +36,20 @@ for dir in $(find $find_args | sort); do
   echo ""
 
   test="${dir}/run.sh"
-  docker_run_args="--name "$sandbox" --detach \
-    --privileged \
-    -v $(dirname $(pwd)):/code \
-    -v $tarball:/cache/image.tar.gz \
-    -v $sandbox:/var/lib/docker"
+  export TARBALL=$tarball
+  export SOURCE=$(dirname $(pwd))
+  docker compose up -d
 
-  if [ -z "$NO_IMAGE_CACHE" ]; then
-    docker_run_args="$docker_run_args \
-      -v "${sandbox}_image":/var/lib/docker/image \
-      -v "${sandbox}_overlay2":/var/lib/docker/overlay2"
-  fi
-
-  docker run $docker_run_args offen/docker-volume-backup:test-sandbox
-
-  retry_counter=0
-  until timeout 5 docker exec $sandbox /bin/sh -c 'docker info' > /dev/null 2>&1; do
-    if [ $retry_counter -gt 20 ]; then
-      echo "Gave up waiting for Docker daemon to become ready after 20 attempts"
-      exit 1
-    fi
-
-    if [ "$(docker inspect $sandbox --format '{{ .State.Running }}')" = "false" ]; then
-      docker rm $sandbox
-      docker run $docker_run_args offen/docker-volume-backup:test-sandbox
-    fi
-
-    sleep 0.5
-    retry_counter=$((retry_counter+1))
+  until $(docker compose exec manager /bin/sh -c 'docker info' > /dev/null 2>&1)
+  do
+    echo "Docker daemon not ready yet, retrying in 5s"
+    sleep 5
   done
 
-  docker exec $sandbox /bin/sh -c "docker load -i /cache/image.tar.gz"
-  docker exec -e TEST_VERSION=$IMAGE_TAG $sandbox /bin/sh -c "/code/test/$test"
+  docker compose exec manager /bin/sh -c "docker load -i /cache/image.tar.gz"
+  docker compose exec -e TEST_VERSION=$IMAGE_TAG manager /bin/sh -c "/code/test/$test"
 
-  docker rm $(docker stop $sandbox)
-  docker volume rm $sandbox
+  docker compose down
   echo ""
   echo "$test passed"
   echo ""
