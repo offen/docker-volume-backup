@@ -6,7 +6,7 @@ cd $(dirname $0)
 . ../util.sh
 current_test=$(basename $(pwd))
 
-docker swarm init
+# docker swarm init
 
 printf "test" | docker secret create minio_root_user -
 printf "GMusLtUmILge2by+z890kQ" | docker secret create minio_root_password -

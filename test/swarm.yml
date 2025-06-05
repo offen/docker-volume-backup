@@ -1,28 +1,47 @@
 services:
-  node1:
-    image: docker:24-dind
+  manager:
     privileged: true
+    image: offen/docker-volume-backup:test-sandbox
     environment:
-      - DOCKER_TLS_CERTDIR=
+      DOCKER_TLS_CERTDIR: ''
+    volumes:
+    - $SOURCE:/code
+    - $TARBALL:/cache/image.tar.gz
+    - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
+    - docker_volume_backup_test_sandbox_overlay2:/var/lib/docker/overlay2
     networks:
-      - dindnet
+      - sandbox
 
-  node2:
-    image: docker:24-dind
+  worker1:
     privileged: true
+    image: offen/docker-volume-backup:test-sandbox
     environment:
-      - DOCKER_TLS_CERTDIR=
+      DOCKER_TLS_CERTDIR: ''
+    volumes:
+    - $SOURCE:/code
+    - $TARBALL:/cache/image.tar.gz
+    - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
+    - docker_volume_backup_test_sandbox_overlay2:/var/lib/docker/overlay2
     networks:
-      - dindnet
+      - sandbox
 
-  node3:
-    image: docker:24-dind
+  worker2:
     privileged: true
+    image: offen/docker-volume-backup:test-sandbox
     environment:
-      - DOCKER_TLS_CERTDIR=
+      DOCKER_TLS_CERTDIR: ''
+    volumes:
+    - $SOURCE:/code
+    - $TARBALL:/cache/image.tar.gz
+    - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
+    - docker_volume_backup_test_sandbox_overlay2:/var/lib/docker/overlay2
     networks:
-      - dindnet
+      - sandbox
 
 networks:
-  dindnet:
+  sandbox:
     driver: bridge
+
+volumes:
+  docker_volume_backup_test_sandbox_image:
+  docker_volume_backup_test_sandbox_overlay2:
