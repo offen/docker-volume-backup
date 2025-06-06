@@ -39,14 +39,6 @@ Setting this value lets you run tests against different existing images, so you 
 IMAGE_TAG=v2.30.0 ./test.sh
 ```
 
-#### `NO_IMAGE_CACHE`
-
-When set, images from remote registries will not be cached and shared between sandbox containers.
-
-```sh
-NO_IMAGE_CACHE=1 ./test.sh
-```
-
 By default, two local images are created that persist the image data and provide it to containers at runtime.
 
 ## Understanding the test setup
@@ -68,3 +60,10 @@ cd "$(dirname "$0")"
 . ../util.sh
 current_test=$(basename $(pwd))
 ```
+
+### Running tests in swarm mode
+
+A test case can signal it wants to run in swarm mode by placing an empty `.swarm` file inside the directory.
+In case the swarm setup should be compose of multiple nodes, a `.multinode` file can be used.
+
+A multinode setup will contain one manager (`manager`) and two worker nodes (`worker1` and `worker2`).

@@ -7,13 +7,13 @@ IMAGE_TAG=${IMAGE_TAG:-canary}
 
 sandbox="docker_volume_backup_test_sandbox"
 tarball="$(mktemp -d)/image.tar.gz"
-compose_file="docker-compose.yml"
+compose_profile="default"
 
 trap finish EXIT INT TERM
 
 finish () {
   rm -rf $(dirname $tarball)
-  docker compose -f $compose_file down
+  docker compose --profile $compose_profile down
 }
 
 docker build -t offen/docker-volume-backup:test-sandbox .
@@ -40,15 +40,15 @@ for dir in $(find $find_args | sort); do
   export TARBALL=$tarball
   export SOURCE=$(dirname $(pwd))
 
-  if [ -f ${dir}/.multinodeswarm ]; then
-    compose_file="docker-compose.multinode.yml"
+  if [ -f ${dir}/.multinode ]; then
+    compose_profile="multinode"
   fi
 
-  docker compose -f $compose_file up -d --wait
+  docker compose --profile $compose_profile up -d --wait
 
   if [ -f "${dir}/.swarm" ]; then
     docker compose exec manager docker swarm init
-  elif [ -f "${dir}/.multinodeswarm" ]; then
+  elif [ -f "${dir}/.multinode" ]; then
     docker compose exec manager docker swarm init
     manager_ip=$(docker compose exec manager docker node inspect $(docker compose exec manager docker node ls -q) --format '{{ .Status.Addr }}')
     token=$(docker compose exec manager docker swarm join-token -q worker)
@@ -59,7 +59,7 @@ for dir in $(find $find_args | sort); do
   docker compose exec manager /bin/sh -c "docker load -i /cache/image.tar.gz"
   docker compose exec -e TEST_VERSION=$IMAGE_TAG manager /bin/sh -c "/code/test/$test"
 
-  docker compose -f $compose_file down
+  docker compose --profile $compose_profile down
   echo ""
   echo "$test passed"
   echo ""
