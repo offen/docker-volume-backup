@@ -7,17 +7,13 @@ IMAGE_TAG=${IMAGE_TAG:-canary}
 
 sandbox="docker_volume_backup_test_sandbox"
 tarball="$(mktemp -d)/image.tar.gz"
+compose_profile="default"
 
 trap finish EXIT INT TERM
 
 finish () {
   rm -rf $(dirname $tarball)
-  if [ ! -z $(docker ps -aq --filter=name=$sandbox) ]; then
-    docker rm -f $(docker stop $sandbox)
-  fi
-  if [ ! -z $(docker volume ls -q --filter=name="^${sandbox}\$") ]; then
-    docker volume rm $sandbox
-  fi
+  docker compose --profile $compose_profile down
 }
 
 docker build -t offen/docker-volume-backup:test-sandbox .
@@ -41,41 +37,29 @@ for dir in $(find $find_args | sort); do
   echo ""
 
   test="${dir}/run.sh"
-  docker_run_args="--name "$sandbox" --detach \
-    --privileged \
-    -v $(dirname $(pwd)):/code \
-    -v $tarball:/cache/image.tar.gz \
-    -v $sandbox:/var/lib/docker"
+  export TARBALL=$tarball
+  export SOURCE=$(dirname $(pwd))
 
-  if [ -z "$NO_IMAGE_CACHE" ]; then
-    docker_run_args="$docker_run_args \
-      -v "${sandbox}_image":/var/lib/docker/image \
-      -v "${sandbox}_overlay2":/var/lib/docker/overlay2"
+  if [ -f ${dir}/.multinode ]; then
+    compose_profile="multinode"
   fi
 
-  docker run $docker_run_args offen/docker-volume-backup:test-sandbox
+  docker compose --profile $compose_profile up -d --wait
 
-  retry_counter=0
-  until timeout 5 docker exec $sandbox /bin/sh -c 'docker info' > /dev/null 2>&1; do
-    if [ $retry_counter -gt 20 ]; then
-      echo "Gave up waiting for Docker daemon to become ready after 20 attempts"
-      exit 1
-    fi
+  if [ -f "${dir}/.swarm" ]; then
+    docker compose exec manager docker swarm init
+  elif [ -f "${dir}/.multinode" ]; then
+    docker compose exec manager docker swarm init
+    manager_ip=$(docker compose exec manager docker node inspect $(docker compose exec manager docker node ls -q) --format '{{ .Status.Addr }}')
+    token=$(docker compose exec manager docker swarm join-token -q worker)
+    docker compose exec worker1 docker swarm join --token $token $manager_ip:2377
+    docker compose exec worker2 docker swarm join --token $token $manager_ip:2377
+  fi
 
-    if [ "$(docker inspect $sandbox --format '{{ .State.Running }}')" = "false" ]; then
-      docker rm $sandbox
-      docker run $docker_run_args offen/docker-volume-backup:test-sandbox
-    fi
+  docker compose exec manager /bin/sh -c "docker load -i /cache/image.tar.gz"
+  docker compose exec -e TEST_VERSION=$IMAGE_TAG manager /bin/sh -c "/code/test/$test"
 
-    sleep 0.5
-    retry_counter=$((retry_counter+1))
-  done
-
-  docker exec $sandbox /bin/sh -c "docker load -i /cache/image.tar.gz"
-  docker exec -e TEST_VERSION=$IMAGE_TAG $sandbox /bin/sh -c "/code/test/$test"
-
-  docker rm $(docker stop $sandbox)
-  docker volume rm $sandbox
+  docker compose --profile $compose_profile down
   echo ""
   echo "$test passed"
   echo ""
