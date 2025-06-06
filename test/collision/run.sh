@@ -8,8 +8,6 @@ current_test=$(basename $(pwd))
 
 export LOCAL_DIR=$(mktemp -d)
 
-docker swarm init
-
 docker stack deploy --compose-file=docker-compose.yml test_stack
 
 while [ -z $(docker ps -q -f name=backup) ]; do

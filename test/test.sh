@@ -40,24 +40,20 @@ for dir in $(find $find_args | sort); do
   export TARBALL=$tarball
   export SOURCE=$(dirname $(pwd))
 
-  if [ -f ${dir}/.swarm ]; then
-    compose_file="swarm.yml"
+  if [ -f ${dir}/.multinodeswarm ]; then
+    compose_file="docker-compose.multinode.yml"
   fi
 
-  docker compose -f $compose_file up -d
+  docker compose -f $compose_file up -d --wait
 
-  until $(docker compose exec manager /bin/sh -c 'docker info' > /dev/null 2>&1)
-  do
-    echo "Docker daemon not ready yet, retrying in 2s"
-    sleep 2
-  done
-
-  if [ -f ${dir}/.swarm ]; then
+  if [ -f "${dir}/.swarm" ]; then
+    docker compose exec manager docker swarm init
+  elif [ -f "${dir}/.multinodeswarm" ]; then
     docker compose exec manager docker swarm init
     manager_ip=$(docker compose exec manager docker node inspect $(docker compose exec manager docker node ls -q) --format '{{ .Status.Addr }}')
     token=$(docker compose exec manager docker swarm join-token -q worker)
-    docker compose exec worker1 docker swarm join --token $token manager:2377
-    docker compose exec worker2 docker swarm join --token $token manager:2377
+    docker compose exec worker1 docker swarm join --token $token $manager_ip:2377
+    docker compose exec worker2 docker swarm join --token $token $manager_ip:2377
   fi
 
   docker compose exec manager /bin/sh -c "docker load -i /cache/image.tar.gz"

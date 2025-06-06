@@ -2,13 +2,16 @@ services:
   manager:
     privileged: true
     image: offen/docker-volume-backup:test-sandbox
-    environment:
-      DOCKER_TLS_CERTDIR: ''
+    healthcheck:
+      test: ["CMD", "docker", "info"]
+      interval: 1s
+      timeout: 5s
+      retries: 50
     volumes:
-    - $SOURCE:/code
-    - $TARBALL:/cache/image.tar.gz
-    - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
-    - docker_volume_backup_test_sandbox_overlay2:/var/lib/docker/overlay2
+      - $SOURCE:/code
+      - $TARBALL:/cache/image.tar.gz
+      - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
+      - docker_volume_backup_test_sandbox_overlay2:/var/lib/docker/overlay2
 
 volumes:
   docker_volume_backup_test_sandbox_image:

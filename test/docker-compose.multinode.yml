@@ -4,6 +4,11 @@ services:
     image: offen/docker-volume-backup:test-sandbox
     environment:
       DOCKER_TLS_CERTDIR: ''
+    healthcheck:
+      test: ["CMD", "docker", "info"]
+      interval: 1s
+      timeout: 5s
+      retries: 50
     volumes:
     - $SOURCE:/code
     - $TARBALL:/cache/image.tar.gz
@@ -15,6 +20,11 @@ services:
   worker1:
     privileged: true
     image: offen/docker-volume-backup:test-sandbox
+    healthcheck:
+      test: ["CMD", "docker", "info"]
+      interval: 1s
+      timeout: 5s
+      retries: 50
     environment:
       DOCKER_TLS_CERTDIR: ''
     volumes:
@@ -28,6 +38,11 @@ services:
   worker2:
     privileged: true
     image: offen/docker-volume-backup:test-sandbox
+    healthcheck:
+      test: ["CMD", "docker", "info"]
+      interval: 1s
+      timeout: 5s
+      retries: 50
     environment:
       DOCKER_TLS_CERTDIR: ''
     volumes:

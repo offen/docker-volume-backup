@@ -6,8 +6,6 @@ cd $(dirname $0)
 . ../util.sh
 current_test=$(basename $(pwd))
 
-docker swarm init
-
 docker stack deploy --compose-file=docker-compose.yml test_stack
 
 while [ -z $(docker ps -q -f name=backup) ]; do
