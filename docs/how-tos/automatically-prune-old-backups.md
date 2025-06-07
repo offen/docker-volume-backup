@@ -14,8 +14,6 @@ Be aware that this mechanism looks at __all files in the target bucket or archiv
 In case you need to use a target that cannot be used exclusively for your backups, you can configure `BACKUP_PRUNING_PREFIX` to limit which files are considered eligible for deletion:
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:

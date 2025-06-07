@@ -28,8 +28,6 @@ the `docker-volume-backup` container as shown in the Quickstart example.
 Taking a database dump using `mysqldump` would look like this:
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   database:
@@ -56,8 +54,6 @@ In case you use `EXEC_LABEL` together with configuration mounted from `conf.d` i
 Else, schedules that do not specify an `EXEC_LABEL` will still trigger commands on all containers with such labels, no matter whether they specify `docker-volume-backup.exec-label` or not.
 
 ```yml
-version: '3'
-
 services:
   database:
     image: mariadb
@@ -87,8 +83,6 @@ By default the backup command is executed by the user provided by the container'
 It is possible to specify a custom user that is used to run commands in dedicated labels with the format `docker-volume-backup.[step]-[pre|post].user`:
 
 ```yml
-version: '3'
-
 services:
   gitea:
     image: gitea/gitea

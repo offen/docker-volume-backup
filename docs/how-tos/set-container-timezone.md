@@ -12,8 +12,6 @@ As the image is designed to be as small as possible, additional timezone data is
 In case you want to run your cron rules in your local timezone (respecting DST and similar), you can mount your Docker host's `/etc/timezone` and `/etc/localtime` in read-only mode:
 
 ```yml
-version: '3'
-
 services:
   backup:
     image: offen/docker-volume-backup:v2

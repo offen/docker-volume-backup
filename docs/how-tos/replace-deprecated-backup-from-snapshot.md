@@ -11,8 +11,6 @@ Starting with version 2.15.0, the `BACKUP_FROM_SNAPSHOT` feature has been deprec
 If you need to prepare your sources before the backup is taken, use `archive-pre`, `archive-post` and an intermediate volume:
 
 ```yml
-version: '3'
-
 services:
   my_app:
     build: .

@@ -17,8 +17,6 @@ By default, any container that is labeled `docker-volume-backup.stop-during-back
 In case you need more fine grained control about which containers should be stopped (e.g. when backing up multiple volumes on different schedules), you can set the `BACKUP_STOP_DURING_BACKUP_LABEL` environment variable and then use the same value for labeling:
 
 ```yml
-version: '3'
-
 services:
   app:
     # definition for app ...

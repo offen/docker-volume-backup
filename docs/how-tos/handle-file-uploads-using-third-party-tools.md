@@ -20,8 +20,6 @@ RUN apk add rsync
 Using this image, you can now omit configuring any of the supported storage backends, and instead define your own mechanism in a `docker-volume-backup.copy-post` label:
 
 ```yml
-version: '3'
-
 services:
   backup:
     image: your-custom-image

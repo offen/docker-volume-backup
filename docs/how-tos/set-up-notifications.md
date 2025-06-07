@@ -12,8 +12,6 @@ parent: How Tos
 To send out email notifications on failed backup runs, provide SMTP credentials, a sender and a recipient:
 
 ```yml
-version: '3'
-
 services:
   backup:
     image: offen/docker-volume-backup:v2

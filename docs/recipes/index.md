@@ -15,8 +15,6 @@ This doc lists configuration for some real-world use cases that you can copy and
 ## Backing up to AWS S3
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -36,8 +34,6 @@ volumes:
 ## Backing up to Filebase
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -58,8 +54,6 @@ volumes:
 ## Backing up to MinIO
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -81,8 +75,6 @@ volumes:
 ## Backing up to MinIO (using Docker secrets)
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -112,8 +104,6 @@ secrets:
 ## Backing up to WebDAV
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -134,8 +124,6 @@ volumes:
 ## Backing up to SSH
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -157,8 +145,6 @@ volumes:
 ## Backing up to Azure Blob Storage
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -180,8 +166,6 @@ volumes:
 See [Dropbox Setup](../how-tos/set-up-dropbox.md) on how to get the appropriate environment values.
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -202,8 +186,6 @@ volumes:
 ## Backing up locally
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -223,8 +205,6 @@ volumes:
 ## Backing up to AWS S3 as well as locally
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -245,8 +225,6 @@ volumes:
 ## Running on a custom cron schedule
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -268,8 +246,6 @@ volumes:
 ## Rotating away backups that are older than 7 days
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -292,8 +268,6 @@ volumes:
 ## Encrypting your backups symmetrically using GPG
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -314,8 +288,6 @@ volumes:
 ## Encrypting your backups asymmetrically using GPG
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:
@@ -341,8 +313,6 @@ volumes:
 ## Using mariadb-dump/mysqldump to prepare the backup
 
 ```yml
-version: '3'
-
 services:
   database:
     image: mariadb:latest
@@ -367,8 +337,6 @@ volumes:
 ## Running multiple instances in the same setup
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data_1` and `data_2` volumes here
   backup_1: &backup_service
@@ -402,8 +370,6 @@ volumes:
 ## Running as a non-root user
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:

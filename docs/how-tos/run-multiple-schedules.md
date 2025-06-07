@@ -10,8 +10,6 @@ nav_order: 11
 Multiple backup schedules with different configuration can be configured by mounting an arbitrary number of configuration files (using the `.env` format) into `/etc/dockervolumebackup/conf.d`:
 
 ```yml
-version: '3'
-
 services:
   # ... define other services using the `data` volume here
   backup:

@@ -32,8 +32,6 @@ Code and documentation for `v1` versions are found on [this branch][v1-branch].
 Add a `backup` service to your compose setup and mount the volumes you would like to see backed up:
 
 ```yml
-version: '3'
-
 services:
   volume-consumer:
     build:
