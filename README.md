@@ -24,8 +24,6 @@ Documentation is found at <https://offen.github.io/docker-volume-backup>
 Add a `backup` service to your compose setup and mount the volumes you would like to see backed up:
 
 ```yml
-version: '3'
-
 services:
   volume-consumer:
     build:
