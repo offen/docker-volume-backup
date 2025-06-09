@@ -67,3 +67,11 @@ A test case can signal it wants to run in swarm mode by placing an empty `.swarm
 In case the swarm setup should be compose of multiple nodes, a `.multinode` file can be used.
 
 A multinode setup will contain one manager (`manager`) and two worker nodes (`worker1` and `worker2`).
+
+If a test is expected to run in the context of a node other than the `manager`, the hostname can be put in the `.multinode` file.
+
+> [!IMPORTANT]
+> When running against a multi-node setup and targeting a non-manager node, the test script will automatically deploy a stack named `test_stack` based on the compose file in the test directory.
+> This is required because the non-manager node cannot deploy the stack itself from within the test script.
+> This also means, you cannot mount local directories created in your test script, as the containers are already created when the script runs.
+> You can work around this limitation by creating named volumes and then `docker cp`ing the contents your test needs to inspect.

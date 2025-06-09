@@ -8,7 +8,8 @@ nav_order: 13
 # Use with Docker Swarm
 
 {: .note }
-The mechanisms described in this page __do only apply when Docker is running in [Swarm mode][swarm]__.
+The mechanisms described in this page __do only apply when Docker is running in [Swarm mode][swarm]__ and __when placing the `docker-volume-backup` container on a manager node__.
+Containers that are placed on worker nodes function as if the Docker engine is not running in Swarm mode, i.e. there is no access to services and there is no way to interact with resources that are running on different host nodes.
 
 [swarm]: https://docs.docker.com/engine/swarm/
 
