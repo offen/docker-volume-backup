@@ -45,13 +45,15 @@ for dir in $(find $find_args | sort); do
   fi
 
   docker compose --profile $compose_profile up -d --wait
-
   test_context=manager
+  if [ -f "${dir}/.multinode" ]; then
+    test_context=$(cat $dir/.multinode)
+  fi
+  docker compose exec $test_context /bin/sh -c "docker load -i /cache/image.tar.gz"
+
   if [ -f "${dir}/.swarm" ]; then
     docker compose exec manager docker swarm init
   elif [ -f "${dir}/.multinode" ]; then
-    test_context=$(cat $dir/.multinode)
-
     docker compose exec manager docker swarm init
     manager_ip=$(docker compose exec manager docker node inspect $(docker compose exec manager docker node ls -q) --format '{{ .Status.Addr }}')
     token=$(docker compose exec manager docker swarm join-token -q worker)
@@ -61,7 +63,6 @@ for dir in $(find $find_args | sort); do
     docker compose exec -w "/code/$dir" manager docker stack deploy --compose-file="docker-compose.yml" test_stack
   fi
 
-  docker compose exec $test_context /bin/sh -c "docker load -i /cache/image.tar.gz"
   docker compose exec -e TEST_VERSION=$IMAGE_TAG $test_context /bin/sh -c "/code/$test"
 
   docker compose --profile $compose_profile down

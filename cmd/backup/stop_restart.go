@@ -89,7 +89,7 @@ func isSwarm(c interface {
 	if err != nil {
 		return false, errwrap.Wrap(err, "error getting docker info")
 	}
-	return info.Swarm.LocalNodeState != "" && info.Swarm.LocalNodeState != swarm.LocalNodeStateInactive, nil
+	return info.Swarm.LocalNodeState != "" && info.Swarm.LocalNodeState != swarm.LocalNodeStateInactive && info.Swarm.ControlAvailable, nil
 }
 
 // stopContainersAndServices stops all Docker containers that are marked as to being
