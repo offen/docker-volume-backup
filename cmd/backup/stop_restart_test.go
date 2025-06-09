@@ -30,11 +30,24 @@ func TestIsSwarm(t *testing.T) {
 			&mockInfoClient{
 				result: system.Info{
 					Swarm: swarm.Info{
-						LocalNodeState: swarm.LocalNodeStateActive,
+						LocalNodeState:   swarm.LocalNodeStateActive,
+						ControlAvailable: true,
 					},
 				},
 			},
 			true,
+			false,
+		},
+		{
+			"worker",
+			&mockInfoClient{
+				result: system.Info{
+					Swarm: swarm.Info{
+						LocalNodeState: swarm.LocalNodeStateActive,
+					},
+				},
+			},
+			false,
 			false,
 		},
 		{

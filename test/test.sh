@@ -45,6 +45,12 @@ for dir in $(find $find_args | sort); do
   fi
 
   docker compose --profile $compose_profile up -d --wait
+  test_context=manager
+  if [ -f "${dir}/.multinode" ] && [ -s "${dir}/.multinode" ]; then
+    test_context=$(cat $dir/.multinode)
+    echo "Running tests on $test_context instead of manager"
+  fi
+  docker compose exec $test_context /bin/sh -c "docker load -i /cache/image.tar.gz"
 
   if [ -f "${dir}/.swarm" ]; then
     docker compose exec manager docker swarm init
@@ -54,10 +60,13 @@ for dir in $(find $find_args | sort); do
     token=$(docker compose exec manager docker swarm join-token -q worker)
     docker compose exec worker1 docker swarm join --token $token $manager_ip:2377
     docker compose exec worker2 docker swarm join --token $token $manager_ip:2377
+
+    if [ "$test_context" != "manager" ]; then
+      docker compose exec -w "/code/$dir" manager docker stack deploy --compose-file="docker-compose.yml" test_stack
+    fi
   fi
 
-  docker compose exec manager /bin/sh -c "docker load -i /cache/image.tar.gz"
-  docker compose exec -e TEST_VERSION=$IMAGE_TAG manager /bin/sh -c "/code/test/$test"
+  docker compose exec -e TEST_VERSION=$IMAGE_TAG $test_context /bin/sh -c "/code/$test"
 
   docker compose --profile $compose_profile down
   echo ""

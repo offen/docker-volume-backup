@@ -1,5 +1,6 @@
 services:
   manager: &node
+    hostname: manager
     privileged: true
     image: offen/docker-volume-backup:test-sandbox
     healthcheck:
@@ -8,17 +9,19 @@ services:
       timeout: 5s
       retries: 50
     volumes:
-      - $SOURCE:/code
-      - $TARBALL:/cache/image.tar.gz
+      - ./:/code
+      - ${TARBALL:-.}:/cache/image.tar.gz
       - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
       - docker_volume_backup_test_sandbox_overlay2:/var/lib/docker/overlay2
 
   worker1:
     <<: *node
+    hostname: worker1
     profiles:
       - multinode
   worker2:
     <<: *node
+    hostname: worker2
     profiles:
       - multinode
 
