@@ -49,8 +49,8 @@ As the sandbox container is also expected to be torn down post test, the scripts
 
 ## Anatomy of a test case
 
-The `test.sh` script looks for an exectuable file called `run.sh` in each directory.
-When found, it is executed and signals success by returning a 0 exit code.
+The `test.sh` script looks for all exectuable files in each directory.
+When found, all of them are executed in series and are expected to signal success by returning a 0 exit code.
 Any other exit code is considered a failure and will halt execution of further tests.
 
 There is an `util.sh` file containing a few commonly used helpers which can be used by putting the following prelude to a new test case:
@@ -68,10 +68,5 @@ In case the swarm setup should be compose of multiple nodes, a `.multinode` file
 
 A multinode setup will contain one manager (`manager`) and two worker nodes (`worker1` and `worker2`).
 
-If a test is expected to run in the context of a node other than the `manager`, the hostname can be put in the `.multinode` file.
-
-> [!IMPORTANT]
-> When running against a multi-node setup and targeting a non-manager node, the test script will automatically deploy a stack named `test_stack` based on the compose file in the test directory.
-> This is required because the non-manager node cannot deploy the stack itself from within the test script.
-> This also means, you cannot mount local directories created in your test script, as the containers are already created when the script runs.
-> You can work around this limitation by creating named volumes and then `docker cp`ing the contents your test needs to inspect.
+If a test is expected to run in the context of a node other than the `manager`, you can create a `.context` file containing the name of the node you want the test to run in.
+E.g. if your script `02run.sh` is expected to be run on `worker2`, create a file called `02run.sh.context` with the content `worker2`

@@ -36,7 +36,6 @@ for dir in $(find $find_args | sort); do
   echo "################################################"
   echo ""
 
-  test="${dir}/run.sh"
   export TARBALL=$tarball
   export SOURCE=$(dirname $(pwd))
 
@@ -45,13 +44,6 @@ for dir in $(find $find_args | sort); do
   fi
 
   docker compose --profile $compose_profile up -d --wait
-  test_context=manager
-  if [ -f "${dir}/.multinode" ] && [ -s "${dir}/.multinode" ]; then
-    test_context=$(cat $dir/.multinode)
-    echo "Running tests on $test_context instead of manager"
-  fi
-  docker compose exec $test_context /bin/sh -c "docker load -i /cache/image.tar.gz"
-
   if [ -f "${dir}/.swarm" ]; then
     docker compose exec manager docker swarm init
   elif [ -f "${dir}/.multinode" ]; then
@@ -60,16 +52,22 @@ for dir in $(find $find_args | sort); do
     token=$(docker compose exec manager docker swarm join-token -q worker)
     docker compose exec worker1 docker swarm join --token $token $manager_ip:2377
     docker compose exec worker2 docker swarm join --token $token $manager_ip:2377
-
-    if [ "$test_context" != "manager" ]; then
-      docker compose exec -w "/code/$dir" manager docker stack deploy --compose-file="docker-compose.yml" test_stack
-    fi
   fi
 
-  docker compose exec -e TEST_VERSION=$IMAGE_TAG $test_context /bin/sh -c "/code/$test"
+  for svc in $(docker compose ps -q); do
+    docker exec $svc /bin/sh -c "docker load -i /cache/image.tar.gz"
+  done
+
+  for executable in $(find $dir -type f -executable | sort); do
+    context="manager"
+    if [ -f "$executable.context" ]; then
+        context=$(cat "$executable.context")
+    fi
+    docker compose exec -e TEST_VERSION=$IMAGE_TAG $context /bin/sh -c "/code/$executable"
+  done
 
   docker compose --profile $compose_profile down
   echo ""
-  echo "$test passed"
+  echo "$dir passed"
   echo ""
 done
