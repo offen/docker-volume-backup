@@ -8,7 +8,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.1
 	github.com/containrrr/shoutrrr v0.8.0
 	github.com/cosiner/argv v0.1.0
-	github.com/docker/cli v28.2.2+incompatible
+	github.com/docker/cli v28.3.0+incompatible
 	github.com/docker/docker v28.2.2+incompatible
 	github.com/gofrs/flock v0.12.1
 	github.com/joho/godotenv v1.5.1
