@@ -87,6 +87,11 @@ type Config struct {
 	DropboxAppSecret              string          `split_words:"true"`
 	DropboxRemotePath             string          `split_words:"true"`
 	DropboxConcurrencyLevel       NaturalNumber   `split_words:"true" default:"6"`
+	GoogleDriveCredentialsJSON    string          `split_words:"true"`
+	GoogleDriveFolderID           string          `split_words:"true"`
+	GoogleDriveImpersonateSubject string          `split_words:"true"`
+	GoogleDriveEndpoint           string          `split_words:"true"`
+	GoogleDriveTokenURL           string          `split_words:"true"`
 	source                        string
 	additionalEnvVars             map[string]string
 }

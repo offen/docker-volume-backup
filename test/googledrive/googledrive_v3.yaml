@@ -1,0 +1,124 @@
+openapi: 3.0.1
+info:
+  title: Minimal Google Drive API Mock
+  version: 1.0.0
+servers:
+  - url: /
+paths:
+  /test:
+    get:
+      summary: Test endpoint
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+              examples:
+                TestExample:
+                  value:
+                    message: "Hello, world!"
+  /upload/drive/v3/files:
+    post:
+      summary: Upload file to Google Drive
+      parameters:
+        - name: uploadType
+          in: query
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+        - name: supportsAllDrives
+          in: query
+          schema:
+            type: boolean
+        - name: alt
+          in: query
+          schema:
+            type: string
+        - name: prettyPrint
+          in: query
+          schema:
+            type: boolean
+      requestBody:
+        content:
+          multipart/related:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  mimeType:
+                    type: string
+              examples:
+                UploadSuccess:
+                  value:
+                    id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                    name: "test-backup.tar.gz"
+                    mimeType: "application/gzip"
+  /files:
+    get:
+      summary: List files in Google Drive
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+        - name: supportsAllDrives
+          in: query
+          schema:
+            type: boolean
+        - name: includeItemsFromAllDrives
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Files listed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        createdTime:
+                          type: string
+                        mimeType:
+                          type: string
+              examples:
+                FilesList:
+                  value:
+                    files: []
+    delete:
+      summary: Delete a file from Google Drive
+      responses:
+        '200':
+          description: File deleted successfully
