@@ -37,8 +37,8 @@ type Config struct {
 
 // NewStorageBackend creates and initializes a new Google Drive storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
-ctx := context.Background()
-b, err := os.ReadFile(opts.CredentialsJSON)
+	ctx := context.Background()
+	b, err := os.ReadFile(opts.CredentialsJSON)
 	if err != nil {
 		return nil, errwrap.Wrap(err, "unable to read credentials")
 	}
