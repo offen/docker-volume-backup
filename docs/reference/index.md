@@ -388,8 +388,13 @@ The values for each key currently match its default.
 
 ########### GOOGLE DRIVE STORAGE
 
-# The JSON credentials for a Google service account with access to Google Drive. The value should be the path to a json file.
-# Example: '/creds/google-credentials.json'
+# The JSON credentials for a Google service account with access to Google Drive.
+# The value should be the path to a json file you mounted into the container.
+#
+# Example:
+# docker run [...] \
+#    -v ./credentials.json:/creds/google-credentials.json \
+#    -e GOOGLE_DRIVE_CREDENTIALS_JSON=/creds/google-credentials.json
 #
 # GOOGLE_DRIVE_CREDENTIALS_JSON=""
 
