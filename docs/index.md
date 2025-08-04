@@ -108,7 +108,7 @@ While it may work against different implementations (e.g. Balena Engine), there 
 This image is heavily inspired by `jareware/docker-volume-backup`. We decided to publish this image as a simpler and more lightweight alternative because of the following requirements:
 
 - The original image is based on `ubuntu` and requires additional tools, making it heavy.
-This version is roughly 1/25 in compressed size (it's ~15MB).
+This version is roughly 1/20 in compressed size (it's ~25MB).
 - The original image uses a shell script, when this version is written in Go.
 - The original image proposed to handle backup rotation through AWS S3 lifecycle policies.
 This image adds the option to rotate away old backups through the same command so this functionality can also be offered for non-AWS storage backends like MinIO.
