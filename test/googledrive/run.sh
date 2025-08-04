@@ -20,7 +20,6 @@ sleep 5
 
 expect_running_containers "4"
 
-echo "$logs"
 if echo "$logs" | grep -q "ERROR"; then
   fail "Backup failed, check logs for error"
 else
@@ -34,7 +33,6 @@ sleep 5
 
 logs=$(docker compose exec -T backup backup | tee /dev/stderr)
 
-echo "$logs"
 if echo "$logs" | grep -q "Refusing to do so, please check your configuration"; then
   pass "Remote backups have not been deleted."
 else
@@ -50,7 +48,6 @@ info "Create second backup and prune"
 
 logs=$(docker compose exec -T backup backup | tee /dev/stderr)
 
-echo "$logs"
 if echo "$logs" | grep -q "Pruned 1 out of 2 backups as they were older"; then
   pass "Old remote backup has been pruned, new one is still present."
 elif echo "$logs" | grep -q "ERROR"; then
