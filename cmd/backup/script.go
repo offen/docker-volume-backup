@@ -16,6 +16,7 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"github.com/offen/docker-volume-backup/internal/storage/azure"
 	"github.com/offen/docker-volume-backup/internal/storage/dropbox"
+	"github.com/offen/docker-volume-backup/internal/storage/googledrive"
 	"github.com/offen/docker-volume-backup/internal/storage/local"
 	"github.com/offen/docker-volume-backup/internal/storage/s3"
 	"github.com/offen/docker-volume-backup/internal/storage/ssh"
@@ -59,12 +60,13 @@ func newScript(c *Config) *script {
 			StartTime: time.Now(),
 			LogOutput: logBuffer,
 			Storages: map[string]StorageStats{
-				"S3":      {},
-				"WebDAV":  {},
-				"SSH":     {},
-				"Local":   {},
-				"Azure":   {},
-				"Dropbox": {},
+				"S3":          {},
+				"WebDAV":      {},
+				"SSH":         {},
+				"Local":       {},
+				"Azure":       {},
+				"Dropbox":     {},
+				"GoogleDrive": {},
 			},
 		},
 	}
@@ -223,6 +225,21 @@ func (s *script) init() error {
 			return errwrap.Wrap(err, "error creating dropbox storage backend")
 		}
 		s.storages = append(s.storages, dropboxBackend)
+	}
+
+	if s.c.GoogleDriveCredentialsJSON != "" {
+		googleDriveConfig := googledrive.Config{
+			CredentialsJSON:    s.c.GoogleDriveCredentialsJSON,
+			FolderID:           s.c.GoogleDriveFolderID,
+			ImpersonateSubject: s.c.GoogleDriveImpersonateSubject,
+			Endpoint:           s.c.GoogleDriveEndpoint,
+			TokenURL:           s.c.GoogleDriveTokenURL,
+		}
+		googleDriveBackend, err := googledrive.NewStorageBackend(googleDriveConfig, logFunc)
+		if err != nil {
+			return errwrap.Wrap(err, "error creating googledrive storage backend")
+		}
+		s.storages = append(s.storages, googleDriveBackend)
 	}
 
 	if s.c.EmailNotificationRecipient != "" {

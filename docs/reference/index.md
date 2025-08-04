@@ -386,6 +386,57 @@ The values for each key currently match its default.
 
 # DROPBOX_REFRESH_TOKEN=""
 
+########### GOOGLE DRIVE STORAGE
+
+# The JSON credentials for a Google service account with access to Google Drive.
+# You can provide either:
+# 1. The actual JSON content directly
+# 2. Use the _FILE suffix to load from a file (e.g., GOOGLE_DRIVE_CREDENTIALS_JSON_FILE)
+#
+# Examples:
+# Option 1 - JSON content:
+# docker run [...] \
+#    -e GOOGLE_DRIVE_CREDENTIALS_JSON='{"type":"service_account",...}'
+#
+# Option 2 - Using _FILE suffix (recommended for Docker Secrets):
+# docker run [...] \
+#    -v ./credentials.json:/creds/google-credentials.json \
+#    -e GOOGLE_DRIVE_CREDENTIALS_JSON_FILE=/creds/google-credentials.json
+#
+# GOOGLE_DRIVE_CREDENTIALS_JSON=""
+
+# ---
+
+# The ID of the Google Drive folder where backups will be uploaded.
+# You can find the folder ID in the URL when viewing the folder in Google Drive.
+# 
+# Example: "1A2B3C4D5E6F7G8H9I0J"
+#
+# GOOGLE_DRIVE_FOLDER_ID=""
+
+# ---
+
+# The email address of the user to impersonate when accessing Google Drive (domain-wide delegation).
+# This is required becasue your service account needs to act on behalf of a user in your organization in order to upload files.
+# How to: https://support.google.com/a/answer/162106
+# Example: "user@example.com"
+#
+# GOOGLE_DRIVE_IMPERSONATE_SUBJECT=""
+
+# ---
+
+# (Optional) Custom Google Drive API endpoint. This is primarily for testing with a mock server.
+# Example: "http://localhost:8080/drive/v3"
+#
+# GOOGLE_DRIVE_ENDPOINT=""
+
+# ---
+
+# (Optional) Custom token URL for Google Drive authentication. This is primarily for testing with a mock server.
+# Example: "http://localhost:8080/token"
+#
+# GOOGLE_DRIVE_TOKEN_URL=""
+
 ########### LOCAL FILE STORAGE
 
 # In addition to storing backups remotely, you can also keep local copies.

@@ -1,0 +1,139 @@
+openapi: 3.0.1
+info:
+  title: Minimal Google Drive API Mock
+  version: 1.0.0
+  description: Minimal mock implementation of Google Drive API v3 for testing
+servers:
+  - url: /
+paths:
+  /upload/drive/v3/files:
+    post:
+      summary: Upload file to Google Drive
+      parameters:
+        - name: uploadType
+          in: query
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+        - name: supportsAllDrives
+          in: query
+          schema:
+            type: boolean
+        - name: alt
+          in: query
+          schema:
+            type: string
+        - name: prettyPrint
+          in: query
+          schema:
+            type: boolean
+      requestBody:
+        content:
+          multipart/related:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: "The ID of the file"
+                  name:
+                    type: string
+                    description: "The name of the file (extracted from request.metadata.name)"
+                  mimeType:
+                    type: string
+                    description: "The MIME type of the file"
+                  size:
+                    type: string
+                    description: "The size of the file in bytes"
+              examples:
+                UploadSuccess:
+                  summary: "Response when file is uploaded successfully"
+                  description: "The response includes the filename from the request metadata"
+                  value:
+                    id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                    name: "test-backup.tar.gz"
+                    mimeType: "application/gzip"
+  /files:
+    get:
+      summary: List files in Google Drive
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+            description: "A query for filtering the file results"
+        - name: fields
+          in: query
+          schema:
+            type: string
+        - name: supportsAllDrives
+          in: query
+          schema:
+            type: boolean
+        - name: includeItemsFromAllDrives
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Files listed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: "The ID of the file"
+                        name:
+                          type: string
+                          description: "The name of the file"
+                        mimeType:
+                          type: string
+                          description: "The MIME type of the file"
+                        createdTime:
+                          type: string
+                          description: "The time the file was created"
+              examples:
+                FilesList:
+                  value:
+                    files:
+                      - id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                        name: "test-hostnametoken.tar.gz"
+                        createdTime: "CREATED_TIME_1"
+                      - id: "jgmUUqptlbs74OgvE2upms1BxiMVs0XRA5nFMdKvBdBZ"
+                        name: "test-hostnametoken-old.tar.gz"
+                        createdTime: "CREATED_TIME_2"
+
+  /files/{fileId}:
+    delete:
+      summary: Delete a file from Google Drive
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: supportsAllDrives
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '204':
+          description: File deleted successfully
