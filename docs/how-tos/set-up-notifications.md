@@ -46,7 +46,7 @@ The files have to define [nested templates](https://pkg.go.dev/text/template#hdr
 {% raw %}
 ```
 {{ define "title_success" -}}
-✅ Successfully ran backup {{ .Config.BackupStopContainerLabel }}
+✅ Successfully ran backup {{ .Config.BackupStopDuringBackupLabel }}
 {{- end }}
 
 {{ define "body_success" -}}
