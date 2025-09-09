@@ -19,7 +19,7 @@ require (
 	github.com/otiai10/copy v1.14.1
 	github.com/pkg/sftp v1.13.9
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/studio-b12/gowebdav v0.10.0
+	github.com/studio-b12/gowebdav v0.11.0
 	golang.org/x/crypto v0.41.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.17.0
