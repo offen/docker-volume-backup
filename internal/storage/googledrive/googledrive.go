@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
+	"crypto/tls"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/docker-volume-backup/internal/storage"
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
-	"golang.org/x/oauth2"
 	"net/http"
-	"crypto/tls"
 )
 
 type googleDriveStorage struct {
@@ -84,15 +84,18 @@ func (b *googleDriveStorage) Name() string {
 }
 
 // Copy copies the given file to the Google Drive storage backend.
-func (b *googleDriveStorage) Copy(file string) error {
+func (b *googleDriveStorage) Copy(file string) (returnErr error) {
 	_, name := filepath.Split(file)
 	b.Log(storage.LogLevelInfo, b.Name(), "Starting upload for backup '%s'.", name)
 
 	f, err := os.Open(file)
 	if err != nil {
-		return errwrap.Wrap(err, fmt.Sprintf("failed to open file %s", file))
+		returnErr = errwrap.Wrap(err, fmt.Sprintf("failed to open file %s", file))
+		return
 	}
-	defer f.Close()
+	defer func() {
+		returnErr = f.Close()
+	}()
 
 	driveFile := &drive.File{Name: name}
 	if b.DestinationPath != "" {
@@ -104,7 +107,8 @@ func (b *googleDriveStorage) Copy(file string) error {
 	createCall := b.client.Files.Create(driveFile).SupportsAllDrives(true).Fields("id")
 	created, err := createCall.Media(f).Do()
 	if err != nil {
-		return errwrap.Wrap(err, fmt.Sprintf("failed to upload %s", name))
+		returnErr = errwrap.Wrap(err, fmt.Sprintf("failed to upload %s", name))
+		return
 	}
 
 	b.Log(storage.LogLevelInfo, b.Name(), "Finished upload for %s. File ID: %s", name, created.Id)

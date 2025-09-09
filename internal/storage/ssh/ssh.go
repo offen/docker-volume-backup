@@ -106,19 +106,25 @@ func (b *sshStorage) Name() string {
 }
 
 // Copy copies the given file to the SSH storage backend.
-func (b *sshStorage) Copy(file string) error {
+func (b *sshStorage) Copy(file string) (returnErr error) {
 	source, err := os.Open(file)
 	_, name := path.Split(file)
 	if err != nil {
-		return errwrap.Wrap(err, " error reading the file to be uploaded")
+		returnErr = errwrap.Wrap(err, " error reading the file to be uploaded")
+		return
 	}
-	defer source.Close()
+	defer func() {
+		returnErr = source.Close()
+	}()
 
 	destination, err := b.sftpClient.Create(path.Join(b.DestinationPath, name))
 	if err != nil {
-		return errwrap.Wrap(err, "error creating file")
+		returnErr = errwrap.Wrap(err, "error creating file")
+		return
 	}
-	defer destination.Close()
+	defer func() {
+		returnErr = destination.Close()
+	}()
 
 	chunk := make([]byte, 1e9)
 	for {
@@ -126,27 +132,32 @@ func (b *sshStorage) Copy(file string) error {
 		if err == io.EOF {
 			tot, err := destination.Write(chunk[:num])
 			if err != nil {
-				return errwrap.Wrap(err, "error uploading the file")
+				returnErr = errwrap.Wrap(err, "error uploading the file")
+				return
 			}
 
 			if tot != len(chunk[:num]) {
-				return errwrap.Wrap(nil, "failed to write stream")
+				returnErr = errwrap.Wrap(nil, "failed to write stream")
+				return
 			}
 
 			break
 		}
 
 		if err != nil {
-			return errwrap.Wrap(err, "error uploading the file")
+			returnErr = errwrap.Wrap(err, "error uploading the file")
+			return
 		}
 
 		tot, err := destination.Write(chunk[:num])
 		if err != nil {
-			return errwrap.Wrap(err, "error uploading the file")
+			returnErr = errwrap.Wrap(err, "error uploading the file")
+			return
 		}
 
 		if tot != len(chunk[:num]) {
-			return errwrap.Wrap(nil, "failed to write stream")
+			returnErr = errwrap.Wrap(nil, "failed to write stream")
+			return
 		}
 	}
 

@@ -177,8 +177,12 @@ func (s *script) runLabeledCommands(label string) error {
 			s.logger.Info(fmt.Sprintf("Running %s command %s for container %s", label, cmd, strings.TrimPrefix(c.Names[0], "/")))
 			stdout, stderr, err := s.exec(c.ID, cmd, user)
 			if s.c.ExecForwardOutput {
-				os.Stderr.Write(stderr)
-				os.Stdout.Write(stdout)
+				if _, err := os.Stderr.Write(stderr); err != nil {
+					return errwrap.Wrap(err, "error writing to stderr")
+				}
+				if _, err := os.Stdout.Write(stdout); err != nil {
+					return errwrap.Wrap(err, "error writing to stdout")
+				}
 			}
 			if err != nil {
 				return errwrap.Wrap(err, "error executing command")

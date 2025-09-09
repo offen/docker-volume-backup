@@ -153,13 +153,13 @@ func source(path string) (map[string]string, error) {
 			currentValue, currentOk := os.LookupEnv(key)
 			defer func() {
 				if currentOk {
-					os.Setenv(key, currentValue)
+					_ = os.Setenv(key, currentValue)
 					return
 				}
-				os.Unsetenv(key)
+				_ = os.Unsetenv(key)
 			}()
 			result[key] = value
-			os.Setenv(key, value)
+			_ = os.Setenv(key, value)
 		}
 	}
 	return result, nil

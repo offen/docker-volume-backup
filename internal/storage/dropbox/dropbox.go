@@ -87,7 +87,7 @@ func (b *dropboxStorage) Name() string {
 }
 
 // Copy copies the given file to the WebDav storage backend.
-func (b *dropboxStorage) Copy(file string) error {
+func (b *dropboxStorage) Copy(file string) (returnErr error) {
 	_, name := path.Split(file)
 
 	folderArg := files.NewCreateFolderArg(b.DestinationPath)
@@ -95,19 +95,24 @@ func (b *dropboxStorage) Copy(file string) error {
 		switch err := err.(type) {
 		case files.CreateFolderV2APIError:
 			if err.EndpointError.Path.Tag != files.WriteErrorConflict {
-				return errwrap.Wrap(err, fmt.Sprintf("error creating directory '%s'", b.DestinationPath))
+				returnErr = errwrap.Wrap(err, fmt.Sprintf("error creating directory '%s'", b.DestinationPath))
+				return
 			}
 			b.Log(storage.LogLevelInfo, b.Name(), "Destination path '%s' already exists, no new directory required.", b.DestinationPath)
 		default:
-			return errwrap.Wrap(err, fmt.Sprintf("error creating directory '%s'", b.DestinationPath))
+			returnErr = errwrap.Wrap(err, fmt.Sprintf("error creating directory '%s'", b.DestinationPath))
+			return
 		}
 	}
 
 	r, err := os.Open(file)
 	if err != nil {
-		return errwrap.Wrap(err, "error opening the file to be uploaded")
+		returnErr = errwrap.Wrap(err, "error opening the file to be uploaded")
+		return
 	}
-	defer r.Close()
+	defer func() {
+		returnErr = r.Close()
+	}()
 
 	// Start new upload session and get session id
 	b.Log(storage.LogLevelInfo, b.Name(), "Starting upload session for backup '%s' at path '%s'.", file, b.DestinationPath)
@@ -116,7 +121,8 @@ func (b *dropboxStorage) Copy(file string) error {
 	uploadSessionStartArg := files.NewUploadSessionStartArg()
 	uploadSessionStartArg.SessionType = &files.UploadSessionType{Tagged: dropbox.Tagged{Tag: files.UploadSessionTypeConcurrent}}
 	if res, err := b.client.UploadSessionStart(uploadSessionStartArg, nil); err != nil {
-		return errwrap.Wrap(err, "error starting the upload session")
+		returnErr = errwrap.Wrap(err, "error starting the upload session")
+		return
 	} else {
 		sessionId = res.SessionId
 	}
@@ -197,7 +203,8 @@ loop:
 			files.NewCommitInfo(path.Join(b.DestinationPath, name)),
 		), nil)
 	if err != nil {
-		return errwrap.Wrap(err, "error finishing the upload session")
+		returnErr = errwrap.Wrap(err, "error finishing the upload session")
+		return
 	}
 
 	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup '%s' at path '%s'.", file, b.DestinationPath)

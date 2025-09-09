@@ -121,10 +121,11 @@ func getCompressionWriter(file *os.File, algo string, concurrency int) (io.Write
 	}
 }
 
-func writeTarball(path string, tarWriter *tar.Writer, prefix string) error {
+func writeTarball(path string, tarWriter *tar.Writer, prefix string) (returnErr error) {
 	fileInfo, err := os.Lstat(path)
 	if err != nil {
-		return errwrap.Wrap(err, fmt.Sprintf("error getting file info for %s", path))
+		returnErr = errwrap.Wrap(err, fmt.Sprintf("error getting file info for %s", path))
+		return
 	}
 
 	if fileInfo.Mode()&os.ModeSocket == os.ModeSocket {
@@ -135,19 +136,22 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string) error {
 	if fileInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
 		var err error
 		if link, err = os.Readlink(path); err != nil {
-			return errwrap.Wrap(err, fmt.Sprintf("error resolving symlink %s", path))
+			returnErr = errwrap.Wrap(err, fmt.Sprintf("error resolving symlink %s", path))
+			return
 		}
 	}
 
 	header, err := tar.FileInfoHeader(fileInfo, link)
 	if err != nil {
-		return errwrap.Wrap(err, "error getting file info header")
+		returnErr = errwrap.Wrap(err, "error getting file info header")
+		return
 	}
 	header.Name = strings.TrimPrefix(path, prefix)
 
 	err = tarWriter.WriteHeader(header)
 	if err != nil {
-		return errwrap.Wrap(err, "error writing file info header")
+		returnErr = errwrap.Wrap(err, "error writing file info header")
+		return
 	}
 
 	if !fileInfo.Mode().IsRegular() {
@@ -156,13 +160,17 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string) error {
 
 	file, err := os.Open(path)
 	if err != nil {
-		return errwrap.Wrap(err, fmt.Sprintf("error opening %s", path))
+		returnErr = errwrap.Wrap(err, fmt.Sprintf("error opening %s", path))
+		return
 	}
-	defer file.Close()
+	defer func() {
+		returnErr = file.Close()
+	}()
 
 	_, err = io.Copy(tarWriter, file)
 	if err != nil {
-		return errwrap.Wrap(err, fmt.Sprintf("error copying %s to tar writer", path))
+		returnErr = errwrap.Wrap(err, fmt.Sprintf("error copying %s to tar writer", path))
+		return
 	}
 
 	return nil

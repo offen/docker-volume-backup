@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/docker/cli/cli/command/service/progress"
-	"github.com/docker/docker/api/types/container"
 	ctr "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
@@ -66,7 +65,7 @@ func awaitContainerCountForService(cli *client.Client, serviceID string, count i
 				),
 			)
 		case <-poll.C:
-			containers, err := cli.ContainerList(context.Background(), container.ListOptions{
+			containers, err := cli.ContainerList(context.Background(), ctr.ListOptions{
 				Filters: filters.NewArgs(filters.KeyValuePair{
 					Key:   "label",
 					Value: fmt.Sprintf("com.docker.swarm.service.id=%s", serviceID),
@@ -124,11 +123,11 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		labelValue,
 	)
 
-	allContainers, err := s.cli.ContainerList(context.Background(), container.ListOptions{})
+	allContainers, err := s.cli.ContainerList(context.Background(), ctr.ListOptions{})
 	if err != nil {
 		return noop, errwrap.Wrap(err, "error querying for containers")
 	}
-	containersToStop, err := s.cli.ContainerList(context.Background(), container.ListOptions{
+	containersToStop, err := s.cli.ContainerList(context.Background(), ctr.ListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "label",
 			Value: filterMatchLabel,
@@ -215,7 +214,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		)
 	}
 
-	var stoppedContainers []container.Summary
+	var stoppedContainers []ctr.Summary
 	var stopErrors []error
 	for _, container := range containersToStop {
 		if err := s.cli.ContainerStop(context.Background(), container.ID, ctr.StopOptions{}); err != nil {
