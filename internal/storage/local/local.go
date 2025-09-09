@@ -55,7 +55,9 @@ func (b *localStorage) Copy(file string) error {
 	if b.latestSymlink != "" {
 		symlink := path.Join(b.DestinationPath, b.latestSymlink)
 		if _, err := os.Lstat(symlink); err == nil {
-			os.Remove(symlink)
+			if err := os.Remove(symlink); err != nil {
+				return errwrap.Wrap(err, "error removing existing symlink")
+			}
 		}
 		if err := os.Symlink(name, symlink); err != nil {
 			return errwrap.Wrap(err, "error creating latest symlink")
@@ -146,22 +148,25 @@ func (b *localStorage) Prune(deadline time.Time, pruningPrefix string) (*storage
 }
 
 // copy creates a copy of the file located at `dst` at `src`.
-func copyFile(src, dst string) error {
+func copyFile(src, dst string) (returnErr error) {
 	in, err := os.Open(src)
 	if err != nil {
-		return err
+		returnErr = err
+		return
 	}
-	defer in.Close()
+	defer func() {
+		returnErr = in.Close()
+	}()
 
 	out, err := os.Create(dst)
 	if err != nil {
-		return err
+		returnErr = err
+		return
 	}
 
 	_, err = io.Copy(out, in)
 	if err != nil {
-		out.Close()
-		return err
+		return errors.Join(err, out.Close())
 	}
 	return out.Close()
 }

@@ -60,8 +60,10 @@ func TestSource(t *testing.T) {
 		},
 	}
 
-	os.Setenv("QUX", "yyy")
-	defer os.Unsetenv("QUX")
+	_ = os.Setenv("QUX", "yyy")
+	defer func() {
+		_ = os.Unsetenv("QUX")
+	}()
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

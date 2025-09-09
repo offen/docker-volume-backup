@@ -1,9 +1,7 @@
+version: '2'
 linters:
   # Enable specific linter
   # https://golangci-lint.run/usage/linters/#enabled-by-default
   enable:
     - staticcheck
     - govet
-output:
-  formats:
-    - format: colored-line-number
