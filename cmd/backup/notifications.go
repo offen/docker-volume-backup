@@ -13,7 +13,7 @@ import (
 	"text/template"
 	"time"
 
-	sTypes "github.com/containrrr/shoutrrr/pkg/types"
+	sTypes "github.com/nicholas-fedor/shoutrrr/pkg/types"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
