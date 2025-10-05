@@ -561,7 +561,7 @@ The values for each key currently match its default.
 
 # Notifications (email, Slack, etc.) can be sent out when a backup run finishes.
 # Configuration is provided as a comma-separated list of URLs as consumed
-# by `shoutrrr`: https://shoutrrr.nickfedor.com/services/overview/
+# by `shoutrrr`: https://shoutrrr.nickfedor.com/v0.10.0/services/overview/
 # The content of such notifications can be customized. Dedicated documentation
 # on how to do this can be found in the README. When providing multiple URLs or
 # an URL that contains a comma, the values can be URL encoded to avoid ambiguities.
