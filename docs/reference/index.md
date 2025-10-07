@@ -278,6 +278,7 @@ The values for each key currently match its default.
 # ---
 
 # The Directory to place the backups to on the SSH server.
+# If the directory does not exist, it will be created automatically.
 # Example: "/home/user/backups"
 
 # SSH_REMOTE_PATH=""
