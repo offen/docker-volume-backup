@@ -4,6 +4,7 @@
 package ssh
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -107,6 +108,10 @@ func (b *sshStorage) Name() string {
 
 // Copy copies the given file to the SSH storage backend.
 func (b *sshStorage) Copy(file string) (returnErr error) {
+	if err := b.sftpClient.MkdirAll(b.DestinationPath); err != nil {
+		return errwrap.Wrap(err, "error ensuring destination directory")
+	}
+
 	source, err := os.Open(file)
 	_, name := path.Split(file)
 	if err != nil {
@@ -170,6 +175,10 @@ func (b *sshStorage) Copy(file string) (returnErr error) {
 func (b *sshStorage) Prune(deadline time.Time, pruningPrefix string) (*storage.PruneStats, error) {
 	candidates, err := b.sftpClient.ReadDir(b.DestinationPath)
 	if err != nil {
+		// If directory doesn't exist yet, nothing to prune
+		if errors.Is(err, os.ErrNotExist) {
+			return &storage.PruneStats{}, nil
+		}
 		return nil, errwrap.Wrap(err, "error reading directory")
 	}
 
