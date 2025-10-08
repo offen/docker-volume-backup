@@ -1,12 +1,11 @@
 module github.com/offen/docker-volume-backup
 
-go 1.25
+go 1.25.1
 
 require (
 	filippo.io/age v1.2.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.12.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.1
-	github.com/containrrr/shoutrrr v0.8.0
 	github.com/cosiner/argv v0.1.0
 	github.com/docker/cli v28.5.0+incompatible
 	github.com/docker/docker v28.3.3+incompatible
@@ -15,6 +14,7 @@ require (
 	github.com/klauspost/compress v1.18.0
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.95
+	github.com/nicholas-fedor/shoutrrr v0.10.0
 	github.com/offen/envconfig v1.5.0
 	github.com/otiai10/copy v1.14.1
 	github.com/pkg/sftp v1.13.9
@@ -86,14 +86,14 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dropbox/dropbox-sdk-go-unofficial/v6 v6.0.5
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/fatih/color v1.17.0 // indirect
+	github.com/fatih/color v1.18.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
 	github.com/klauspost/pgzip v1.2.6
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/moby/term v0.0.0-20200312100748-672ec06f55cd // indirect

@@ -22,10 +22,10 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage/ssh"
 	"github.com/offen/docker-volume-backup/internal/storage/webdav"
 
-	"github.com/containrrr/shoutrrr"
-	"github.com/containrrr/shoutrrr/pkg/router"
 	"github.com/docker/docker/client"
 	"github.com/leekchan/timeutil"
+	"github.com/nicholas-fedor/shoutrrr"
+	"github.com/nicholas-fedor/shoutrrr/pkg/router"
 )
 
 // script holds all the stateful information required to orchestrate a

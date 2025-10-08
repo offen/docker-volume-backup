@@ -23,7 +23,7 @@ services:
 Notification backends other than email are also supported.
 Refer to the documentation of [shoutrrr][shoutrrr-docs] to find out about options and configuration.
 
-[shoutrrr-docs]: https://containrrr.dev/shoutrrr/v0.8/services/overview/
+[shoutrrr-docs]: https://shoutrrr.nickfedor.com/v0.10.0/services/overview/
 
 {: .note }
 If you also want notifications on successful executions, set `NOTIFICATION_LEVEL` to `info`.
@@ -120,11 +120,11 @@ If such a URL contains special characters (e.g. commas) these need to be URL enc
 To obtain an encoded version of your URL, you can use the CLI tool provided by `shoutrrr` (which is the library used for sending notifications):
 
 ```
-docker run --rm -ti containrrr/shoutrrr generate [service]
+docker run --rm -ti ghcr.io/nicholas-fedor/shoutrrr generate [service]
 ```
 
 where service is any of the [supported services][shoutrrr-docs], e.g. for SMTP:
 
 ```
-docker run --rm -ti containrrr/shoutrrr generate smtp
+docker run --rm -ti ghcr.io/nicholas-fedor/shoutrrr generate smtp
 ```
