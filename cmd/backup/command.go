@@ -42,7 +42,9 @@ func (c *command) runAsCommand() error {
 				return errwrap.Wrap(err, "error running script")
 			}
 		case "container":
-			panic("execution mode container not implemented")
+			if err := runInContainer(config); err != nil {
+				return errwrap.Wrap(err, "error spawning container")
+			}
 		default:
 			return errwrap.Wrap(nil, fmt.Sprintf("unknown execution mode %s", config.ExecutionMode))
 		}
@@ -131,7 +133,17 @@ func (c *command) schedule(strategy configStrategy) error {
 					)
 				}
 			case "container":
-				panic("execution mode container not implemented")
+				if err := runInContainer(config); err != nil {
+					c.logger.Error(
+						fmt.Sprintf(
+							"Unexpected error running schedule %s in container: %v",
+							config.BackupCronExpression,
+							errwrap.Unwrap(err),
+						),
+						"error",
+						err,
+					)
+				}
 			default:
 				c.logger.Error(
 					fmt.Sprintf(
