@@ -36,8 +36,15 @@ func (c *command) runAsCommand() error {
 	}
 
 	for _, config := range configurations {
-		if err := runScript(config); err != nil {
-			return errwrap.Wrap(err, "error running script")
+		switch config.ExecutionMode {
+		case "process":
+			if err := runScript(config); err != nil {
+				return errwrap.Wrap(err, "error running script")
+			}
+		case "container":
+			panic("execution mode container not implemented")
+		default:
+			return errwrap.Wrap(nil, fmt.Sprintf("unknown execution mode %s", config.ExecutionMode))
 		}
 	}
 
@@ -110,16 +117,29 @@ func (c *command) schedule(strategy configStrategy) error {
 				),
 			)
 
-			if err := runScript(config); err != nil {
+			switch config.ExecutionMode {
+			case "process":
+				if err := runScript(config); err != nil {
+					c.logger.Error(
+						fmt.Sprintf(
+							"Unexpected error running schedule %s: %v",
+							config.BackupCronExpression,
+							errwrap.Unwrap(err),
+						),
+						"error",
+						err,
+					)
+				}
+			case "container":
+				panic("execution mode container not implemented")
+			default:
 				c.logger.Error(
 					fmt.Sprintf(
-						"Unexpected error running schedule %s: %v",
-						config.BackupCronExpression,
-						errwrap.Unwrap(err),
+						"Unkown execution mode %s, please check your configuration",
+						config.ExecutionMode,
 					),
-					"error",
-					err,
 				)
+				return
 			}
 		})
 
