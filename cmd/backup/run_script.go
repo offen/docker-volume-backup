@@ -6,7 +6,9 @@ package main
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"runtime/debug"
+	"time"
 
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
@@ -50,6 +52,15 @@ func runScript(c *Config) (err error) {
 			err = errors.Join(err, errwrap.Wrap(derr, "error unsetting environment variables"))
 		}
 	}()
+
+	if s.c != nil && s.c.BackupJitter > 0 {
+		max := s.c.BackupJitter
+		delay := time.Duration(rand.Int63n(int64(max) + 1))
+		if delay > 0 {
+			s.logger.Info("applying startup jitter", "delay", delay)
+			time.Sleep(delay)
+		}
+	}
 
 	if initErr := s.init(); initErr != nil {
 		err = errwrap.Wrap(initErr, "error instantiating script")
