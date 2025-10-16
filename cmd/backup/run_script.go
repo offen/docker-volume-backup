@@ -57,7 +57,7 @@ func runScript(c *Config) (err error) {
 		max := s.c.BackupJitter
 		delay := time.Duration(rand.Int63n(int64(max) + 1))
 		if delay > 0 {
-			s.logger.Info("applying startup jitter", "delay", delay)
+			s.logger.Info(fmt.Sprintf("Applying startup jitter of %v", delay))
 			time.Sleep(delay)
 		}
 	}
