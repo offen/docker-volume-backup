@@ -6,13 +6,19 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/robfig/cron/v3"
 )
+
+func seedRand() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 type command struct {
 	logger    *slog.Logger
@@ -30,6 +36,8 @@ func newCommand() *command {
 // runAsCommand executes a backup run for each configuration that is available
 // and then returns
 func (c *command) runAsCommand() error {
+	seedRand()
+
 	configurations, err := sourceConfiguration(configStrategyEnv)
 	if err != nil {
 		return errwrap.Wrap(err, "error loading env vars")
@@ -51,6 +59,8 @@ type foregroundOpts struct {
 // runInForeground starts the program as a long running process, scheduling
 // a job for each configuration that is available.
 func (c *command) runInForeground(opts foregroundOpts) error {
+	seedRand()
+
 	c.cr = cron.New(
 		cron.WithParser(
 			cron.NewParser(

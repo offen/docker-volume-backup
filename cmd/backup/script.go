@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"os"
 	"path"
 	"text/template"
@@ -73,6 +74,15 @@ func newScript(c *Config) *script {
 }
 
 func (s *script) init() error {
+	if s.c != nil && s.c.BackupJitter > 0 {
+		max := s.c.BackupJitter
+		delay := time.Duration(rand.Int63n(int64(max) + 1))
+		if delay > 0 {
+			s.logger.Info("applying startup jitter", "delay", delay)
+			time.Sleep(delay)
+		}
+	}
+
 	s.registerHook(hookLevelPlumbing, func(error) error {
 		s.stats.EndTime = time.Now()
 		s.stats.TookTime = s.stats.EndTime.Sub(s.stats.StartTime)
