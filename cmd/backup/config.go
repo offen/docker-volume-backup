@@ -37,6 +37,7 @@ type Config struct {
 	BackupLatestSymlink           string          `split_words:"true"`
 	BackupArchive                 string          `split_words:"true" default:"/archive"`
 	BackupCronExpression          string          `split_words:"true" default:"@daily"`
+	BackupJitter                  time.Duration   `split_words:"true" default:"0s"`
 	BackupRetentionDays           int32           `split_words:"true" default:"-1"`
 	BackupPruningLeeway           time.Duration   `split_words:"true" default:"1m"`
 	BackupPruningPrefix           string          `split_words:"true"`

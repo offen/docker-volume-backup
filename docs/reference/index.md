@@ -47,6 +47,17 @@ The values for each key currently match its default.
 
 # ---
 
+# Optional startup delay ("jitter") applied before each backup run.
+# The jitter introduces a random delay between 0 and the given duration,
+#
+# Set to "0s" or omit the variable to disable jitter completely.
+# Default = "0s". In case you need to adjust this value, supply a duration
+# value as per https://pkg.go.dev/time#ParseDuration to `BACKUP_JITTER`.
+#
+# BACKUP_JITTER="0s"
+
+# ---
+
 # The compression algorithm used in conjunction with tar.
 # Valid options are: "gz" (Gzip), "zst" (Zstd) or "none" (tar only).
 # Default is "gz". Note that the selection affects the file extension.
