@@ -11,7 +11,7 @@ require (
 	github.com/docker/docker v28.3.3+incompatible
 	github.com/gofrs/flock v0.12.1
 	github.com/joho/godotenv v1.5.1
-	github.com/klauspost/compress v1.18.0
+	github.com/klauspost/compress v1.18.1
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.95
 	github.com/nicholas-fedor/shoutrrr v0.10.3
