@@ -1,6 +1,6 @@
 services:
   storage:
-    image: mcr.microsoft.com/azure-storage/azurite:3.34.0
+    image: mcr.microsoft.com/azure-storage/azurite:3.35.0
     volumes:
       - ${DATA_DIR:-./data}:/data
     command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --location /data
@@ -10,7 +10,7 @@ services:
       retries: 30
 
   az_cli:
-    image: mcr.microsoft.com/azure-cli:2.71.0
+    image: mcr.microsoft.com/azure-cli:2.78.0
     volumes:
       - ${LOCAL_DIR:-./local}:/dump
     command:
