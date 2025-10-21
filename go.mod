@@ -9,7 +9,7 @@ require (
 	github.com/cosiner/argv v0.1.0
 	github.com/docker/cli v28.5.1+incompatible
 	github.com/docker/docker v28.3.3+incompatible
-	github.com/gofrs/flock v0.12.1
+	github.com/gofrs/flock v0.13.0
 	github.com/joho/godotenv v1.5.1
 	github.com/klauspost/compress v1.18.1
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
