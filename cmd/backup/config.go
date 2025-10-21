@@ -30,7 +30,6 @@ type Config struct {
 	AwsIamRoleEndpoint            string          `split_words:"true"`
 	AwsPartSize                   int64           `split_words:"true"`
 	BackupCompression             CompressionType `split_words:"true" default:"gz"`
-	GzipParallelism               WholeNumber     `split_words:"true" default:"1"`
 	BackupSources                 string          `split_words:"true" default:"/backup"`
 	BackupFilename                string          `split_words:"true" default:"backup-%Y-%m-%dT%H-%M-%S.{{ .Extension }}"`
 	BackupFilenameExpand          bool            `split_words:"true"`
@@ -47,6 +46,7 @@ type Config struct {
 	BackupFromSnapshot            bool            `split_words:"true"`
 	BackupExcludeRegexp           RegexpDecoder   `split_words:"true"`
 	BackupSkipBackendsFromPrune   []string        `split_words:"true"`
+	GzipParallelism               WholeNumber     `split_words:"true" default:"1"`
 	GpgPassphrase                 string          `split_words:"true"`
 	GpgPublicKeyRing              string          `split_words:"true"`
 	AgePassphrase                 string          `split_words:"true"`
@@ -74,6 +74,7 @@ type Config struct {
 	ExecLabel                     string          `split_words:"true"`
 	ExecForwardOutput             bool            `split_words:"true"`
 	LockTimeout                   time.Duration   `split_words:"true" default:"60m"`
+	ExecutionMode                 string          `split_words:"true" default:"process"`
 	AzureStorageAccountName       string          `split_words:"true"`
 	AzureStoragePrimaryAccountKey string          `split_words:"true"`
 	AzureStorageConnectionString  string          `split_words:"true"`
