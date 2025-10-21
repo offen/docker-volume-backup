@@ -5,7 +5,7 @@ go 1.25.3
 require (
 	filippo.io/age v1.2.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.0
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.1
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.3
 	github.com/cosiner/argv v0.1.0
 	github.com/docker/cli v28.5.1+incompatible
 	github.com/docker/docker v28.3.3+incompatible
