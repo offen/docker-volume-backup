@@ -35,6 +35,10 @@ services:
       # backup integrity. You can omit this label if stopping during backup
       # not required.
       - docker-volume-backup.stop-during-backup=true
+      # This means the container will be restarted after the backup completes.
+      # It is optional, only used together with the stop-during-backup label,
+      # and defaults to true.
+      - docker-volume-backup.restart-after-backup=true
 
   backup:
     # In production, it is advised to lock your image tag to a proper

@@ -282,7 +282,22 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 	return func() error {
 		var restartErrors []error
 		matchedServices := map[string]bool{}
+		var restartedContainers []ctr.Summary
 		for _, container := range stoppedContainers {
+			var restartValue string = container.Labels["docker-volume-backup.restart-after-backup"]
+
+			if len(restartValue) != 0 {
+				if restartValue == "false" {
+					continue
+				} else if restartValue != "true" {
+					s.logger.Warn(
+						fmt.Sprintf("Ignoring invalid label docker-volume-backup.restart-after-backup=%s", restartValue),
+					)
+				}
+			}
+
+			restartedContainers = append(restartedContainers, container)
+
 			if swarmServiceID, ok := container.Labels["com.docker.swarm.service.id"]; ok && isDockerSwarm {
 				if _, ok := matchedServices[swarmServiceID]; ok {
 					continue
@@ -349,7 +364,8 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 
 		s.logger.Info(
 			fmt.Sprintf(
-				"Restarted %d container(s).",
+				"Restarted %d of %d container(s).",
+				len(restartedContainers),
 				len(stoppedContainers),
 			),
 		)
