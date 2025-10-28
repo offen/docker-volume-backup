@@ -14,7 +14,7 @@ require (
 	github.com/klauspost/compress v1.18.1
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.95
-	github.com/nicholas-fedor/shoutrrr v0.10.3
+	github.com/nicholas-fedor/shoutrrr v0.11.0
 	github.com/offen/envconfig v1.5.0
 	github.com/otiai10/copy v1.14.1
 	github.com/pkg/sftp v1.13.10
@@ -70,6 +70,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.0 // indirect
+	golang.org/x/term v0.36.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251014184007-4626949a642f // indirect
 	google.golang.org/grpc v1.76.0 // indirect
@@ -86,7 +87,6 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dropbox/dropbox-sdk-go-unofficial/v6 v6.0.5
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
