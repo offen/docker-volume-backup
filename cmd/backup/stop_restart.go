@@ -92,12 +92,8 @@ func isSwarm(c interface {
 }
 
 func hasLabel(labels map[string]string, key, value string) bool {
-	if val, ok := labels[key]; ok {
-		if val == value {
-			return true
-		}
-	}
-	return false
+	val, ok := labels[key]
+	return ok && val == value
 }
 
 func checkStopLabels(labels map[string]string, stopDuringBackupLabelValue string, stopDuringBackupNoRestartLabelValue string) (bool, bool, error) {
