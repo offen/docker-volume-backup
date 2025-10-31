@@ -369,9 +369,10 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 					if err != nil {
 						scaleDownErrors.append(err)
 						return
-					} else {
-						scaledUpServices = append(scaledUpServices, svc)
 					}
+
+					scaledUpServices = append(scaledUpServices, svc)
+
 					for _, warning := range warnings {
 						s.logger.Warn(
 							fmt.Sprintf("The Docker API returned a warning when scaling up service %s: %s", svc.serviceID, warning),
