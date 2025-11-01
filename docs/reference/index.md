@@ -539,6 +539,13 @@ The values for each key currently match its default.
 # you can override this default by specifying a different string value here.
 # BACKUP_STOP_DURING_BACKUP_LABEL="true"
 
+# Containers or services can also be stopped for the duration of the backup
+# without being restarted afterwards by applying a
+# `docker-volume-backup.stop-during-backup-no-restart` label. This behaves the
+# same as `docker-volume-backup.stop-during-backup` but is mutually exclusive and
+# skips restarting the container or service once the backup has finished.
+# BACKUP_STOP_DURING_BACKUP_NO_RESTART_LABEL="true"
+
 # When trying to scale down Docker Swarm services, give up after
 # the specified amount of time in case the service has not converged yet.
 # In case you need to adjust this timeout, supply a duration

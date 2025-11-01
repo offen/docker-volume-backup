@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	ctr "github.com/docker/docker/api/types/container"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/robfig/cron/v3"
 )
@@ -64,9 +65,15 @@ func (noopWriteCloser) Close() error {
 	return nil
 }
 
+type handledContainer struct {
+	summary ctr.Summary
+	restart bool
+}
+
 type handledSwarmService struct {
 	serviceID           string
 	initialReplicaCount uint64
+	restart             bool
 }
 
 type concurrentSlice[T any] struct {

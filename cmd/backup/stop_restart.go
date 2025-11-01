@@ -91,6 +91,21 @@ func isSwarm(c interface {
 	return info.Swarm.LocalNodeState != "" && info.Swarm.LocalNodeState != swarm.LocalNodeStateInactive && info.Swarm.ControlAvailable, nil
 }
 
+func hasLabel(labels map[string]string, key, value string) bool {
+	val, ok := labels[key]
+	return ok && val == value
+}
+
+func checkStopLabels(labels map[string]string, stopDuringBackupLabelValue string, stopDuringBackupNoRestartLabelValue string) (bool, bool, error) {
+	hasStopDuringBackupLabel := hasLabel(labels, "docker-volume-backup.stop-during-backup", stopDuringBackupLabelValue)
+	hasStopDuringBackupNoRestartLabel := hasLabel(labels, "docker-volume-backup.stop-during-backup-no-restart", stopDuringBackupNoRestartLabelValue)
+	if hasStopDuringBackupLabel && hasStopDuringBackupNoRestartLabel {
+		return hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, errwrap.Wrap(nil, "both docker-volume-backup.stop-during-backup and docker-volume-backup.stop-during-backup-no-restart have been set, cannot continue")
+	}
+
+	return hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, nil
+}
+
 // stopContainersAndServices stops all Docker containers that are marked as to being
 // stopped during the backup and returns a function that can be called to
 // restart everything that has been stopped.
@@ -118,52 +133,67 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		labelValue = s.c.BackupStopContainerLabel
 	}
 
-	filterMatchLabel := fmt.Sprintf(
+	stopDuringBackupLabel := fmt.Sprintf(
 		"docker-volume-backup.stop-during-backup=%s",
 		labelValue,
+	)
+
+	stopDuringBackupNoRestartLabel := fmt.Sprintf(
+		"docker-volume-backup.stop-during-backup-no-restart=%s",
+		s.c.BackupStopDuringBackupNoRestartLabel,
 	)
 
 	allContainers, err := s.cli.ContainerList(context.Background(), ctr.ListOptions{})
 	if err != nil {
 		return noop, errwrap.Wrap(err, "error querying for containers")
 	}
-	containersToStop, err := s.cli.ContainerList(context.Background(), ctr.ListOptions{
-		Filters: filters.NewArgs(filters.KeyValuePair{
-			Key:   "label",
-			Value: filterMatchLabel,
-		}),
-	})
-	if err != nil {
-		return noop, errwrap.Wrap(err, "error querying for containers to stop")
+
+	var containersToStop []handledContainer
+	for _, c := range allContainers {
+		hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(c.Labels, labelValue, s.c.BackupStopDuringBackupNoRestartLabel)
+		if err != nil {
+			return noop, errwrap.Wrap(err, "error querying for containers to stop")
+		}
+
+		if !hasStopDuringBackupLabel && !hasStopDuringBackupNoRestartLabel {
+			continue
+		}
+
+		containersToStop = append(containersToStop, handledContainer{
+			summary: c,
+			restart: !hasStopDuringBackupNoRestartLabel,
+		})
 	}
 
 	var allServices []swarm.Service
 	var servicesToScaleDown []handledSwarmService
 	if isDockerSwarm {
-		allServices, err = s.cli.ServiceList(context.Background(), swarm.ServiceListOptions{})
+		allServices, err = s.cli.ServiceList(context.Background(), swarm.ServiceListOptions{Status: true})
 		if err != nil {
 			return noop, errwrap.Wrap(err, "error querying for services")
 		}
-		matchingServices, err := s.cli.ServiceList(context.Background(), swarm.ServiceListOptions{
-			Filters: filters.NewArgs(filters.KeyValuePair{
-				Key:   "label",
-				Value: filterMatchLabel,
-			}),
-			Status: true,
-		})
-		if err != nil {
-			return noop, errwrap.Wrap(err, "error querying for services to scale down")
-		}
-		for _, s := range matchingServices {
-			if s.Spec.Mode.Replicated == nil {
+
+		for _, service := range allServices {
+			hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(service.Spec.Labels, labelValue, s.c.BackupStopDuringBackupNoRestartLabel)
+			if err != nil {
+				return noop, errwrap.Wrap(err, "error querying for services to scale down")
+			}
+
+			if !hasStopDuringBackupLabel && !hasStopDuringBackupNoRestartLabel {
+				continue
+			}
+
+			if service.Spec.Mode.Replicated == nil {
 				return noop, errwrap.Wrap(
 					nil,
-					fmt.Sprintf("only replicated services can be restarted, but found a label on service %s", s.Spec.Name),
+					fmt.Sprintf("only replicated services can be restarted, but found a label on service %s", service.Spec.Name),
 				)
 			}
+
 			servicesToScaleDown = append(servicesToScaleDown, handledSwarmService{
-				serviceID:           s.ID,
-				initialReplicaCount: *s.Spec.Mode.Replicated.Replicas,
+				serviceID:           service.ID,
+				initialReplicaCount: *service.Spec.Mode.Replicated.Replicas,
+				restart:             !hasStopDuringBackupNoRestartLabel,
 			})
 		}
 	}
@@ -174,7 +204,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 
 	if isDockerSwarm {
 		for _, container := range containersToStop {
-			if swarmServiceID, ok := container.Labels["com.docker.swarm.service.id"]; ok {
+			if swarmServiceID, ok := container.summary.Labels["com.docker.swarm.service.id"]; ok {
 				parentService, _, err := s.cli.ServiceInspectWithRaw(context.Background(), swarmServiceID, swarm.ServiceInspectOptions{})
 				if err != nil {
 					return noop, errwrap.Wrap(err, fmt.Sprintf("error querying for parent service with ID %s", swarmServiceID))
@@ -185,7 +215,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 							nil,
 							fmt.Sprintf(
 								"container %s is labeled to stop but has parent service %s which is also labeled, cannot continue",
-								container.Names[0],
+								container.summary.Names[0],
 								parentService.Spec.Name,
 							),
 						)
@@ -197,27 +227,29 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 
 	s.logger.Info(
 		fmt.Sprintf(
-			"Stopping %d out of %d running container(s) as they were labeled %s.",
+			"Stopping %d out of %d running container(s) as they were labeled %s or %s.",
 			len(containersToStop),
 			len(allContainers),
-			filterMatchLabel,
+			stopDuringBackupLabel,
+			stopDuringBackupNoRestartLabel,
 		),
 	)
 	if isDockerSwarm {
 		s.logger.Info(
 			fmt.Sprintf(
-				"Scaling down %d out of %d active service(s) as they were labeled %s.",
+				"Scaling down %d out of %d active service(s) as they were labeled %s or %s.",
 				len(servicesToScaleDown),
 				len(allServices),
-				filterMatchLabel,
+				stopDuringBackupLabel,
+				stopDuringBackupNoRestartLabel,
 			),
 		)
 	}
 
-	var stoppedContainers []ctr.Summary
+	var stoppedContainers []handledContainer
 	var stopErrors []error
 	for _, container := range containersToStop {
-		if err := s.cli.ContainerStop(context.Background(), container.ID, ctr.StopOptions{}); err != nil {
+		if err := s.cli.ContainerStop(context.Background(), container.summary.ID, ctr.StopOptions{}); err != nil {
 			stopErrors = append(stopErrors, err)
 		} else {
 			stoppedContainers = append(stoppedContainers, container)
@@ -281,9 +313,14 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 
 	return func() error {
 		var restartErrors []error
+		var restartedContainers []handledContainer
 		matchedServices := map[string]bool{}
 		for _, container := range stoppedContainers {
-			if swarmServiceID, ok := container.Labels["com.docker.swarm.service.id"]; ok && isDockerSwarm {
+			if !container.restart {
+				continue
+			}
+
+			if swarmServiceID, ok := container.summary.Labels["com.docker.swarm.service.id"]; ok && isDockerSwarm {
 				if _, ok := matchedServices[swarmServiceID]; ok {
 					continue
 				}
@@ -309,15 +346,22 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				continue
 			}
 
-			if err := s.cli.ContainerStart(context.Background(), container.ID, ctr.StartOptions{}); err != nil {
+			if err := s.cli.ContainerStart(context.Background(), container.summary.ID, ctr.StartOptions{}); err != nil {
 				restartErrors = append(restartErrors, err)
+			} else {
+				restartedContainers = append(restartedContainers, container)
 			}
 		}
 
 		var scaleUpErrors concurrentSlice[error]
+		var scaledUpServices []handledSwarmService
 		if isDockerSwarm {
 			wg := &sync.WaitGroup{}
 			for _, svc := range servicesToScaleDown {
+				if !svc.restart {
+					continue
+				}
+
 				wg.Add(1)
 				go func(svc handledSwarmService) {
 					defer wg.Done()
@@ -326,6 +370,9 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 						scaleDownErrors.append(err)
 						return
 					}
+
+					scaledUpServices = append(scaledUpServices, svc)
+
 					for _, warning := range warnings {
 						s.logger.Warn(
 							fmt.Sprintf("The Docker API returned a warning when scaling up service %s: %s", svc.serviceID, warning),
@@ -349,14 +396,16 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 
 		s.logger.Info(
 			fmt.Sprintf(
-				"Restarted %d container(s).",
+				"Restarted %d out of %d stopped container(s).",
+				len(restartedContainers),
 				len(stoppedContainers),
 			),
 		)
 		if isDockerSwarm {
 			s.logger.Info(
 				fmt.Sprintf(
-					"Scaled %d service(s) back up.",
+					"Scaled %d out of %d scaled down service(s) back up.",
+					len(scaledUpServices),
 					len(scaledDownServices),
 				),
 			)

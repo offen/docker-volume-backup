@@ -34,3 +34,29 @@ services:
 volumes:
   data:
 ```
+
+## Stop containers during backup without restarting
+
+Sometimes you might want to stop containers for the backup but not have them start again automatically, for example if they are normally started by an external process or scheduler.
+
+For this use case, you can use the label `docker-volume-backup.stop-during-backup-no-restart`.  
+This label is **mutually exclusive** with `docker-volume-backup.stop-during-backup` and performs the same stop operation but skips restarting the container after the backup has finished.
+
+```yml
+services:
+  app:
+    # definition for app ...
+    labels:
+      - docker-volume-backup.stop-during-backup-no-restart=service2
+
+  backup:
+    image: offen/docker-volume-backup:v2
+    environment:
+      BACKUP_STOP_DURING_BACKUP__NO_RESTART_LABEL: service2
+    volumes:
+      - data:/backup/my-app-backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  data:
+```
