@@ -36,8 +36,10 @@ type Config struct {
 	RemotePath         string
 }
 
+var noop = func() error { return nil }
+
 // NewStorageBackend creates and initializes a new SSH storage backend.
-func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error) {
+func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, func() error, error) {
 	var authMethods []ssh.AuthMethod
 
 	if opts.Password != "" {
@@ -47,20 +49,20 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 	if _, err := os.Stat(opts.IdentityFile); err == nil {
 		key, err := os.ReadFile(opts.IdentityFile)
 		if err != nil {
-			return nil, errwrap.Wrap(nil, "error reading the private key")
+			return nil, noop, errwrap.Wrap(nil, "error reading the private key")
 		}
 
 		var signer ssh.Signer
 		if opts.IdentityPassphrase != "" {
 			signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(opts.IdentityPassphrase))
 			if err != nil {
-				return nil, errwrap.Wrap(nil, "error parsing the encrypted private key")
+				return nil, noop, errwrap.Wrap(nil, "error parsing the encrypted private key")
 			}
 			authMethods = append(authMethods, ssh.PublicKeys(signer))
 		} else {
 			signer, err = ssh.ParsePrivateKey(key)
 			if err != nil {
-				return nil, errwrap.Wrap(nil, "error parsing the private key")
+				return nil, noop, errwrap.Wrap(nil, "error parsing the private key")
 			}
 			authMethods = append(authMethods, ssh.PublicKeys(signer))
 		}
@@ -72,13 +74,12 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", opts.HostName, opts.Port), sshClientConfig)
-
-	if err != nil {
-		return nil, errwrap.Wrap(err, "error creating ssh client")
+	if err != nil || sshClient == nil {
+		return nil, noop, errwrap.Wrap(err, "error creating ssh client")
 	}
 	_, _, err = sshClient.SendRequest("keepalive", false, nil)
 	if err != nil {
-		return nil, err
+		return nil, sshClient.Close, err
 	}
 
 	sftpClient, err := sftp.NewClient(sshClient,
@@ -87,7 +88,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		sftp.MaxConcurrentRequestsPerFile(64),
 	)
 	if err != nil {
-		return nil, errwrap.Wrap(err, "error creating sftp client")
+		return nil, sshClient.Close, errwrap.Wrap(err, "error creating sftp client")
 	}
 
 	return &sshStorage{
@@ -98,7 +99,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		client:     sshClient,
 		sftpClient: sftpClient,
 		hostName:   opts.HostName,
-	}, nil
+	}, sshClient.Close, nil
 }
 
 // Name returns the name of the storage backend
