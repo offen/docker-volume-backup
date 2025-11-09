@@ -177,10 +177,20 @@ func (s *script) init() error {
 			IdentityPassphrase: s.c.SSHIdentityPassphrase,
 			RemotePath:         s.c.SSHRemotePath,
 		}
-		sshBackend, err := ssh.NewStorageBackend(sshConfig, logFunc)
+
+		sshBackend, closeSSHConnection, err := ssh.NewStorageBackend(sshConfig, logFunc)
+
+		s.registerHook(hookLevelPlumbing, func(err error) error {
+			if err := closeSSHConnection(); err != nil {
+				return errwrap.Wrap(err, "failed to close ssh connection")
+			}
+			return nil
+		})
+
 		if err != nil {
 			return errwrap.Wrap(err, "error creating ssh storage backend")
 		}
+
 		s.storages = append(s.storages, sshBackend)
 	}
 
