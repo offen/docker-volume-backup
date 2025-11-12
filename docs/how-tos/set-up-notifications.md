@@ -23,7 +23,7 @@ services:
 Notification backends other than email are also supported.
 Refer to the documentation of [shoutrrr][shoutrrr-docs] to find out about options and configuration.
 
-[shoutrrr-docs]: https://shoutrrr.nickfedor.com/v0.10.3/services/overview/
+[shoutrrr-docs]: https://shoutrrr.nickfedor.com/v0.12.0/services/overview/
 
 {: .note }
 If you also want notifications on successful executions, set `NOTIFICATION_LEVEL` to `info`.
