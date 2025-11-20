@@ -22,8 +22,8 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage/ssh"
 	"github.com/offen/docker-volume-backup/internal/storage/webdav"
 
-	"github.com/docker/docker/client"
 	"github.com/leekchan/timeutil"
+	"github.com/moby/moby/client"
 	"github.com/nicholas-fedor/shoutrrr"
 	"github.com/nicholas-fedor/shoutrrr/pkg/router"
 )
@@ -109,7 +109,7 @@ func (s *script) init() error {
 	_, err := os.Stat("/var/run/docker.sock")
 	_, dockerHostSet := os.LookupEnv("DOCKER_HOST")
 	if !os.IsNotExist(err) || dockerHostSet {
-		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		cli, err := client.New(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
 			return errwrap.Wrap(err, "failed to create docker client")
 		}

@@ -8,12 +8,13 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.3
 	github.com/cosiner/argv v0.1.0
 	github.com/docker/cli v29.0.2+incompatible
-	github.com/docker/docker v28.3.3+incompatible
 	github.com/gofrs/flock v0.13.0
 	github.com/joho/godotenv v1.5.1
 	github.com/klauspost/compress v1.18.1
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.97
+	github.com/moby/moby/api v1.52.0
+	github.com/moby/moby/client v0.1.1-0.20251116162601-e9ff10bf365a
 	github.com/nicholas-fedor/shoutrrr v0.12.0
 	github.com/offen/envconfig v1.5.0
 	github.com/otiai10/copy v1.14.1
@@ -57,8 +58,6 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/minio/crc64nvme v1.1.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
-	github.com/moby/moby/api v1.52.0 // indirect
-	github.com/moby/moby/client v0.1.0 // indirect
 	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/otiai10/mint v1.6.3 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
@@ -71,12 +70,9 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
 	go.opentelemetry.io/otel v1.38.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.37.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.37.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.37.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.26.0 // indirect
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
-	go.opentelemetry.io/proto/otlp v1.7.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251103181224-f26f9409b101 // indirect
@@ -95,7 +91,6 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dropbox/dropbox-sdk-go-unofficial/v6 v6.0.5
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
 	github.com/klauspost/pgzip v1.2.6
@@ -108,7 +103,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	golang.org/x/net v0.47.0 // indirect
