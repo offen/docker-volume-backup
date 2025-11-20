@@ -5,16 +5,17 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/docker/docker/api/types/swarm"
-	"github.com/docker/docker/api/types/system"
+	"github.com/moby/moby/api/types/swarm"
+	"github.com/moby/moby/api/types/system"
+	"github.com/moby/moby/client"
 )
 
 type mockInfoClient struct {
-	result system.Info
+	result client.SystemInfoResult
 	err    error
 }
 
-func (m *mockInfoClient) Info(context.Context) (system.Info, error) {
+func (m *mockInfoClient) Info(context.Context, client.InfoOptions) (client.SystemInfoResult, error) {
 	return m.result, m.err
 }
 
@@ -28,10 +29,12 @@ func TestIsSwarm(t *testing.T) {
 		{
 			"swarm",
 			&mockInfoClient{
-				result: system.Info{
-					Swarm: swarm.Info{
-						LocalNodeState:   swarm.LocalNodeStateActive,
-						ControlAvailable: true,
+				result: client.SystemInfoResult{
+					Info: system.Info{
+						Swarm: swarm.Info{
+							LocalNodeState:   swarm.LocalNodeStateActive,
+							ControlAvailable: true,
+						},
 					},
 				},
 			},
@@ -41,9 +44,11 @@ func TestIsSwarm(t *testing.T) {
 		{
 			"worker",
 			&mockInfoClient{
-				result: system.Info{
-					Swarm: swarm.Info{
-						LocalNodeState: swarm.LocalNodeStateActive,
+				result: client.SystemInfoResult{
+					Info: system.Info{
+						Swarm: swarm.Info{
+							LocalNodeState: swarm.LocalNodeStateActive,
+						},
 					},
 				},
 			},
@@ -53,9 +58,11 @@ func TestIsSwarm(t *testing.T) {
 		{
 			"compose",
 			&mockInfoClient{
-				result: system.Info{
-					Swarm: swarm.Info{
-						LocalNodeState: swarm.LocalNodeStateInactive,
+				result: client.SystemInfoResult{
+					Info: system.Info{
+						Swarm: swarm.Info{
+							LocalNodeState: swarm.LocalNodeStateInactive,
+						},
 					},
 				},
 			},
@@ -65,9 +72,11 @@ func TestIsSwarm(t *testing.T) {
 		{
 			"balena",
 			&mockInfoClient{
-				result: system.Info{
-					Swarm: swarm.Info{
-						LocalNodeState: "",
+				result: client.SystemInfoResult{
+					Info: system.Info{
+						Swarm: swarm.Info{
+							LocalNodeState: "",
+						},
 					},
 				},
 			},

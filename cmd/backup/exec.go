@@ -16,9 +16,8 @@ import (
 	"strings"
 
 	"github.com/cosiner/argv"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/client"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"golang.org/x/sync/errgroup"
 )
@@ -36,7 +35,7 @@ func (s *script) exec(containerRef string, command string, user string) ([]byte,
 		fmt.Sprintf("COMMAND_RUNTIME_ARCHIVE_FILEPATH=%s", s.file),
 	}
 
-	execID, err := s.cli.ContainerExecCreate(context.Background(), containerRef, container.ExecOptions{
+	execID, err := s.cli.ExecCreate(context.Background(), containerRef, client.ExecCreateOptions{
 		Cmd:          args[0],
 		AttachStdin:  true,
 		AttachStderr: true,
@@ -47,7 +46,7 @@ func (s *script) exec(containerRef string, command string, user string) ([]byte,
 		return nil, nil, errwrap.Wrap(err, "error creating container exec")
 	}
 
-	resp, err := s.cli.ContainerExecAttach(context.Background(), execID.ID, container.ExecStartOptions{})
+	resp, err := s.cli.ExecAttach(context.Background(), execID.ID, client.ExecAttachOptions{})
 	if err != nil {
 		return nil, nil, errwrap.Wrap(err, "error attaching container exec")
 	}
@@ -82,7 +81,7 @@ func (s *script) exec(containerRef string, command string, user string) ([]byte,
 		return nil, nil, errwrap.Wrap(err, "error reading stderr")
 	}
 
-	res, err := s.cli.ContainerExecInspect(context.Background(), execID.ID)
+	res, err := s.cli.ExecInspect(context.Background(), execID.ID, client.ExecInspectOptions{})
 	if err != nil {
 		return nil, nil, errwrap.Wrap(err, "error inspecting container exec")
 	}
@@ -95,54 +94,45 @@ func (s *script) exec(containerRef string, command string, user string) ([]byte,
 }
 
 func (s *script) runLabeledCommands(label string) error {
-	f := []filters.KeyValuePair{
-		{Key: "label", Value: label},
-	}
+	f := client.Filters{}
+	f.Add("label", label)
 	if s.c.ExecLabel != "" {
-		f = append(f, filters.KeyValuePair{
-			Key:   "label",
-			Value: fmt.Sprintf("docker-volume-backup.exec-label=%s", s.c.ExecLabel),
-		})
+		f.Add("label", fmt.Sprintf("docker-volume-backup.exec-label=%s", s.c.ExecLabel))
 	}
-	containersWithCommand, err := s.cli.ContainerList(context.Background(), container.ListOptions{
-		Filters: filters.NewArgs(f...),
+	containersWithCommandResult, err := s.cli.ContainerList(context.Background(), client.ContainerListOptions{
+		Filters: f,
 	})
 	if err != nil {
 		return errwrap.Wrap(err, "error querying for containers")
 	}
+	containersWithCommand := containersWithCommandResult.Items
 
 	var hasDeprecatedContainers bool
 	if label == "docker-volume-backup.archive-pre" {
-		f[0] = filters.KeyValuePair{
-			Key:   "label",
-			Value: "docker-volume-backup.exec-pre",
-		}
-		deprecatedContainers, err := s.cli.ContainerList(context.Background(), container.ListOptions{
-			Filters: filters.NewArgs(f...),
+		f = client.Filters{}.Add("label", "docker-volume-backup.exec-pre")
+		deprecatedContainers, err := s.cli.ContainerList(context.Background(), client.ContainerListOptions{
+			Filters: f,
 		})
 		if err != nil {
 			return errwrap.Wrap(err, "error querying for containers")
 		}
-		if len(deprecatedContainers) != 0 {
+		if len(deprecatedContainers.Items) != 0 {
 			hasDeprecatedContainers = true
-			containersWithCommand = append(containersWithCommand, deprecatedContainers...)
+			containersWithCommand = append(containersWithCommand, deprecatedContainers.Items...)
 		}
 	}
 
 	if label == "docker-volume-backup.archive-post" {
-		f[0] = filters.KeyValuePair{
-			Key:   "label",
-			Value: "docker-volume-backup.exec-post",
-		}
-		deprecatedContainers, err := s.cli.ContainerList(context.Background(), container.ListOptions{
-			Filters: filters.NewArgs(f...),
+		f = client.Filters{}.Add("label", "docker-volume-backup.exec-post")
+		deprecatedContainers, err := s.cli.ContainerList(context.Background(), client.ContainerListOptions{
+			Filters: f,
 		})
 		if err != nil {
 			return errwrap.Wrap(err, "error querying for containers")
 		}
-		if len(deprecatedContainers) != 0 {
+		if len(deprecatedContainers.Items) != 0 {
 			hasDeprecatedContainers = true
-			containersWithCommand = append(containersWithCommand, deprecatedContainers...)
+			containersWithCommand = append(containersWithCommand, deprecatedContainers.Items...)
 		}
 	}
 
