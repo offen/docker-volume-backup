@@ -109,7 +109,7 @@ func (s *script) runLabeledCommands(label string) error {
 
 	var hasDeprecatedContainers bool
 	if label == "docker-volume-backup.archive-pre" {
-		f.Add("label", "docker-volume-backup.exec-pre")
+		f = client.Filters{}.Add("label", "docker-volume-backup.exec-pre")
 		deprecatedContainers, err := s.cli.ContainerList(context.Background(), client.ContainerListOptions{
 			Filters: f,
 		})
@@ -123,7 +123,7 @@ func (s *script) runLabeledCommands(label string) error {
 	}
 
 	if label == "docker-volume-backup.archive-post" {
-		f.Add("label", "docker-volume-backup.exec-post")
+		f = client.Filters{}.Add("label", "docker-volume-backup.exec-post")
 		deprecatedContainers, err := s.cli.ContainerList(context.Background(), client.ContainerListOptions{
 			Filters: f,
 		})
