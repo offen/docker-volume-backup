@@ -109,7 +109,7 @@ func (s *script) init() error {
 	_, err := os.Stat("/var/run/docker.sock")
 	_, dockerHostSet := os.LookupEnv("DOCKER_HOST")
 	if !os.IsNotExist(err) || dockerHostSet {
-		cli, err := client.New(client.FromEnv, client.WithAPIVersionNegotiation())
+		cli, err := client.New(client.FromEnv)
 		if err != nil {
 			return errwrap.Wrap(err, "failed to create docker client")
 		}
