@@ -10,6 +10,7 @@ services:
       retries: 50
     volumes:
       - ./:/code
+      - ${HOME}/.docker/config.json:/root/.docker/config.json
       - ${TARBALL:-.}:/cache/image.tar.gz
       - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
       - docker_volume_backup_test_sandbox_overlay2:/var/lib/docker/overlay2
