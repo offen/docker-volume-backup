@@ -14,6 +14,7 @@ services:
       - ${TARBALL:-.}:/cache/image.tar.gz
       - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
       - docker_volume_backup_test_sandbox_overlay2:/var/lib/docker/overlay2
+      - docker_volume_backup_test_sandbox_containerd:/var/lib/docker/containerd
 
   worker1:
     <<: *node
@@ -29,3 +30,4 @@ services:
 volumes:
   docker_volume_backup_test_sandbox_image:
   docker_volume_backup_test_sandbox_overlay2:
+  docker_volume_backup_test_sandbox_containerd:
