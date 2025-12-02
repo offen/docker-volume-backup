@@ -15,7 +15,7 @@ require (
 	github.com/minio/minio-go/v7 v7.0.97
 	github.com/moby/moby/api v1.52.0
 	github.com/moby/moby/client v0.1.1-0.20251116162601-e9ff10bf365a
-	github.com/nicholas-fedor/shoutrrr v0.12.0
+	github.com/nicholas-fedor/shoutrrr v0.12.1
 	github.com/offen/envconfig v1.5.0
 	github.com/otiai10/copy v1.14.1
 	github.com/pkg/sftp v1.13.10
