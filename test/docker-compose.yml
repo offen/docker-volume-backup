@@ -13,21 +13,33 @@ services:
       - ${HOME}/.docker/config.json:/root/.docker/config.json
       - ${TARBALL:-.}:/cache/image.tar.gz
       - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
-      - docker_volume_backup_test_sandbox_overlay2:/var/lib/docker/overlay2
       - docker_volume_backup_test_sandbox_containerd:/var/lib/docker/containerd
 
   worker1:
     <<: *node
     hostname: worker1
+    volumes:
+      - ./:/code
+      - ${HOME}/.docker/config.json:/root/.docker/config.json
+      - ${TARBALL:-.}:/cache/image.tar.gz
+      - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
+      - docker_volume_backup_test_sandbox_containerd_1:/var/lib/docker/containerd
     profiles:
       - multinode
   worker2:
     <<: *node
     hostname: worker2
+    volumes:
+      - ./:/code
+      - ${HOME}/.docker/config.json:/root/.docker/config.json
+      - ${TARBALL:-.}:/cache/image.tar.gz
+      - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
+      - docker_volume_backup_test_sandbox_containerd_2:/var/lib/docker/containerd
     profiles:
       - multinode
 
 volumes:
   docker_volume_backup_test_sandbox_image:
-  docker_volume_backup_test_sandbox_overlay2:
   docker_volume_backup_test_sandbox_containerd:
+  docker_volume_backup_test_sandbox_containerd_1:
+  docker_volume_backup_test_sandbox_containerd_2:
