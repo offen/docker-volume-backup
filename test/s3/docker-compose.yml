@@ -10,6 +10,15 @@ services:
     volumes:
       - minio_backup_data:/data
 
+  rustfs:
+    image: rustfs/rustfs:1.0.0-alpha.71
+    volumes:
+      - rustfs_backup_data:/data
+    environment:
+      RUSTFS_ACCESS_KEY: test
+      RUSTFS_SECRET_KEY: GMusLtUmILge2by+z890kQ
+    entrypoint: /bin/ash -c 'mkdir -p /data/backup && /entrypoint.sh'
+
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
     hostname: hostnametoken
@@ -19,7 +28,7 @@ services:
     environment:
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: GMusLtUmILge2by+z890kQ
-      AWS_ENDPOINT: minio:9000
+      AWS_ENDPOINT: rustfs:9000
       AWS_ENDPOINT_PROTO: http
       AWS_S3_BUCKET_NAME: backup
       BACKUP_FILENAME_EXPAND: 'true'
@@ -43,3 +52,5 @@ volumes:
   minio_backup_data:
     name: minio_backup_data
   app_data:
+  rustfs_backup_data:
+    name: rustfs_backup_data
