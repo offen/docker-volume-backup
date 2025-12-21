@@ -8,6 +8,33 @@ IMAGE_TAG=${IMAGE_TAG:-canary}
 sandbox="docker_volume_backup_test_sandbox"
 tarball="$(mktemp -d)/image.tar.gz"
 compose_profile="default"
+find_bin="find"
+
+require_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "[test:setup:fail] Required command '$1' not found in PATH."
+    exit 1
+  fi
+}
+
+require_cmd docker
+if ! docker compose version >/dev/null 2>&1; then
+  echo "[test:setup:fail] Docker Compose v2 is required ('docker compose')."
+  exit 1
+fi
+
+if ! find -mindepth 1 -maxdepth 1 -type d >/dev/null 2>&1; then
+  if command -v gfind >/dev/null 2>&1; then
+    if ! gfind -mindepth 1 -maxdepth 1 -type d >/dev/null 2>&1; then
+      echo "[test:setup:fail] 'gfind' is installed but does not support -mindepth/-maxdepth."
+      exit 1
+    fi
+    find_bin="gfind"
+  else
+    echo "[test:setup:fail] 'find' does not support -mindepth/-maxdepth. Install GNU findutils"
+    exit 1
+  fi
+fi
 
 trap finish EXIT INT TERM
 
@@ -29,8 +56,8 @@ if [ ! -z "$MATCH_PATTERN" ]; then
   find_args="$find_args -name $MATCH_PATTERN"
 fi
 
-for dir in $(find $find_args | sort); do
-  dir=$(echo $dir | cut -c 3-)
+for dir in $($find_bin $find_args | sort); do
+  dir=${dir#./}
   echo "################################################"
   echo "Now running ${dir}"
   echo "################################################"
@@ -58,7 +85,7 @@ for dir in $(find $find_args | sort); do
     docker exec $svc /bin/sh -c "docker load -i /cache/image.tar.gz"
   done
 
-  for executable in $(find $dir -type f -executable | sort); do
+  for executable in $($find_bin $dir -type f -executable | sort); do
     context="manager"
     if [ -f "$executable.context" ]; then
         context=$(cat "$executable.context")
