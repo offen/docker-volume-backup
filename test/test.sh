@@ -10,14 +10,12 @@ tarball="$(mktemp -d)/image.tar.gz"
 compose_profile="default"
 find_bin="find"
 
-require_cmd() {
-  if ! command -v "$1" >/dev/null 2>&1; then
-    echo "[test:setup:fail] Required command '$1' not found in PATH."
-    exit 1
-  fi
-}
 
-require_cmd docker
+if ! command -v docker >/dev/null 2>&1; then
+  echo "[test:setup:fail] Required command 'docker' not found in PATH."
+  exit 1
+fi
+
 if ! docker compose version >/dev/null 2>&1; then
   echo "[test:setup:fail] Docker Compose v2 is required ('docker compose')."
   exit 1
