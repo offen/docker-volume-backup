@@ -13,6 +13,10 @@ func main() {
 	flag.Parse()
 
 	c := newCommand()
+	if flag.Arg(0) == "show-config" {
+		c.must(runShowConfig())
+		return
+	}
 	if *foreground {
 		opts := foregroundOpts{
 			profileCronExpression: *profile,

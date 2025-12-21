@@ -19,6 +19,7 @@ You can work around this by either updating `docker-compose` or unquoting your c
 
 You can populate below template according to your requirements and use it as your `env_file`.
 The values for each key currently match its default.
+If you need to confirm what the container actually loaded, see [Show loaded configuration](../how-tos/show-configuration.md).
 
 {% raw %}
 ```
