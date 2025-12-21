@@ -46,3 +46,14 @@ if [ "$MESSAGE_BODY" != "Backing up /tmp/test.tar.gz succeeded." ]; then
   fail "Unexpected notification body $MESSAGE_BODY"
 fi
 pass "Custom notification body was used."
+
+NUM_MESSAGES_BEFORE=$(curl -sSL http://admin:custom@localhost:8080/message | jq -r '.messages | length')
+docker compose exec -e AWS_S3_BUCKET_NAME=missing-bucket -e AWS_ACCESS_KEY_ID_FILE=/tmp/missing backup backup \
+  && fail "Expected backup to fail due to missing AWS_ACCESS_KEY_ID_FILE."
+pass "Backup failed with missing AWS_ACCESS_KEY_ID_FILE as expected."
+
+NUM_MESSAGES_AFTER=$(curl -sSL http://admin:custom@localhost:8080/message | jq -r '.messages | length')
+if [ "$NUM_MESSAGES_AFTER" != "$((NUM_MESSAGES_BEFORE + 1))" ]; then
+  fail "Expected one additional notification after failure, got $NUM_MESSAGES_AFTER total."
+fi
+pass "Failure notification was sent."

@@ -63,8 +63,17 @@ func runScript(c *Config) (err error) {
 	}
 
 	if initErr := s.init(); initErr != nil {
-		err = errwrap.Wrap(initErr, "error instantiating script")
-		return
+		if hookErr := s.runHooks(initErr); hookErr != nil {
+			return errwrap.Wrap(
+				nil,
+				fmt.Sprintf(
+					"error %v instantiating script followed by %v calling the registered hooks",
+					initErr,
+					hookErr,
+				),
+			)
+		}
+		return errwrap.Wrap(initErr, "error instantiating script")
 	}
 
 	return func() (err error) {

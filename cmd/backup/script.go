@@ -78,6 +78,69 @@ func (s *script) init() error {
 		s.stats.TookTime = s.stats.EndTime.Sub(s.stats.StartTime)
 		return nil
 	})
+	// Register notifications first so they can fire in case of other init errors.
+	if s.c.EmailNotificationRecipient != "" {
+		emailURL := fmt.Sprintf(
+			"smtp://%s:%s@%s:%d/?from=%s&to=%s",
+			s.c.EmailSMTPUsername,
+			s.c.EmailSMTPPassword,
+			s.c.EmailSMTPHost,
+			s.c.EmailSMTPPort,
+			s.c.EmailNotificationSender,
+			s.c.EmailNotificationRecipient,
+		)
+		s.c.NotificationURLs = append(s.c.NotificationURLs, emailURL)
+		s.logger.Warn(
+			"Using EMAIL_* keys for providing notification configuration has been deprecated and will be removed in the next major version.",
+		)
+		s.logger.Warn(
+			"Please use NOTIFICATION_URLS instead. Refer to the README for an upgrade guide.",
+		)
+	}
+
+	hookLevel, ok := hookLevels[s.c.NotificationLevel]
+	if !ok {
+		return errwrap.Wrap(nil, fmt.Sprintf("unknown NOTIFICATION_LEVEL %s", s.c.NotificationLevel))
+	}
+	s.hookLevel = hookLevel
+
+	if len(s.c.NotificationURLs) > 0 {
+		sender, senderErr := shoutrrr.CreateSender(s.c.NotificationURLs...)
+		if senderErr != nil {
+			return errwrap.Wrap(senderErr, "error creating sender")
+		}
+		s.sender = sender
+
+		tmpl := template.New("")
+		tmpl.Funcs(templateHelpers)
+		tmpl, err := tmpl.Parse(defaultNotifications)
+		if err != nil {
+			return errwrap.Wrap(err, "unable to parse default notifications templates")
+		}
+
+		if fi, err := os.Stat("/etc/dockervolumebackup/notifications.d"); err == nil && fi.IsDir() {
+			tmpl, err = tmpl.ParseGlob("/etc/dockervolumebackup/notifications.d/*.*")
+			if err != nil {
+				return errwrap.Wrap(err, "unable to parse user defined notifications templates")
+			}
+		}
+		s.template = tmpl
+
+		// To prevent duplicate notifications, ensure the regsistered callbacks
+		// run mutually exclusive.
+		s.registerHook(hookLevelError, func(err error) error {
+			if err == nil {
+				return nil
+			}
+			return s.notifyFailure(err)
+		})
+		s.registerHook(hookLevelInfo, func(err error) error {
+			if err != nil {
+				return nil
+			}
+			return s.notifySuccess()
+		})
+	}
 
 	s.file = path.Join("/tmp", s.c.BackupFilename)
 
@@ -250,69 +313,6 @@ func (s *script) init() error {
 			return errwrap.Wrap(err, "error creating googledrive storage backend")
 		}
 		s.storages = append(s.storages, googleDriveBackend)
-	}
-
-	if s.c.EmailNotificationRecipient != "" {
-		emailURL := fmt.Sprintf(
-			"smtp://%s:%s@%s:%d/?from=%s&to=%s",
-			s.c.EmailSMTPUsername,
-			s.c.EmailSMTPPassword,
-			s.c.EmailSMTPHost,
-			s.c.EmailSMTPPort,
-			s.c.EmailNotificationSender,
-			s.c.EmailNotificationRecipient,
-		)
-		s.c.NotificationURLs = append(s.c.NotificationURLs, emailURL)
-		s.logger.Warn(
-			"Using EMAIL_* keys for providing notification configuration has been deprecated and will be removed in the next major version.",
-		)
-		s.logger.Warn(
-			"Please use NOTIFICATION_URLS instead. Refer to the README for an upgrade guide.",
-		)
-	}
-
-	hookLevel, ok := hookLevels[s.c.NotificationLevel]
-	if !ok {
-		return errwrap.Wrap(nil, fmt.Sprintf("unknown NOTIFICATION_LEVEL %s", s.c.NotificationLevel))
-	}
-	s.hookLevel = hookLevel
-
-	if len(s.c.NotificationURLs) > 0 {
-		sender, senderErr := shoutrrr.CreateSender(s.c.NotificationURLs...)
-		if senderErr != nil {
-			return errwrap.Wrap(senderErr, "error creating sender")
-		}
-		s.sender = sender
-
-		tmpl := template.New("")
-		tmpl.Funcs(templateHelpers)
-		tmpl, err = tmpl.Parse(defaultNotifications)
-		if err != nil {
-			return errwrap.Wrap(err, "unable to parse default notifications templates")
-		}
-
-		if fi, err := os.Stat("/etc/dockervolumebackup/notifications.d"); err == nil && fi.IsDir() {
-			tmpl, err = tmpl.ParseGlob("/etc/dockervolumebackup/notifications.d/*.*")
-			if err != nil {
-				return errwrap.Wrap(err, "unable to parse user defined notifications templates")
-			}
-		}
-		s.template = tmpl
-
-		// To prevent duplicate notifications, ensure the regsistered callbacks
-		// run mutually exclusive.
-		s.registerHook(hookLevelError, func(err error) error {
-			if err == nil {
-				return nil
-			}
-			return s.notifyFailure(err)
-		})
-		s.registerHook(hookLevelInfo, func(err error) error {
-			if err != nil {
-				return nil
-			}
-			return s.notifySuccess()
-		})
 	}
 
 	return nil
