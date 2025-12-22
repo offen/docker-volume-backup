@@ -63,11 +63,22 @@ func runScript(c *Config) (err error) {
 	}
 
 	if initErr := s.init(); initErr != nil {
+		if hookErr := s.runHooks(initErr); hookErr != nil {
+			err = errwrap.Wrap(
+				nil,
+				fmt.Sprintf(
+					"error %v instantiating script followed by %v calling the registered hooks",
+					initErr,
+					hookErr,
+				),
+			)
+			return
+		}
 		err = errwrap.Wrap(initErr, "error instantiating script")
 		return
 	}
 
-	return func() (err error) {
+	err = func() (err error) {
 		scriptErr := func() error {
 			if err := s.withLabeledCommands(lifecyclePhaseArchive, func() (err error) {
 				restartContainersAndServices, err := s.stopContainersAndServices()
@@ -121,4 +132,6 @@ func runScript(c *Config) (err error) {
 		}
 		return nil
 	}()
+
+	return
 }
