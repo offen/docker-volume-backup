@@ -29,7 +29,7 @@ if [ ! -z "$MATCH_PATTERN" ]; then
   find_args="$find_args -name $MATCH_PATTERN"
 fi
 
-for dir in $(find $find_args | sort); do
+for dir in $(find . $find_args | sort); do
   dir=$(echo $dir | cut -c 3-)
   echo "################################################"
   echo "Now running ${dir}"
@@ -58,7 +58,7 @@ for dir in $(find $find_args | sort); do
     docker exec $svc /bin/sh -c "docker load -i /cache/image.tar.gz"
   done
 
-  for executable in $(find $dir -type f -executable | sort); do
+  for executable in $(find $dir -type f -perm -u+x | sort); do
     context="manager"
     if [ -f "$executable.context" ]; then
         context=$(cat "$executable.context")
