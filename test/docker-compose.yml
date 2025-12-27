@@ -10,7 +10,7 @@ services:
       retries: 50
     volumes:
       - ./:/code
-      - ${HOME}/.docker/config.json:/root/.docker/config.json
+      - ${DOCKER_CONFIG_FILE:-./docker-config.json}:/root/.docker/config.json
       - ${TARBALL:-.}:/cache/image.tar.gz
       - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
       - docker_volume_backup_test_sandbox_containerd:/var/lib/docker/containerd
@@ -20,7 +20,7 @@ services:
     hostname: worker1
     volumes:
       - ./:/code
-      - ${HOME}/.docker/config.json:/root/.docker/config.json
+      - ${DOCKER_CONFIG_FILE:-./docker-config.json}:/root/.docker/config.json
       - ${TARBALL:-.}:/cache/image.tar.gz
       - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
       - docker_volume_backup_test_sandbox_containerd_1:/var/lib/docker/containerd
@@ -31,7 +31,7 @@ services:
     hostname: worker2
     volumes:
       - ./:/code
-      - ${HOME}/.docker/config.json:/root/.docker/config.json
+      - ${DOCKER_CONFIG_FILE:-./docker-config.json}:/root/.docker/config.json
       - ${TARBALL:-.}:/cache/image.tar.gz
       - docker_volume_backup_test_sandbox_image:/var/lib/docker/image
       - docker_volume_backup_test_sandbox_containerd_2:/var/lib/docker/containerd
