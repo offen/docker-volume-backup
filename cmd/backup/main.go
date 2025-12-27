@@ -11,11 +11,17 @@ func main() {
 	foreground := flag.Bool("foreground", false, "run the tool in the foreground")
 	profile := flag.String("profile", "", "collect runtime metrics and log them periodically on the given cron expression")
 	flag.Parse()
-
+	additionalArgs := flag.Args()
 	c := newCommand()
-	if flag.Arg(0) == "show-config" {
-		c.must(runShowConfig())
-		return
+
+	if len(additionalArgs) > 0 {
+		switch additionalArgs[0] {
+		case "show-config":
+			c.must(runShowConfig())
+			return
+		default:
+			panic("unknown command: " + additionalArgs[0])
+		}
 	}
 	if *foreground {
 		opts := foregroundOpts{
