@@ -23,6 +23,8 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Run Tests
+        env:
+          DOCKER_CONFIG_FILE: /home/runner/.docker/config.json
         working-directory: ./test
         run: |
           BUILD_IMAGE=1 ./test.sh
