@@ -8,8 +8,7 @@ current_test=$(basename $(pwd))
 
 export LOCAL_DIR=$(mktemp -d)
 
-docker compose up -d --quiet-pull
-sleep 5
+docker compose up -d --quiet-pull --wait
 
 docker compose logs backup
 

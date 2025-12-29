@@ -24,8 +24,7 @@ EOF
 
 gpg --export --armor --batch --yes --pinentry-mode loopback --passphrase $PASSPHRASE --output $KEY_DIR/public_key.asc
 
-docker compose up -d --quiet-pull
-sleep 5
+docker compose up -d --quiet-pull --wait
 
 docker compose exec backup backup
 

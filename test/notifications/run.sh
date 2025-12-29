@@ -8,8 +8,7 @@ current_test=$(basename $(pwd))
 
 export LOCAL_DIR=$(mktemp -d)
 
-docker compose up -d --quiet-pull
-sleep 5
+docker compose up -d --quiet-pull --wait
 
 GOTIFY_TOKEN=$(curl -sSLX POST -H 'Content-Type: application/json' -d '{"name":"test"}' http://admin:custom@localhost:8080/application | jq -r '.token')
 info "Set up Gotify application using token $GOTIFY_TOKEN"

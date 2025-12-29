@@ -11,8 +11,7 @@ cp user_v2.yaml $SPEC_FILE
 sed -i 's/SERVER_MODIFIED_1/'"$(date "+%Y-%m-%dT%H:%M:%SZ")/g" $SPEC_FILE
 sed -i 's/SERVER_MODIFIED_2/'"$(date "+%Y-%m-%dT%H:%M:%SZ" -d "14 days ago")/g" $SPEC_FILE
 
-docker compose up -d --quiet-pull
-sleep 5
+docker compose up -d --quiet-pull --wait
 
 logs=$(docker compose exec -T backup backup)
 
@@ -29,8 +28,7 @@ fi
 
 # The second part of this test checks if backups get deleted when the retention
 # is set to 0 days (which it should not as it would mean all backups get deleted)
-BACKUP_RETENTION_DAYS="0" docker compose up -d
-sleep 5
+BACKUP_RETENTION_DAYS="0" docker compose up -d --wait
 
 logs=$(docker compose exec -T backup backup)
 
@@ -43,8 +41,7 @@ fi
 
 # The third part of this test checks if old backups get deleted when the retention
 # is set to 7 days (which it should)
-BACKUP_RETENTION_DAYS="7" docker compose up -d
-sleep 5
+BACKUP_RETENTION_DAYS="7" docker compose up -d --wait
 
 info "Create second backup and prune"
 logs=$(docker compose exec -T backup backup)

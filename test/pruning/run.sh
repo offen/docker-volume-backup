@@ -11,8 +11,7 @@ current_test=$(basename $(pwd))
 
 export LOCAL_DIR=$(mktemp -d)
 
-docker compose up -d --quiet-pull
-sleep 5
+docker compose up -d --quiet-pull --wait
 
 docker compose exec backup backup
 
@@ -29,8 +28,7 @@ docker run --rm \
 
 # Skip s3 backend from prune
 
-docker compose up -d
-sleep 5
+docker compose up -d --wait
 
 info "Create backup with no prune for s3 backend"
 docker compose exec backup backup
@@ -52,8 +50,7 @@ pass "Old remote backup has been pruned locally, skipped S3 backend is untouched
 
 touch -r "$LOCAL_DIR/test-hostnametoken.tar.gz" -d "14 days ago" "$LOCAL_DIR/test-hostnametoken-old.tar.gz"
 
-docker compose up -d
-sleep 5
+docker compose up -d --wait
 
 info "Create backup with no prune for both backends"
 docker compose exec -e BACKUP_SKIP_BACKENDS_FROM_PRUNE="s3,local" backup backup

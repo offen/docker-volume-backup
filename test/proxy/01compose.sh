@@ -8,8 +8,7 @@ current_test=$(basename $(pwd))
 
 export LOCAL_DIR=$(mktemp -d)
 
-docker compose up -d --quiet-pull
-sleep 5
+docker compose up -d --quiet-pull --wait
 
 # The default configuration in docker-compose.yml should
 # successfully create a backup.
@@ -25,8 +24,7 @@ fi
 pass "Found relevant archive file."
 
 # Disabling POST should make the backup run fail
-ALLOW_POST="0" docker compose up -d
-sleep 5
+ALLOW_POST="0" docker compose up -d --wait
 
 set +e
 docker compose exec backup backup
