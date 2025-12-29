@@ -9,8 +9,7 @@ current_test=$(basename $(pwd))
 export LOCAL_DIR=$(mktemp -d)
 export TMP_DIR=$(mktemp -d)
 
-docker compose up -d --quiet-pull
-sleep 30 # mariadb likes to take a bit before responding
+docker compose up -d --quiet-pull --wait
 
 docker compose exec backup backup
 

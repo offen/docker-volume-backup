@@ -18,8 +18,7 @@ PK_C="$(cat $LOCAL_DIR/id_ed25519.pub)"
 
 export BACKUP_AGE_PUBLIC_KEYS="$PK_A,$PK_B,$PK_C"
 
-docker compose up -d --quiet-pull
-sleep 5
+docker compose up -d --quiet-pull --wait
 
 docker compose exec backup backup
 

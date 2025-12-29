@@ -13,8 +13,7 @@ export TEST_VERSION="${TEST_VERSION:-canary}-with-rsync"
 
 docker build . -t offen/docker-volume-backup:$TEST_VERSION --build-arg version=$BASE_VERSION
 
-docker compose up -d --quiet-pull
-sleep 5
+docker compose up -d --quiet-pull --wait
 
 docker compose exec backup backup
 
