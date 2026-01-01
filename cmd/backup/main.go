@@ -16,8 +16,8 @@ func main() {
 
 	if len(additionalArgs) > 0 {
 		switch additionalArgs[0] {
-		case "show-config":
-			c.must(runShowConfig())
+		case "print-config":
+			c.must(runPrintConfig())
 			return
 		default:
 			panic("unknown command: " + additionalArgs[0])

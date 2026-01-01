@@ -6,9 +6,9 @@ cd "$(dirname "$0")"
 . ../util.sh
 current_test=$(basename $(pwd))
 
-info "show-config with environment variables"
+info "print-config with environment variables"
 docker compose up -d --quiet-pull
-logs=$(docker compose exec -T backup backup show-config)
+logs=$(docker compose exec -T backup backup print-config)
 
 echo "$logs"
 
@@ -39,17 +39,17 @@ pass "AWS_S3_BUCKET_NAME present."
 
 docker compose down
 
-info "show-config with conf.d and _FILE"
+info "print-config with conf.d and _FILE"
 export CONF_DIR=$(pwd)/conf.d
 export SECRET_FILE=$(mktemp)
 printf "stdout://\n" > "$SECRET_FILE"
 
 docker compose -f docker-compose.confd.yml up -d --quiet-pull
-logs=$(docker compose -f docker-compose.confd.yml exec -T backup backup show-config)
+logs=$(docker compose -f docker-compose.confd.yml exec -T backup backup print-config)
 
 echo "$logs"
 
-if ! echo "$logs" | grep -q "source=01show-config.env"; then
+if ! echo "$logs" | grep -q "source=01print-config.env"; then
   fail "Missing conf.d source line."
 fi
 pass "conf.d source line present."

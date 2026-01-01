@@ -11,7 +11,7 @@ import (
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
-func runShowConfig() error {
+func runPrintConfig() error {
 	configurations, err := sourceConfiguration(configStrategyConfd)
 	if err != nil {
 		fmt.Printf("error sourcing configuration: %v\n", err) // print error to stdout for debugging
