@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 
 	"github.com/offen/docker-volume-backup/internal/errwrap"
@@ -21,6 +22,20 @@ func runShowConfig() error {
 		if config == nil {
 			fmt.Println("source=<nil>\n<nil>")
 			continue
+		}
+		if config.BackupFilenameExpand {
+			unset, err := config.applyEnv()
+			if err != nil {
+				fmt.Printf("error applying env: %v\n", err) // print error to stdout for debugging
+				return errwrap.Wrap(err, "error applying env")
+			}
+			config.BackupFilename = os.ExpandEnv(config.BackupFilename)
+			config.BackupLatestSymlink = os.ExpandEnv(config.BackupLatestSymlink)
+			config.BackupPruningPrefix = os.ExpandEnv(config.BackupPruningPrefix)
+			if err := unset(); err != nil {
+				fmt.Printf("error unsetting env: %v\n", err) // print error to stdout for debugging
+				return errwrap.Wrap(err, "error unsetting environment variables")
+			}
 		}
 		// insert line breaks before each field name, assuming field names start with uppercase letters
 		formatted := regexp.MustCompile(`\s([A-Z])`).ReplaceAllString(fmt.Sprintf("%+v", *config), "\n$1")
