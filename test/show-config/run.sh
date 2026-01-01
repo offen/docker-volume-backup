@@ -22,6 +22,11 @@ if ! echo "$logs" | grep -q "BackupSources:/backup"; then
 fi
 pass "BACKUP_SOURCES present."
 
+if ! echo "$logs" | grep -q "BackupFilename:backup-expanded.tar"; then
+  fail "Missing expanded BACKUP_FILENAME in output."
+fi
+pass "Expanded BACKUP_FILENAME present."
+
 if ! echo "$logs" | grep -q "NotificationURLs:\[stdout://\]"; then
   fail "Missing NOTIFICATION_URLS in output."
 fi
