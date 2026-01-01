@@ -19,10 +19,6 @@ func runPrintConfig() error {
 	}
 
 	for _, config := range configurations {
-		if config == nil {
-			fmt.Println("source=<nil>\n<nil>")
-			continue
-		}
 		if config.BackupFilenameExpand {
 			unset, err := config.applyEnv()
 			if err != nil {
