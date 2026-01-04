@@ -226,10 +226,11 @@ func (c *Config) applyEnv() (func() error, error) {
 	return unset, nil
 }
 
-func (c *Config) resolve() (func() error, error) {
+func (c *Config) resolve() (func() error, []string, error) {
+	warnings := []string{}
 	resetEnv, err := c.applyEnv()
 	if err != nil {
-		return resetEnv, errwrap.Wrap(err, "error applying env")
+		return resetEnv, warnings, errwrap.Wrap(err, "error applying env")
 	}
 
 	if c.BackupFilenameExpand {
@@ -238,5 +239,40 @@ func (c *Config) resolve() (func() error, error) {
 		c.BackupPruningPrefix = os.ExpandEnv(c.BackupPruningPrefix)
 	}
 
-	return resetEnv, nil
+	if c.EmailNotificationRecipient != "" {
+		emailURL := fmt.Sprintf(
+			"smtp://%s:%s@%s:%d/?from=%s&to=%s",
+			c.EmailSMTPUsername,
+			c.EmailSMTPPassword,
+			c.EmailSMTPHost,
+			c.EmailSMTPPort,
+			c.EmailNotificationSender,
+			c.EmailNotificationRecipient,
+		)
+		c.NotificationURLs = append(c.NotificationURLs, emailURL)
+		warnings = append(warnings,
+			"Using EMAIL_* keys for providing notification configuration has been deprecated and will be removed in the next major version.",
+			"Please use NOTIFICATION_URLS instead. Refer to the README for an upgrade guide.",
+		)
+	}
+
+	if c.BackupFromSnapshot {
+		warnings = append(warnings,
+			"Using BACKUP_FROM_SNAPSHOT has been deprecated and will be removed in the next major version.",
+			"Please use `archive-pre` and `archive-post` commands to prepare your backup sources. Refer to the documentation for an upgrade guide.",
+		)
+	}
+
+	if c.BackupStopDuringBackupLabel != "" && c.BackupStopContainerLabel != "" {
+		return resetEnv, warnings, errwrap.Wrap(nil, "both BACKUP_STOP_DURING_BACKUP_LABEL and BACKUP_STOP_CONTAINER_LABEL have been set, cannot continue")
+	}
+	if c.BackupStopContainerLabel != "" {
+		warnings = append(warnings,
+			"Using BACKUP_STOP_CONTAINER_LABEL has been deprecated and will be removed in the next major version.",
+			"Please use BACKUP_STOP_DURING_BACKUP_LABEL instead. Refer to the docs for an upgrade guide.",
+		)
+		c.BackupStopDuringBackupLabel = c.BackupStopContainerLabel
+	}
+
+	return resetEnv, warnings, nil
 }

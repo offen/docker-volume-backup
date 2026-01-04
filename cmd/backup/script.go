@@ -79,24 +79,6 @@ func (s *script) init() error {
 		return nil
 	})
 	// Register notifications first so they can fire in case of other init errors.
-	if s.c.EmailNotificationRecipient != "" {
-		emailURL := fmt.Sprintf(
-			"smtp://%s:%s@%s:%d/?from=%s&to=%s",
-			s.c.EmailSMTPUsername,
-			s.c.EmailSMTPPassword,
-			s.c.EmailSMTPHost,
-			s.c.EmailSMTPPort,
-			s.c.EmailNotificationSender,
-			s.c.EmailNotificationRecipient,
-		)
-		s.c.NotificationURLs = append(s.c.NotificationURLs, emailURL)
-		s.logger.Warn(
-			"Using EMAIL_* keys for providing notification configuration has been deprecated and will be removed in the next major version.",
-		)
-		s.logger.Warn(
-			"Please use NOTIFICATION_URLS instead. Refer to the README for an upgrade guide.",
-		)
-	}
 
 	hookLevel, ok := hookLevels[s.c.NotificationLevel]
 	if !ok {

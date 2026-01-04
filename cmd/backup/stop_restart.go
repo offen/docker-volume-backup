@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"sync"
 	"time"
 
@@ -113,23 +112,9 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		return noop, errwrap.Wrap(err, "error determining swarm state")
 	}
 
-	labelValue := s.c.BackupStopDuringBackupLabel
-	if s.c.BackupStopContainerLabel != "" {
-		s.logger.Warn(
-			"Using BACKUP_STOP_CONTAINER_LABEL has been deprecated and will be removed in the next major version.",
-		)
-		s.logger.Warn(
-			"Please use BACKUP_STOP_DURING_BACKUP_LABEL instead. Refer to the docs for an upgrade guide.",
-		)
-		if _, ok := os.LookupEnv("BACKUP_STOP_DURING_BACKUP_LABEL"); ok {
-			return noop, errwrap.Wrap(nil, "both BACKUP_STOP_DURING_BACKUP_LABEL and BACKUP_STOP_CONTAINER_LABEL have been set, cannot continue")
-		}
-		labelValue = s.c.BackupStopContainerLabel
-	}
-
 	stopDuringBackupLabel := fmt.Sprintf(
 		"docker-volume-backup.stop-during-backup=%s",
-		labelValue,
+		s.c.BackupStopDuringBackupLabel,
 	)
 
 	stopDuringBackupNoRestartLabel := fmt.Sprintf(
@@ -144,7 +129,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 
 	var containersToStop []handledContainer
 	for _, c := range allContainers.Items {
-		hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(c.Labels, labelValue, s.c.BackupStopDuringBackupNoRestartLabel)
+		hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(c.Labels, s.c.BackupStopDuringBackupLabel, s.c.BackupStopDuringBackupNoRestartLabel)
 		if err != nil {
 			return noop, errwrap.Wrap(err, "error querying for containers to stop")
 		}
@@ -169,7 +154,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		}
 
 		for _, service := range allServices {
-			hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(service.Spec.Labels, labelValue, s.c.BackupStopDuringBackupNoRestartLabel)
+			hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(service.Spec.Labels, s.c.BackupStopDuringBackupLabel, s.c.BackupStopDuringBackupNoRestartLabel)
 			if err != nil {
 				return noop, errwrap.Wrap(err, "error querying for services to scale down")
 			}
