@@ -43,7 +43,7 @@ func runScript(c *Config) (err error) {
 		}
 	}()
 
-	unset, err := s.c.applyEnv()
+	unset, err := s.c.resolve()
 	if err != nil {
 		return errwrap.Wrap(err, "error applying env")
 	}

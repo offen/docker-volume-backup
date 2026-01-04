@@ -225,3 +225,18 @@ func (c *Config) applyEnv() (func() error, error) {
 	}
 	return unset, nil
 }
+
+func (c *Config) resolve() (func() error, error) {
+	resetEnv, err := c.applyEnv()
+	if err != nil {
+		return resetEnv, errwrap.Wrap(err, "error applying env")
+	}
+
+	if c.BackupFilenameExpand {
+		c.BackupFilename = os.ExpandEnv(c.BackupFilename)
+		c.BackupLatestSymlink = os.ExpandEnv(c.BackupLatestSymlink)
+		c.BackupPruningPrefix = os.ExpandEnv(c.BackupPruningPrefix)
+	}
+
+	return resetEnv, nil
+}
