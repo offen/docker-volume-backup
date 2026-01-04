@@ -4,16 +4,13 @@
 package azure
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 	"sync"
-	"text/template"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -49,16 +46,6 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		return nil, errwrap.Wrap(nil, "using primary account key and connection string are mutually exclusive")
 	}
 
-	endpointTemplate, err := template.New("endpoint").Parse(opts.Endpoint)
-	if err != nil {
-		return nil, errwrap.Wrap(err, "error parsing endpoint template")
-	}
-	var ep bytes.Buffer
-	if err := endpointTemplate.Execute(&ep, opts); err != nil {
-		return nil, errwrap.Wrap(err, "error executing endpoint template")
-	}
-	normalizedEndpoint := fmt.Sprintf("%s/", strings.TrimSuffix(ep.String(), "/"))
-
 	var client *azblob.Client
 	if opts.PrimaryAccountKey != "" {
 		cred, err := azblob.NewSharedKeyCredential(opts.AccountName, opts.PrimaryAccountKey)
@@ -66,11 +53,12 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 			return nil, errwrap.Wrap(err, "error creating shared key Azure credential")
 		}
 
-		client, err = azblob.NewClientWithSharedKeyCredential(normalizedEndpoint, cred, nil)
+		client, err = azblob.NewClientWithSharedKeyCredential(opts.Endpoint, cred, nil)
 		if err != nil {
 			return nil, errwrap.Wrap(err, "error creating azure client from primary account key")
 		}
 	} else if opts.ConnectionString != "" {
+		var err error
 		client, err = azblob.NewClientFromConnectionString(opts.ConnectionString, nil)
 		if err != nil {
 			return nil, errwrap.Wrap(err, "error creating azure client from connection string")
@@ -80,7 +68,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		if err != nil {
 			return nil, errwrap.Wrap(err, "error creating managed identity credential")
 		}
-		client, err = azblob.NewClient(normalizedEndpoint, cred, nil)
+		client, err = azblob.NewClient(opts.Endpoint, cred, nil)
 		if err != nil {
 			return nil, errwrap.Wrap(err, "error creating azure client from managed identity")
 		}

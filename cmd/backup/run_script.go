@@ -43,7 +43,7 @@ func runScript(c *Config) (err error) {
 		}
 	}()
 
-	unset, err := s.c.applyEnv()
+	unset, warnings, err := s.c.resolve()
 	if err != nil {
 		return errwrap.Wrap(err, "error applying env")
 	}
@@ -52,6 +52,9 @@ func runScript(c *Config) (err error) {
 			err = errors.Join(err, errwrap.Wrap(derr, "error unsetting environment variables"))
 		}
 	}()
+	for _, w := range warnings {
+		s.logger.Warn(w)
+	}
 
 	if s.c != nil && s.c.BackupJitter > 0 {
 		max := s.c.BackupJitter

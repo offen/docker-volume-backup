@@ -4,12 +4,15 @@
 package main
 
 import (
+	"bytes"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
+	"text/template"
 	"time"
 
 	"github.com/offen/docker-volume-backup/internal/errwrap"
@@ -224,4 +227,93 @@ func (c *Config) applyEnv() (func() error, error) {
 		}
 	}
 	return unset, nil
+}
+
+// resolve is responsible for performing all implicit logic that transforms a configuration object
+// into what is actually being used at runtime. E.g. environment variables are expanded or
+// deprecated config options are transposed into their up to date successors. The caller is
+// responsible for calling the returned reset function after usage of the config is done.
+func (c *Config) resolve() (reset func() error, warnings []string, err error) {
+	reset, aErr := c.applyEnv()
+	if aErr != nil {
+		err = errwrap.Wrap(aErr, "error applying env")
+		return
+	}
+
+	if c.BackupFilenameExpand {
+		c.BackupFilename = os.ExpandEnv(c.BackupFilename)
+		c.BackupLatestSymlink = os.ExpandEnv(c.BackupLatestSymlink)
+		c.BackupPruningPrefix = os.ExpandEnv(c.BackupPruningPrefix)
+	}
+
+	if c.EmailNotificationRecipient != "" {
+		emailURL := fmt.Sprintf(
+			"smtp://%s:%s@%s:%d/?from=%s&to=%s",
+			c.EmailSMTPUsername,
+			c.EmailSMTPPassword,
+			c.EmailSMTPHost,
+			c.EmailSMTPPort,
+			c.EmailNotificationSender,
+			c.EmailNotificationRecipient,
+		)
+		c.NotificationURLs = append(c.NotificationURLs, emailURL)
+		warnings = append(warnings,
+			"Using EMAIL_* keys for providing notification configuration has been deprecated and will be removed in the next major version.",
+			"Please use NOTIFICATION_URLS instead. Refer to the README for an upgrade guide.",
+		)
+	}
+
+	if c.BackupFromSnapshot {
+		warnings = append(warnings,
+			"Using BACKUP_FROM_SNAPSHOT has been deprecated and will be removed in the next major version.",
+			"Please use `archive-pre` and `archive-post` commands to prepare your backup sources. Refer to the documentation for an upgrade guide.",
+		)
+	}
+
+	if c.BackupStopDuringBackupLabel != "" && c.BackupStopContainerLabel != "" {
+		err = errwrap.Wrap(nil, "both BACKUP_STOP_DURING_BACKUP_LABEL and BACKUP_STOP_CONTAINER_LABEL have been set, cannot continue")
+		return
+	}
+	if c.BackupStopContainerLabel != "" {
+		warnings = append(warnings,
+			"Using BACKUP_STOP_CONTAINER_LABEL has been deprecated and will be removed in the next major version.",
+			"Please use BACKUP_STOP_DURING_BACKUP_LABEL instead. Refer to the docs for an upgrade guide.",
+		)
+		c.BackupStopDuringBackupLabel = c.BackupStopContainerLabel
+	}
+
+	tmplFileName, tErr := template.New("extension").Parse(c.BackupFilename)
+	if tErr != nil {
+		err = errwrap.Wrap(tErr, "unable to parse backup file extension template")
+		return
+	}
+
+	var bf bytes.Buffer
+	if tErr := tmplFileName.Execute(&bf, map[string]string{
+		"Extension": func() string {
+			if c.BackupCompression == "none" {
+				return "tar"
+			}
+			return fmt.Sprintf("tar.%s", c.BackupCompression)
+		}(),
+	}); tErr != nil {
+		err = errwrap.Wrap(tErr, "error executing backup file extension template")
+		return
+	}
+	c.BackupFilename = bf.String()
+
+	if c.AzureStorageEndpoint != "" {
+		endpointTemplate, tErr := template.New("endpoint").Parse(c.AzureStorageEndpoint)
+		if tErr != nil {
+			err = errwrap.Wrap(tErr, "error parsing endpoint template")
+			return
+		}
+		var ep bytes.Buffer
+		if tErr := endpointTemplate.Execute(&ep, map[string]string{"AccountName": c.AzureStorageAccountName}); tErr != nil {
+			err = errwrap.Wrap(tErr, "error executing endpoint template")
+			return
+		}
+		c.AzureStorageEndpoint = fmt.Sprintf("%s/", strings.TrimSuffix(ep.String(), "/"))
+	}
+	return
 }
