@@ -4,12 +4,15 @@
 package main
 
 import (
+	"bytes"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
+	"text/template"
 	"time"
 
 	"github.com/offen/docker-volume-backup/internal/errwrap"
@@ -272,6 +275,36 @@ func (c *Config) resolve() (func() error, []string, error) {
 			"Please use BACKUP_STOP_DURING_BACKUP_LABEL instead. Refer to the docs for an upgrade guide.",
 		)
 		c.BackupStopDuringBackupLabel = c.BackupStopContainerLabel
+	}
+
+	tmplFileName, tErr := template.New("extension").Parse(c.BackupFilename)
+	if tErr != nil {
+		return resetEnv, warnings, errwrap.Wrap(tErr, "unable to parse backup file extension template")
+	}
+
+	var bf bytes.Buffer
+	if tErr := tmplFileName.Execute(&bf, map[string]string{
+		"Extension": func() string {
+			if c.BackupCompression == "none" {
+				return "tar"
+			}
+			return fmt.Sprintf("tar.%s", c.BackupCompression)
+		}(),
+	}); tErr != nil {
+		return resetEnv, warnings, errwrap.Wrap(tErr, "error executing backup file extension template")
+	}
+	c.BackupFilename = bf.String()
+
+	if c.AzureStorageEndpoint != "" {
+		endpointTemplate, err := template.New("endpoint").Parse(c.AzureStorageEndpoint)
+		if err != nil {
+			return resetEnv, warnings, errwrap.Wrap(err, "error parsing endpoint template")
+		}
+		var ep bytes.Buffer
+		if err := endpointTemplate.Execute(&ep, map[string]string{"AccountName": c.AzureStorageAccountName}); err != nil {
+			return resetEnv, warnings, errwrap.Wrap(err, "error executing endpoint template")
+		}
+		c.AzureStorageEndpoint = fmt.Sprintf("%s/", strings.TrimSuffix(ep.String(), "/"))
 	}
 
 	return resetEnv, warnings, nil
