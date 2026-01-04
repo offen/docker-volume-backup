@@ -229,11 +229,15 @@ func (c *Config) applyEnv() (func() error, error) {
 	return unset, nil
 }
 
-func (c *Config) resolve() (func() error, []string, error) {
-	warnings := []string{}
-	resetEnv, err := c.applyEnv()
-	if err != nil {
-		return resetEnv, warnings, errwrap.Wrap(err, "error applying env")
+// resolve is responsible for performing all implicit logic that transforms a configuration object
+// into what is actually being used at runtime. E.g. environment variables are expanded or
+// deprecated config options are transposed into their up to date successors. The caller is
+// responsible for calling the returned reset function after usage of the config is done.
+func (c *Config) resolve() (reset func() error, warnings []string, err error) {
+	reset, aErr := c.applyEnv()
+	if aErr != nil {
+		err = errwrap.Wrap(aErr, "error applying env")
+		return
 	}
 
 	if c.BackupFilenameExpand {
@@ -267,7 +271,8 @@ func (c *Config) resolve() (func() error, []string, error) {
 	}
 
 	if c.BackupStopDuringBackupLabel != "" && c.BackupStopContainerLabel != "" {
-		return resetEnv, warnings, errwrap.Wrap(nil, "both BACKUP_STOP_DURING_BACKUP_LABEL and BACKUP_STOP_CONTAINER_LABEL have been set, cannot continue")
+		err = errwrap.Wrap(nil, "both BACKUP_STOP_DURING_BACKUP_LABEL and BACKUP_STOP_CONTAINER_LABEL have been set, cannot continue")
+		return
 	}
 	if c.BackupStopContainerLabel != "" {
 		warnings = append(warnings,
@@ -279,7 +284,8 @@ func (c *Config) resolve() (func() error, []string, error) {
 
 	tmplFileName, tErr := template.New("extension").Parse(c.BackupFilename)
 	if tErr != nil {
-		return resetEnv, warnings, errwrap.Wrap(tErr, "unable to parse backup file extension template")
+		err = errwrap.Wrap(tErr, "unable to parse backup file extension template")
+		return
 	}
 
 	var bf bytes.Buffer
@@ -291,21 +297,23 @@ func (c *Config) resolve() (func() error, []string, error) {
 			return fmt.Sprintf("tar.%s", c.BackupCompression)
 		}(),
 	}); tErr != nil {
-		return resetEnv, warnings, errwrap.Wrap(tErr, "error executing backup file extension template")
+		err = errwrap.Wrap(tErr, "error executing backup file extension template")
+		return
 	}
 	c.BackupFilename = bf.String()
 
 	if c.AzureStorageEndpoint != "" {
-		endpointTemplate, err := template.New("endpoint").Parse(c.AzureStorageEndpoint)
-		if err != nil {
-			return resetEnv, warnings, errwrap.Wrap(err, "error parsing endpoint template")
+		endpointTemplate, tErr := template.New("endpoint").Parse(c.AzureStorageEndpoint)
+		if tErr != nil {
+			err = errwrap.Wrap(tErr, "error parsing endpoint template")
+			return
 		}
 		var ep bytes.Buffer
-		if err := endpointTemplate.Execute(&ep, map[string]string{"AccountName": c.AzureStorageAccountName}); err != nil {
-			return resetEnv, warnings, errwrap.Wrap(err, "error executing endpoint template")
+		if tErr := endpointTemplate.Execute(&ep, map[string]string{"AccountName": c.AzureStorageAccountName}); tErr != nil {
+			err = errwrap.Wrap(tErr, "error executing endpoint template")
+			return
 		}
 		c.AzureStorageEndpoint = fmt.Sprintf("%s/", strings.TrimSuffix(ep.String(), "/"))
 	}
-
-	return resetEnv, warnings, nil
+	return
 }
