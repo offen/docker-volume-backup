@@ -5,7 +5,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 
 	"github.com/offen/docker-volume-backup/internal/errwrap"
@@ -14,28 +13,33 @@ import (
 func runPrintConfig() error {
 	configurations, err := sourceConfiguration(configStrategyConfd)
 	if err != nil {
-		fmt.Printf("error sourcing configuration: %v\n", err) // print error to stdout for debugging
 		return errwrap.Wrap(err, "error sourcing configuration")
 	}
 
+	formatter := regexp.MustCompile(`\s([A-Z])`)
 	for _, config := range configurations {
-		if config.BackupFilenameExpand {
-			unset, err := config.applyEnv()
+		if err := func() error {
+			unset, warnings, err := config.resolve()
 			if err != nil {
-				fmt.Printf("error applying env: %v\n", err) // print error to stdout for debugging
-				return errwrap.Wrap(err, "error applying env")
+				if unset != nil {
+					_ = unset()
+				}
+				return errwrap.Wrap(err, "error resolving configuration")
 			}
-			config.BackupFilename = os.ExpandEnv(config.BackupFilename)
-			config.BackupLatestSymlink = os.ExpandEnv(config.BackupLatestSymlink)
-			config.BackupPruningPrefix = os.ExpandEnv(config.BackupPruningPrefix)
+			fmt.Printf("source=%s\n", config.source)
+			for _, warning := range warnings {
+				fmt.Printf("warning:%s\n", warning)
+			}
+			// insert line breaks before each field name, assuming field names start with uppercase letters
+			formatted := formatter.ReplaceAllString(fmt.Sprintf("%+v", *config), "\n$1")
+			fmt.Printf("%s\n", formatted)
 			if err := unset(); err != nil {
-				fmt.Printf("error unsetting env: %v\n", err) // print error to stdout for debugging
 				return errwrap.Wrap(err, "error unsetting environment variables")
 			}
+			return nil
+		}(); err != nil {
+			return err
 		}
-		// insert line breaks before each field name, assuming field names start with uppercase letters
-		formatted := regexp.MustCompile(`\s([A-Z])`).ReplaceAllString(fmt.Sprintf("%+v", *config), "\n$1")
-		fmt.Printf("source=%s\n%s\n", config.source, formatted)
 	}
 
 	return nil
