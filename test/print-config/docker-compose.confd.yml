@@ -1,0 +1,6 @@
+services:
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    volumes:
+      - ${CONF_DIR}:/etc/dockervolumebackup/conf.d:ro
+      - ${SECRET_FILE}:/run/secrets/notification_urls:ro

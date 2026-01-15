@@ -1,0 +1,10 @@
+services:
+  backup:
+    image: offen/docker-volume-backup:${TEST_VERSION:-canary}
+    environment:
+      BACKUP_FILENAME: "backup-$${BACKUP_TAG}.tar"
+      BACKUP_FILENAME_EXPAND: true
+      BACKUP_TAG: expanded
+      BACKUP_SOURCES: /backup
+      NOTIFICATION_URLS: "stdout://"
+      AWS_S3_BUCKET_NAME: example-bucket
