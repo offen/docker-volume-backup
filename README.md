@@ -82,5 +82,5 @@ In case your are looking for help or guidance on how to incorporate docker-volum
 
 ---
 
-Copyright &copy; 2024 <a target="_blank" href="https://www.offen.software">offen.software</a> and contributors.
+Copyright &copy; 2026 <a target="_blank" href="https://www.offen.software">offen.software</a> and contributors.
 Distributed under the <a href="https://github.com/offen/docker-volume-backup/tree/main/LICENSE">MPL-2.0 License</a>.
