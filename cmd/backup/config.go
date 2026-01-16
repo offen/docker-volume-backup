@@ -240,6 +240,11 @@ func (c *Config) resolve() (reset func() error, warnings []string, err error) {
 		return
 	}
 
+	if _, ok := hookLevels[c.NotificationLevel]; !ok {
+		err = errwrap.Wrap(nil, fmt.Sprintf("unknown NOTIFICATION_LEVEL %s", c.NotificationLevel))
+		return
+	}
+
 	if c.BackupFilenameExpand {
 		c.BackupFilename = os.ExpandEnv(c.BackupFilename)
 		c.BackupLatestSymlink = os.ExpandEnv(c.BackupLatestSymlink)

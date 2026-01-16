@@ -78,12 +78,7 @@ func (s *script) init() error {
 		return nil
 	})
 	// Register notifications first so they can fire in case of other init errors.
-
-	hookLevel, ok := hookLevels[s.c.NotificationLevel]
-	if !ok {
-		return errwrap.Wrap(nil, fmt.Sprintf("unknown NOTIFICATION_LEVEL %s", s.c.NotificationLevel))
-	}
-	s.hookLevel = hookLevel
+	s.hookLevel = hookLevels[s.c.NotificationLevel]
 
 	if len(s.c.NotificationURLs) > 0 {
 		sender, senderErr := shoutrrr.CreateSender(s.c.NotificationURLs...)
