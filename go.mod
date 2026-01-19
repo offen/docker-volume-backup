@@ -12,7 +12,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/klauspost/compress v1.18.2
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
-	github.com/minio/minio-go/v7 v7.0.97
+	github.com/minio/minio-go/v7 v7.0.98
 	github.com/moby/moby/api v1.52.0
 	github.com/moby/moby/client v0.2.1
 	github.com/nicholas-fedor/shoutrrr v0.13.1
@@ -55,14 +55,14 @@ require (
 	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
-	github.com/minio/crc64nvme v1.1.0 // indirect
+	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/otiai10/mint v1.6.3 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/prometheus/client_golang v1.11.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/tinylib/msgp v1.3.0 // indirect
+	github.com/tinylib/msgp v1.6.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
 	go.opentelemetry.io/otel v1.38.0 // indirect
@@ -70,12 +70,12 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.37.0 // indirect
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/term v0.38.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251222181119-0a764e51fe1b // indirect
 	google.golang.org/grpc v1.78.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
