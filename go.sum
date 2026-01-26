@@ -286,8 +286,8 @@ github.com/minio/minio-go/v7 v7.0.98 h1:MeAVKjLVz+XJ28zFcuYyImNSAh8Mq725uNW4beRi
 github.com/minio/minio-go/v7 v7.0.98/go.mod h1:cY0Y+W7yozf0mdIclrttzo1Iiu7mEf9y7nk2uXqMOvM=
 github.com/moby/docker-image-spec v1.3.1 h1:jMKff3w6PgbfSa69GfNg+zN/XLhfXJGnEx3Nl2EsFP0=
 github.com/moby/docker-image-spec v1.3.1/go.mod h1:eKmb5VW8vQEh/BAr2yvVNvuiJuY6UIocYsFu/DxxRpo=
-github.com/moby/moby/api v1.52.0 h1:00BtlJY4MXkkt84WhUZPRqt5TvPbgig2FZvTbe3igYg=
-github.com/moby/moby/api v1.52.0/go.mod h1:8mb+ReTlisw4pS6BRzCMts5M49W5M7bKt1cJy/YbAqc=
+github.com/moby/moby/api v1.53.0 h1:PihqG1ncw4W+8mZs69jlwGXdaYBeb5brF6BL7mPIS/w=
+github.com/moby/moby/api v1.53.0/go.mod h1:8mb+ReTlisw4pS6BRzCMts5M49W5M7bKt1cJy/YbAqc=
 github.com/moby/moby/client v0.2.1 h1:1Grh1552mvv6i+sYOdY+xKKVTvzJegcVMhuXocyDz/k=
 github.com/moby/moby/client v0.2.1/go.mod h1:O+/tw5d4a1Ha/ZA/tPxIZJapJRUS6LNZ1wiVRxYHyUE=
 github.com/moby/sys/atomicwriter v0.1.0 h1:kw5D/EqkBwsBFi0ss9v1VG3wIkVhzGvLklJ+w3A14Sw=

@@ -13,7 +13,7 @@ require (
 	github.com/klauspost/compress v1.18.3
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.98
-	github.com/moby/moby/api v1.52.0
+	github.com/moby/moby/api v1.53.0
 	github.com/moby/moby/client v0.2.1
 	github.com/nicholas-fedor/shoutrrr v0.13.1
 	github.com/offen/envconfig v1.5.0
