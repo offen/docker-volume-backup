@@ -105,8 +105,9 @@ func (v *s3Storage) Name() string {
 func (b *s3Storage) Copy(file string) error {
 	_, name := path.Split(file)
 	putObjectOptions := minio.PutObjectOptions{
-		ContentType:  "application/tar+gzip",
-		StorageClass: b.storageClass,
+		ContentType:    "application/tar+gzip",
+		StorageClass:   b.storageClass,
+		SendContentMd5: true,
 	}
 
 	if b.partSize > 0 {
