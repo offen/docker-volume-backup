@@ -12,13 +12,14 @@ import (
 	"time"
 
 	"crypto/tls"
+	"net/http"
+
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
-	"net/http"
 )
 
 type googleDriveStorage struct {
@@ -47,6 +48,8 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 	}
 	if opts.ImpersonateSubject != "" {
 		config.Subject = opts.ImpersonateSubject
+	} else {
+		return nil, errwrap.Wrap(nil, "GOOGLE_DRIVE_IMPERSONATE_SUBJECT cannot be left blank")
 	}
 	if opts.TokenURL != "" {
 		config.TokenURL = opts.TokenURL
