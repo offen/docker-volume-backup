@@ -36,6 +36,7 @@ services:
       GOOGLE_DRIVE_ENDPOINT: http://openapi_mock:8080
       GOOGLE_DRIVE_TOKEN_URL: http://oauth2_mock:8090/issuer1/token
       GOOGLE_DRIVE_CREDENTIALS_JSON_FILE: /etc/gdrive/credentials.json
+      GOOGLE_DRIVE_IMPERSONATE_SUBJECT: me@example.com
       GOOGLE_DRIVE_FOLDER_ID: "root"
     volumes:
       - app_data:/backup/app_data:ro
