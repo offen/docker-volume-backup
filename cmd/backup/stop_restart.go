@@ -148,7 +148,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 	var servicesToScaleDown []handledSwarmService
 	if isDockerSwarm {
 		result, err := s.cli.ServiceList(context.Background(), client.ServiceListOptions{Status: true})
-		allServices := result.Items
+		allServices = result.Items
 		if err != nil {
 			return noop, errwrap.Wrap(err, "error querying for services")
 		}
