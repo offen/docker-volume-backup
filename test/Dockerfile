@@ -1,4 +1,4 @@
-FROM docker:29-dind
+FROM docker:29.2-dind
 
 RUN apk add \
   age \
