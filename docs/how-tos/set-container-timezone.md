@@ -9,7 +9,7 @@ nav_order: 8
 
 By default a container based on this image will run in the UTC timezone.
 As the image is designed to be as small as possible, additional timezone data is not included.
-In case you want to run your cron rules in your local timezone (respecting DST and similar), you can mount your Docker host's `/etc/timezone` and `/etc/localtime` in read-only mode:
+In case you want to run your cron rules in your local timezone (respecting DST and similar), you can mount your Docker host's `/etc/timezone`, `/etc/localtime`, and `/usr/share/zoneinfo` in read-only mode:
 
 ```yml
 services:
