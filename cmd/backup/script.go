@@ -11,6 +11,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"github.com/offen/docker-volume-backup/internal/storage/azure"
@@ -30,6 +31,8 @@ import (
 // script holds all the stateful information required to orchestrate a
 // single backup run.
 type script struct {
+	id string
+
 	cli       *client.Client
 	storages  []storage.Backend
 	logger    *slog.Logger
@@ -42,6 +45,10 @@ type script struct {
 	stats *Stats
 
 	encounteredLock bool
+
+	isSwarm             bool
+	containersToStop    []handledContainer
+	servicesToScaleDown []handledSwarmService
 
 	c *Config
 }
@@ -72,6 +79,8 @@ func newScript(c *Config) *script {
 }
 
 func (s *script) init() error {
+	s.id = uuid.New().String()
+
 	s.registerHook(hookLevelPlumbing, func(error) error {
 		s.stats.EndTime = time.Now()
 		s.stats.TookTime = s.stats.EndTime.Sub(s.stats.StartTime)
@@ -135,6 +144,11 @@ func (s *script) init() error {
 			}
 			return nil
 		})
+		isSwarm, err := isSwarm(s.cli)
+		if err != nil {
+			return errwrap.Wrap(err, "error determining swarm state")
+		}
+		s.isSwarm = isSwarm
 	}
 
 	logFunc := func(logType storage.LogLevel, context string, msg string, params ...any) {

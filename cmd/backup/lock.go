@@ -11,11 +11,13 @@ import (
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
+const LOCK_FILE = "/var/lock/dockervolumebackup.lock"
+
 // lock opens a lockfile at the given location, keeping it locked until the
 // caller invokes the returned release func. In case the lock is currently blocked
 // by another execution, it will repeatedly retry until the lock is available
 // or the given timeout is exceeded.
-func (s *script) lock(lockfile string) (func() error, error) {
+func (s *script) lock() (func() error, error) {
 	start := time.Now()
 	defer func() {
 		s.stats.LockedTime = time.Since(start)
@@ -26,7 +28,8 @@ func (s *script) lock(lockfile string) (func() error, error) {
 	deadline := time.NewTimer(s.c.LockTimeout)
 	defer deadline.Stop()
 
-	fileLock := flock.New(lockfile)
+	fileLock := flock.New(LOCK_FILE)
+	defer s.removeWaitingFile()
 
 	for {
 		acquired, err := fileLock.TryLock()
@@ -41,6 +44,7 @@ func (s *script) lock(lockfile string) (func() error, error) {
 		}
 
 		if !s.encounteredLock {
+			s.writeWaitingFile()
 			s.logger.Info(
 				fmt.Sprintf(
 					"Exclusive lock was not available on first attempt. Will retry until it becomes available or the timeout of %s is exceeded.",
