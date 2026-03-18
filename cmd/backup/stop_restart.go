@@ -338,7 +338,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		var scaledUpServices []handledSwarmService
 		if isDockerSwarm {
 			wg := &sync.WaitGroup{}
-			for _, svc := range servicesToScaleDown {
+			for _, svc := range scaledDownServices {
 				if !svc.restart {
 					continue
 				}
@@ -348,7 +348,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 					defer wg.Done()
 					warnings, err := scaleService(s.cli, svc.serviceID, svc.initialReplicaCount)
 					if err != nil {
-						scaleDownErrors.append(err)
+						scaleUpErrors.append(err)
 						return
 					}
 
