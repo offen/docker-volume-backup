@@ -6,7 +6,7 @@ services:
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
       BACKUP_RETENTION_DAYS: '7'
     volumes:
-      - app_data:/backup/app_data:ro
+      - /test-backup-data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${LOCAL_DIR:-./local}:/archive
 

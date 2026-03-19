@@ -8,13 +8,15 @@ current_test=$(basename $(pwd))
 
 export LOCAL_DIR=$(mktemp -d)
 
+mkdir /test-backup-data && dd if=/dev/urandom of=/test-backup-data/testfile.img bs=1M count=3000
+
 docker compose up -d --quiet-pull
 sleep 5
 
 ec=0
 
-docker compose exec -e BACKUP_RETENTION_DAYS=7 -e BACKUP_FILENAME=test.tar.gz backup backup & \
-  { set +e; sleep 0.1; docker compose exec -e BACKUP_FILENAME=test2.tar.gz -e LOCK_TIMEOUT=1s backup backup; ec=$?;}
+docker compose exec -T -e BACKUP_RETENTION_DAYS=7 -e BACKUP_FILENAME=test.tar.gz backup backup & \
+  { set +e; sleep 1; docker compose exec -e BACKUP_FILENAME=test2.tar.gz -e LOCK_TIMEOUT=1s backup backup; ec=$?;}
 
 if [ "$ec" = "0" ]; then
   fail "Subsequent invocation exited 0"
