@@ -144,11 +144,14 @@ func (s *script) init() error {
 			}
 			return nil
 		})
-		isSwarm, err := isSwarm(s.cli)
+		s.isSwarm, err = isSwarm(s.cli)
 		if err != nil {
 			return errwrap.Wrap(err, "error determining swarm state")
 		}
-		s.isSwarm = isSwarm
+		err = s.determineContainersAndServicesToStop()
+		if err != nil {
+			return errwrap.Wrap(err, "error determining containers and services to stop")
+		}
 	}
 
 	logFunc := func(logType storage.LogLevel, context string, msg string, params ...any) {
