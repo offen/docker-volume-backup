@@ -32,7 +32,7 @@ func runScript(c *Config) (err error) {
 
 	s := newScript(c)
 
-	unlock, lockErr := s.lock("/var/lock/dockervolumebackup.lock")
+	unlock, lockErr := s.lock()
 	if lockErr != nil {
 		err = errwrap.Wrap(lockErr, "error acquiring file lock")
 		return
