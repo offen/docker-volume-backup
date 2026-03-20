@@ -281,9 +281,11 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				continue
 			}
 
-			if _, ok := containerIDsToStopInFutureRuns[container.summary.ID]; ok {
-				// skip restarting this container as there is another backup run in the future that will stop it again, so restarting it now would be pointless and might cause issues if the container cannot be stopped gracefully a second time
-				continue
+			if s.c.ActivateLazyRestart {
+				if _, ok := containerIDsToStopInFutureRuns[container.summary.ID]; ok {
+					// skip restarting this container as there is another backup run in the future that will stop it again, so restarting it now would be pointless and might cause issues if the container cannot be stopped gracefully a second time
+					continue
+				}
 			}
 
 			if _, err := s.cli.ContainerStart(context.Background(), container.summary.ID, client.ContainerStartOptions{}); err != nil {
@@ -301,9 +303,11 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				if !svc.restart {
 					continue
 				}
-				if _, ok := serviceIDsToScaleDownInFutureRuns[svc.serviceID]; ok {
-					// skip scaling this service back up as there is another backup run in the future that will scale it down again, so scaling it up now would be pointless and might cause issues if the service cannot be scaled down gracefully a second time
-					continue
+				if s.c.ActivateLazyRestart {
+					if _, ok := serviceIDsToScaleDownInFutureRuns[svc.serviceID]; ok {
+						// skip restarting this service as there is another backup run in the future that will scale it down again, so scaling it up now would be pointless and might cause issues if the service cannot be scaled down gracefully a second time
+						continue
+					}
 				}
 
 				wg.Add(1)

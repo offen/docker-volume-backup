@@ -97,6 +97,7 @@ type Config struct {
 	GoogleDriveImpersonateSubject        string          `split_words:"true"`
 	GoogleDriveEndpoint                  string          `split_words:"true"`
 	GoogleDriveTokenURL                  string          `split_words:"true"`
+	ActivateLazyRestart                  bool            `split_words:"true" default:"false"`
 	source                               string
 	additionalEnvVars                    map[string]string
 }
