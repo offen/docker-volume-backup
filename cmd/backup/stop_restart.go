@@ -364,7 +364,9 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 }
 
 func (s *script) determineContainersAndServicesToStop() error {
-	allContainers, err := s.cli.ContainerList(context.Background(), client.ContainerListOptions{})
+	allContainers, err := s.cli.ContainerList(context.Background(), client.ContainerListOptions{
+		All: true,
+	})
 	if err != nil {
 		return errwrap.Wrap(err, "error querying for containers")
 	}

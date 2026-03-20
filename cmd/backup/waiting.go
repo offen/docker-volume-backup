@@ -25,7 +25,7 @@ func (s *script) writeWaitingFile() error {
 		return errwrap.Wrap(err, "error checking for existence of waiting file")
 	}
 
-	if !os.IsNotExist(err) {
+	if os.IsNotExist(err) {
 
 		stopInfo := StopInfo{
 			ContainerIDs:    []string{},
