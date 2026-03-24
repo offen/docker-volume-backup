@@ -29,7 +29,6 @@ func (s *script) lock() (func() error, error) {
 	defer deadline.Stop()
 
 	fileLock := flock.New(LOCK_FILE)
-	defer s.removeWaitingFile()
 
 	for {
 		acquired, err := fileLock.TryLock()
@@ -44,7 +43,11 @@ func (s *script) lock() (func() error, error) {
 		}
 
 		if !s.encounteredLock {
-			s.writeWaitingFile()
+			err := s.writeWaitingFile()
+			if err != nil {
+				return noop, errwrap.Wrap(err, "error writing waiting file")
+			}
+			defer s.removeWaitingFile()
 			s.logger.Info(
 				fmt.Sprintf(
 					"Exclusive lock was not available on first attempt. Will retry until it becomes available or the timeout of %s is exceeded.",
