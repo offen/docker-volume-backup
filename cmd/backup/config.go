@@ -51,6 +51,7 @@ type Config struct {
 	BackupFromSnapshot                   bool            `split_words:"true"`
 	BackupExcludeRegexp                  RegexpDecoder   `split_words:"true"`
 	BackupSkipBackendsFromPrune          []string        `split_words:"true"`
+	BackupUseLazyRestart                 bool            `split_words:"true" default:"false"`
 	GpgPassphrase                        string          `split_words:"true"`
 	GpgPublicKeyRing                     string          `split_words:"true"`
 	AgePassphrase                        string          `split_words:"true"`
@@ -97,7 +98,6 @@ type Config struct {
 	GoogleDriveImpersonateSubject        string          `split_words:"true"`
 	GoogleDriveEndpoint                  string          `split_words:"true"`
 	GoogleDriveTokenURL                  string          `split_words:"true"`
-	ActivateLazyRestart                  bool            `split_words:"true" default:"false"`
 	source                               string
 	additionalEnvVars                    map[string]string
 }

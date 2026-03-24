@@ -281,7 +281,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				continue
 			}
 
-			if s.c.ActivateLazyRestart {
+			if s.c.BackupUseLazyRestart {
 				if _, ok := containerIDsToStopInFutureRuns[container.summary.ID]; ok {
 					// skip restarting this container as there is another backup run in the future that will stop it again, so restarting it now would be pointless and might cause issues if the container cannot be stopped gracefully a second time
 					continue
@@ -303,7 +303,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 				if !svc.restart {
 					continue
 				}
-				if s.c.ActivateLazyRestart {
+				if s.c.BackupUseLazyRestart {
 					if _, ok := serviceIDsToScaleDownInFutureRuns[svc.serviceID]; ok {
 						// skip restarting this service as there is another backup run in the future that will scale it down again, so scaling it up now would be pointless and might cause issues if the service cannot be scaled down gracefully a second time
 						continue
