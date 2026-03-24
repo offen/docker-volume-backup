@@ -24,12 +24,12 @@ fi
 
 docker save offen/docker-volume-backup:$IMAGE_TAG -o $tarball
 
-set -- -mindepth 1 -maxdepth 1 -type d
+find_args="-mindepth 1 -maxdepth 1 -type d"
 if [ ! -z "$MATCH_PATTERN" ]; then
-  set -- "$@" -name "$MATCH_PATTERN"
+  find_args="$find_args -name $MATCH_PATTERN"
 fi
 
-for dir in $(find . "$@" | sort); do
+for dir in $(find . $find_args | sort); do
   dir=$(echo $dir | cut -c 3-)
   echo "################################################"
   echo "Now running ${dir}"
