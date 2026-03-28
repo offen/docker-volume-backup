@@ -18,6 +18,7 @@ The method described below (bind-mounting files from the host) is **deprecated**
 >       - data:/backup/my-app-backup:ro
 >       - /etc/timezone:/etc/timezone:ro
 >       - /etc/localtime:/etc/localtime:ro
+>       - /usr/share/zoneinfo:/usr/share/zoneinfo:ro
 >
 > volumes:
 >   data:
