@@ -16,7 +16,7 @@ require (
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.0.99
 	github.com/moby/moby/api v1.54.1
-	github.com/moby/moby/client v0.3.0
+	github.com/moby/moby/client v0.4.0
 	github.com/nicholas-fedor/shoutrrr v0.14.3
 	github.com/offen/envconfig v1.5.0
 	github.com/otiai10/copy v1.14.1
