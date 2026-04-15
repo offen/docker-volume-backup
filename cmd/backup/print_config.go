@@ -34,6 +34,9 @@ func runPrintConfig() error {
 			for _, warning := range warnings {
 				fmt.Printf("warning:%s\n", warning)
 			}
+			for _, warning := range config.timezoneDeprecationWarnings() {
+				fmt.Printf("warning:%s\n", warning)
+			}
 			// insert line breaks before each field name, assuming field names start with uppercase letters
 			formatted := formatter.ReplaceAllString(fmt.Sprintf("%+v", *config), "\n$1")
 			fmt.Printf("%s\n", formatted)

@@ -36,6 +36,7 @@ func (c *command) runAsCommand() error {
 	}
 
 	for _, config := range configurations {
+		c.logStartupWarnings(config)
 		if err := runScript(config); err != nil {
 			return errwrap.Wrap(err, "error running script")
 		}
@@ -102,6 +103,8 @@ func (c *command) schedule(strategy configStrategy) error {
 
 	for _, cfg := range configurations {
 		config := cfg
+		c.logStartupWarnings(config)
+
 		id, err := c.cr.AddFunc(config.BackupCronExpression, func() {
 			c.logger.Info(
 				fmt.Sprintf(
@@ -148,5 +151,11 @@ func (c *command) must(err error) {
 			err,
 		)
 		os.Exit(1)
+	}
+}
+
+func (c *command) logStartupWarnings(config *Config) {
+	for _, w := range config.timezoneDeprecationWarnings() {
+		c.logger.Warn(w)
 	}
 }
