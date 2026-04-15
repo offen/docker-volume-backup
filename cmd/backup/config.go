@@ -330,7 +330,7 @@ func mountedPaths(path string) (map[string]struct{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	mounts := make(map[string]struct{})
 	scanner := bufio.NewScanner(file)
