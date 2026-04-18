@@ -352,10 +352,10 @@ func mountedPaths(path string) (map[string]struct{}, error) {
 	return mounts, nil
 }
 
-func (c *Config) timezoneDeprecationWarnings() []string {
+func (c *Config) timezoneDeprecationWarnings() ([]string, error) {
 	mounts, err := mountedPaths("/proc/self/mountinfo")
 	if err != nil {
-		return nil
+		return nil, errwrap.Wrap(err, "error reading mount info")
 	}
 
 	deprecatedMounts := []string{
@@ -372,7 +372,7 @@ func (c *Config) timezoneDeprecationWarnings() []string {
 	}
 
 	if len(found) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	var warnings []string
@@ -400,5 +400,5 @@ func (c *Config) timezoneDeprecationWarnings() []string {
 		)
 	}
 
-	return warnings
+	return warnings, nil
 }

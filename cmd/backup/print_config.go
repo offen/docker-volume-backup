@@ -34,7 +34,11 @@ func runPrintConfig() error {
 			for _, warning := range warnings {
 				fmt.Printf("warning:%s\n", warning)
 			}
-			for _, warning := range config.timezoneDeprecationWarnings() {
+			timezoneWarnings, warnErr := config.timezoneDeprecationWarnings()
+			if warnErr != nil {
+				return errwrap.Wrap(warnErr, "error collecting timezone deprecation warnings")
+			}
+			for _, warning := range timezoneWarnings {
 				fmt.Printf("warning:%s\n", warning)
 			}
 			// insert line breaks before each field name, assuming field names start with uppercase letters
