@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/x509"
 	"encoding/pem"
@@ -97,6 +98,7 @@ type Config struct {
 	GoogleDriveImpersonateSubject        string          `split_words:"true"`
 	GoogleDriveEndpoint                  string          `split_words:"true"`
 	GoogleDriveTokenURL                  string          `split_words:"true"`
+	Timezone                             string          `envconfig:"TZ"`
 	source                               string
 	additionalEnvVars                    map[string]string
 }
@@ -321,4 +323,82 @@ func (c *Config) resolve() (reset func() error, warnings []string, err error) {
 		c.AzureStorageEndpoint = fmt.Sprintf("%s/", strings.TrimSuffix(ep.String(), "/"))
 	}
 	return
+}
+
+func mountedPaths(path string) (map[string]struct{}, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = file.Close() }()
+
+	mounts := make(map[string]struct{})
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.SplitN(line, " - ", 2)
+		fields := strings.Fields(parts[0])
+		if len(fields) < 5 {
+			continue
+		}
+		mounts[fields[4]] = struct{}{}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return mounts, nil
+}
+
+func (c *Config) timezoneDeprecationWarnings() ([]string, error) {
+	mounts, err := mountedPaths("/proc/self/mountinfo")
+	if err != nil {
+		return nil, errwrap.Wrap(err, "error reading mount info")
+	}
+
+	deprecatedMounts := []string{
+		"/etc/timezone",
+		"/etc/localtime",
+		"/usr/share/zoneinfo",
+	}
+
+	var found []string
+	for _, mnt := range deprecatedMounts {
+		if _, ok := mounts[mnt]; ok {
+			found = append(found, mnt)
+		}
+	}
+
+	if len(found) == 0 {
+		return nil, nil
+	}
+
+	var warnings []string
+
+	// Primary deprecation message (compressed)
+	warnings = append(warnings,
+		fmt.Sprintf(
+			"Deprecated timezone bind mounts detected: %s. Support for these will be removed in a future version.",
+			strings.Join(found, ", "),
+		),
+	)
+
+	// Guidance based on TZ usage
+	if c.Timezone == "" {
+		warnings = append(warnings,
+			"Set the container timezone using the `TZ` environment variable instead.",
+			"Refer to the documentation for migration details.",
+		)
+	} else {
+		warnings = append(warnings,
+			fmt.Sprintf(
+				"`TZ=%s` is set, but deprecated timezone bind mounts are still present. Remove the bind mounts after confirming timezone handling works as expected.",
+				c.Timezone,
+			),
+		)
+	}
+
+	return warnings, nil
 }
