@@ -1,11 +1,11 @@
 ---
-title: Setting the Time Zone
+title: Setting the time zone
 layout: default
 parent: How Tos
 nav_order: 8
 ---
 
-# Setting the Time Zone
+# Setting the time zone
 
 ## Use Environment Variable `TZ`
 
@@ -14,9 +14,9 @@ A container started using this image will default to UTC. To modify the time zon
 ```yml
 services:
   backup:
-    image: offen/docker-volume-backup:latest
+    image: offen/docker-volume-backup:v2
     environment:
-      - TZ=Europe/Berlin
+      TZ: Europe/Berlin
     volumes:
       - data:/backup/my-app-backup:ro
 
@@ -33,17 +33,18 @@ This approach is preferred because it:
 
 ### Compatibility
 
-- Bind-mounting timezone files will continue to work if `TZ` is not set.
+- Bind-mounting time zone files will continue to work if `TZ` is not set.
 - If `TZ` is set, it takes precedence over any bind-mounted timezone configuration.
 - An invalid `TZ` value will cause the container to default to UTC.
 
-:warning: **Deprecation Warning**  
+{: .warning }
+**Deprecation Warning**  
 The method described below (bind-mounting files from the host) is **deprecated**. Please use the new method described above (`TZ`)
 
 > ```yml
 > services:
 >   backup:
->     image: offen/docker-volume-backup:latest
+>     image: offen/docker-volume-backup:v2
 >     volumes:
 >       - data:/backup/my-app-backup:ro
 >       - /etc/timezone:/etc/timezone:ro
