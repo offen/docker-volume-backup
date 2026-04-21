@@ -32,17 +32,6 @@ func runScript(c *Config) (err error) {
 
 	s := newScript(c)
 
-	unlock, lockErr := s.lock("/var/lock/dockervolumebackup.lock")
-	if lockErr != nil {
-		err = errwrap.Wrap(lockErr, "error acquiring file lock")
-		return
-	}
-	defer func() {
-		if derr := unlock(); derr != nil {
-			err = errors.Join(err, errwrap.Wrap(derr, "error releasing file lock"))
-		}
-	}()
-
 	unset, warnings, err := s.c.resolve()
 	if err != nil {
 		return errwrap.Wrap(err, "error applying env")
@@ -80,6 +69,17 @@ func runScript(c *Config) (err error) {
 		err = errwrap.Wrap(initErr, "error instantiating script")
 		return
 	}
+
+	unlock, lockErr := s.lock()
+	if lockErr != nil {
+		err = errwrap.Wrap(lockErr, "error acquiring file lock")
+		return
+	}
+	defer func() {
+		if derr := unlock(); derr != nil {
+			err = errors.Join(err, errwrap.Wrap(derr, "error releasing file lock"))
+		}
+	}()
 
 	err = func() (err error) {
 		scriptErr := func() error {
