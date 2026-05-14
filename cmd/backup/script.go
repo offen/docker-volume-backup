@@ -259,6 +259,7 @@ func (s *script) init() error {
 			ImpersonateSubject: s.c.GoogleDriveImpersonateSubject,
 			Endpoint:           s.c.GoogleDriveEndpoint,
 			TokenURL:           s.c.GoogleDriveTokenURL,
+			TeamDriveID:        s.c.GoogleDriveTeamDriveID,
 		}
 		googleDriveBackend, err := googledrive.NewStorageBackend(googleDriveConfig, logFunc)
 		if err != nil {
