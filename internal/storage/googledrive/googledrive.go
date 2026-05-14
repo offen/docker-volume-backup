@@ -25,7 +25,8 @@ import (
 
 type googleDriveStorage struct {
 	storage.StorageBackend
-	client *drive.Service
+	client      *drive.Service
+	teamDriveID string
 }
 
 // Config allows to configure a Google Drive storage backend.
@@ -35,6 +36,7 @@ type Config struct {
 	ImpersonateSubject string
 	Endpoint           string
 	TokenURL           string
+	TeamDriveID        string
 }
 
 // NewStorageBackend creates and initializes a new Google Drive storage backend.
@@ -78,7 +80,8 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 			DestinationPath: opts.FolderID,
 			Log:             logFunc,
 		},
-		client: srv,
+		client:      srv,
+		teamDriveID: opts.TeamDriveID,
 	}, nil
 }
 
@@ -135,6 +138,9 @@ func (b *googleDriveStorage) Prune(deadline time.Time, pruningPrefix string) (*s
 	pageToken := ""
 	for {
 		req := b.client.Files.List().Q(query).SupportsAllDrives(true).Fields("files(id, name, createdTime, parents)").PageToken(pageToken)
+		if b.teamDriveID != "" {
+			req = req.DriveId(b.teamDriveID).IncludeItemsFromAllDrives(true)
+		}
 		res, err := req.Do()
 		if err != nil {
 			return nil, errwrap.Wrap(err, "listing files")

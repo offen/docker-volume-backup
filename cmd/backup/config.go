@@ -98,6 +98,7 @@ type Config struct {
 	GoogleDriveImpersonateSubject        string          `split_words:"true"`
 	GoogleDriveEndpoint                  string          `split_words:"true"`
 	GoogleDriveTokenURL                  string          `split_words:"true"`
+	GoogleDriveTeamDriveID               string          `split_words:"true"`
 	Timezone                             string          `envconfig:"TZ"`
 	source                               string
 	additionalEnvVars                    map[string]string
