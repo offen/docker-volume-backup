@@ -139,7 +139,7 @@ func (b *googleDriveStorage) Prune(deadline time.Time, pruningPrefix string) (*s
 	for {
 		req := b.client.Files.List().Q(query).SupportsAllDrives(true).Fields("files(id, name, createdTime, parents)").PageToken(pageToken)
 		if b.teamDriveID != "" {
-			req = req.DriveId(b.teamDriveID).IncludeItemsFromAllDrives(true)
+			req = req.DriveId(b.teamDriveID).IncludeItemsFromAllDrives(true).Corpora("drive")
 		}
 		res, err := req.Do()
 		if err != nil {
