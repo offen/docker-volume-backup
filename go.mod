@@ -17,7 +17,7 @@ require (
 	github.com/minio/minio-go/v7 v7.1.0
 	github.com/moby/moby/api v1.54.2
 	github.com/moby/moby/client v0.4.1
-	github.com/nicholas-fedor/shoutrrr v0.15.0
+	github.com/nicholas-fedor/shoutrrr v0.16.0
 	github.com/offen/envconfig v1.5.0
 	github.com/otiai10/copy v1.14.1
 	github.com/pkg/sftp v1.13.10
@@ -99,7 +99,7 @@ require (
 	github.com/klauspost/pgzip v1.2.6
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
@@ -108,7 +108,7 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	golang.org/x/net v0.54.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 )
