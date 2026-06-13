@@ -155,7 +155,7 @@ func copyFile(src, dst string) (returnErr error) {
 		return
 	}
 	defer func() {
-		returnErr = in.Close()
+		returnErr = errors.Join(returnErr, in.Close())
 	}()
 
 	out, err := os.Create(dst)

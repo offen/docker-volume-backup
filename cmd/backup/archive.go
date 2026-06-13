@@ -8,6 +8,7 @@ package main
 
 import (
 	"archive/tar"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -164,7 +165,7 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string) (returnErr 
 		return
 	}
 	defer func() {
-		returnErr = file.Close()
+		returnErr = errors.Join(returnErr, file.Close())
 	}()
 
 	_, err = io.Copy(tarWriter, file)

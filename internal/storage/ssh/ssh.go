@@ -110,7 +110,8 @@ func (b *sshStorage) Name() string {
 // Copy copies the given file to the SSH storage backend.
 func (b *sshStorage) Copy(file string) (returnErr error) {
 	if err := b.sftpClient.MkdirAll(b.DestinationPath); err != nil {
-		return errwrap.Wrap(err, "error ensuring destination directory")
+		returnErr = errwrap.Wrap(err, "error ensuring destination directory")
+		return
 	}
 
 	source, err := os.Open(file)
@@ -120,7 +121,7 @@ func (b *sshStorage) Copy(file string) (returnErr error) {
 		return
 	}
 	defer func() {
-		returnErr = source.Close()
+		returnErr = errors.Join(returnErr, source.Close())
 	}()
 
 	destination, err := b.sftpClient.Create(path.Join(b.DestinationPath, name))
@@ -129,7 +130,7 @@ func (b *sshStorage) Copy(file string) (returnErr error) {
 		return
 	}
 	defer func() {
-		returnErr = destination.Close()
+		returnErr = errors.Join(returnErr, destination.Close())
 	}()
 
 	chunk := make([]byte, 1e9)
