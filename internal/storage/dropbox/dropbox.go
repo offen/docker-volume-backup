@@ -3,6 +3,7 @@ package dropbox
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -111,7 +112,7 @@ func (b *dropboxStorage) Copy(file string) (returnErr error) {
 		return
 	}
 	defer func() {
-		returnErr = r.Close()
+		returnErr = errors.Join(returnErr, r.Close())
 	}()
 
 	// Start new upload session and get session id

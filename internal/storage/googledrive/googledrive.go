@@ -5,6 +5,7 @@ package googledrive
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -97,7 +98,7 @@ func (b *googleDriveStorage) Copy(file string) (returnErr error) {
 		return
 	}
 	defer func() {
-		returnErr = f.Close()
+		returnErr = errors.Join(returnErr, f.Close())
 	}()
 
 	driveFile := &drive.File{Name: name}
