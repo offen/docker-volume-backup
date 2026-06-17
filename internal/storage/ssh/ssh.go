@@ -124,6 +124,12 @@ func (b *sshStorage) Copy(file string) (returnErr error) {
 		returnErr = errors.Join(returnErr, source.Close())
 	}()
 
+	sourceFileInfo, err := source.Stat()
+	if err != nil {
+		returnErr = errwrap.Wrap(err, "error reading the source file stats")
+		return
+	}
+
 	destination, err := b.sftpClient.Create(path.Join(b.DestinationPath, name))
 	if err != nil {
 		returnErr = errwrap.Wrap(err, "error creating file")
@@ -133,39 +139,21 @@ func (b *sshStorage) Copy(file string) (returnErr error) {
 		returnErr = errors.Join(returnErr, destination.Close())
 	}()
 
-	chunk := make([]byte, 1e9)
-	for {
-		num, err := source.Read(chunk)
-		if err == io.EOF {
-			tot, err := destination.Write(chunk[:num])
-			if err != nil {
-				returnErr = errwrap.Wrap(err, "error uploading the file")
-				return
-			}
+	written, err := io.Copy(destination, source)
+	if err != nil {
+		returnErr = errwrap.Wrap(err, "error uploading the file")
+		return
+	}
 
-			if tot != len(chunk[:num]) {
-				returnErr = errwrap.Wrap(nil, "failed to write stream")
-				return
-			}
+	if written != sourceFileInfo.Size() {
+		msg := fmt.Sprintf(
+			"failed to upload the file completely: wrote %d, expected %d",
+			written,
+			sourceFileInfo.Size(),
+		)
 
-			break
-		}
-
-		if err != nil {
-			returnErr = errwrap.Wrap(err, "error uploading the file")
-			return
-		}
-
-		tot, err := destination.Write(chunk[:num])
-		if err != nil {
-			returnErr = errwrap.Wrap(err, "error uploading the file")
-			return
-		}
-
-		if tot != len(chunk[:num]) {
-			returnErr = errwrap.Wrap(nil, "failed to write stream")
-			return
-		}
+		returnErr = errwrap.Wrap(err, msg)
+		return
 	}
 
 	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup `%s` to '%s' at path '%s'.", file, b.hostName, b.DestinationPath)
