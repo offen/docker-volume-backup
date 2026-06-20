@@ -75,9 +75,16 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		return nil, errwrap.Wrap(err, "unable to create Drive client")
 	}
 
+	var destinationPath string
+	if opts.FolderID != "" {
+		destinationPath = opts.FolderID
+	} else if opts.TeamDriveID != "" {
+		destinationPath = opts.TeamDriveID
+	}
+
 	return &googleDriveStorage{
 		StorageBackend: storage.StorageBackend{
-			DestinationPath: opts.FolderID,
+			DestinationPath: destinationPath,
 			Log:             logFunc,
 		},
 		client:      srv,
