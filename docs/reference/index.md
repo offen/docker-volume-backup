@@ -429,6 +429,14 @@ If you need to confirm what the container actually loaded, see [Show loaded conf
 
 # ---
 
+# In case you are storing your archives in a "Team Drive", this value needs to be set.
+# Note that you will still need to set GOOGLE_DRIVE_FOLDER_ID to determine where
+# archives will be store.
+
+# GOOGLE_DRIVE_TEAM_DRIVE_ID=""
+
+# ---
+
 # The email address of the user to impersonate when accessing Google Drive (domain-wide delegation).
 # This is required becasue your service account needs to act on behalf of a user in your organization in order to upload files.
 # How to: https://support.google.com/a/answer/162106
