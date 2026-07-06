@@ -91,7 +91,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.4.1
 	github.com/docker/go-connections v0.7.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/dropbox/dropbox-sdk-go-unofficial/v6 v6.0.5
+	github.com/dropbox/dropbox-sdk-go-unofficial/v6 v6.3.0
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
