@@ -12,7 +12,7 @@ require (
 	github.com/docker/cli v29.6.1+incompatible
 	github.com/gofrs/flock v0.13.0
 	github.com/joho/godotenv v1.5.1
-	github.com/klauspost/compress v1.18.6
+	github.com/klauspost/compress v1.19.0
 	github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d
 	github.com/minio/minio-go/v7 v7.2.1
 	github.com/moby/moby/api v1.55.0
