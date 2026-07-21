@@ -22,7 +22,7 @@ services:
       - app_data:/var/opt/offen
 
   gotify:
-    image: gotify/server
+    image: gotify/server:2.9
     ports:
       - 8080:80
     environment:
