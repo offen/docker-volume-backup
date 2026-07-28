@@ -25,6 +25,7 @@ import (
 	"github.com/moby/moby/client"
 	"github.com/nicholas-fedor/shoutrrr"
 	"github.com/nicholas-fedor/shoutrrr/pkg/router"
+	"github.com/nicholas-fedor/shoutrrr/pkg/types"
 )
 
 // script holds all the stateful information required to orchestrate a
@@ -81,7 +82,7 @@ func (s *script) init() error {
 	s.hookLevel = hookLevels[s.c.NotificationLevel]
 
 	if len(s.c.NotificationURLs) > 0 {
-		sender, senderErr := shoutrrr.CreateSender(s.c.NotificationURLs...)
+		sender, senderErr := shoutrrr.CreateSenderWithOptions(types.SenderOptions{}, s.c.NotificationURLs...)
 		if senderErr != nil {
 			return errwrap.Wrap(senderErr, "error creating sender")
 		}
