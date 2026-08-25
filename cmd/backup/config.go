@@ -48,6 +48,7 @@ type Config struct {
 	BackupStopContainerLabel             string          `split_words:"true"`
 	BackupStopDuringBackupLabel          string          `split_words:"true" default:"true"`
 	BackupStopDuringBackupNoRestartLabel string          `split_words:"true" default:"true"`
+	LabelMatchBehavior                   MatchBehavior   `split_words:"true" default:"match"`
 	BackupStopServiceTimeout             time.Duration   `split_words:"true" default:"5m"`
 	BackupFromSnapshot                   bool            `split_words:"true"`
 	BackupExcludeRegexp                  RegexpDecoder   `split_words:"true"`
@@ -118,6 +119,27 @@ func (c *CompressionType) Decode(v string) error {
 
 func (c *CompressionType) String() string {
 	return string(*c)
+}
+
+// MatchBehavior controls how the value of a container's stop-during-backup
+// label is matched against the value configured on this instance. With "match"
+// the values have to be equal. With "one-of" the container's label value is
+// split on commas so a single container can be targeted by multiple instances,
+// each configured with a different value.
+type MatchBehavior string
+
+func (l *MatchBehavior) Decode(v string) error {
+	switch v {
+	case "match", "one-of":
+		*l = MatchBehavior(v)
+		return nil
+	default:
+		return errwrap.Wrap(nil, fmt.Sprintf("error decoding label match behavior %s, expected one of \"match\" or \"one-of\"", v))
+	}
+}
+
+func (l *MatchBehavior) String() string {
+	return string(*l)
 }
 
 type CertDecoder struct {
