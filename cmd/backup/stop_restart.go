@@ -141,7 +141,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 
 	var containersToStop []handledContainer
 	for _, c := range allContainers.Items {
-		hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(c.Labels, s.c.BackupStopDuringBackupLabel, s.c.BackupStopDuringBackupNoRestartLabel, s.c.LabelMatchBehavior)
+		hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(c.Labels, s.c.BackupStopDuringBackupLabel, s.c.BackupStopDuringBackupNoRestartLabel, s.c.BackupLabelMatchBehavior)
 		if err != nil {
 			return noop, errwrap.Wrap(err, "error querying for containers to stop")
 		}
@@ -166,7 +166,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		}
 
 		for _, service := range allServices {
-			hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(service.Spec.Labels, s.c.BackupStopDuringBackupLabel, s.c.BackupStopDuringBackupNoRestartLabel, s.c.LabelMatchBehavior)
+			hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(service.Spec.Labels, s.c.BackupStopDuringBackupLabel, s.c.BackupStopDuringBackupNoRestartLabel, s.c.BackupLabelMatchBehavior)
 			if err != nil {
 				return noop, errwrap.Wrap(err, "error querying for services to scale down")
 			}

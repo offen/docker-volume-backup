@@ -41,7 +41,7 @@ A Docker label can only hold a single value per key, so a container can carry
 only one `docker-volume-backup.stop-during-backup` value. If you run multiple
 instances of this image with different `BACKUP_STOP_DURING_BACKUP_LABEL` values
 and want the same container to be stopped by more than one of them, set
-`LABEL_MATCH_BEHAVIOR` to `one-of`. The container's label value is then split on
+`BACKUP_LABEL_MATCH_BEHAVIOR` to `one-of`. The container's label value is then split on
 commas and matches if any of the entries equals the configured value.
 
 ```yml
@@ -55,7 +55,7 @@ services:
     image: offen/docker-volume-backup:v2
     environment:
       BACKUP_STOP_DURING_BACKUP_LABEL: service1
-      LABEL_MATCH_BEHAVIOR: one-of
+      BACKUP_LABEL_MATCH_BEHAVIOR: one-of
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -64,7 +64,7 @@ services:
     image: offen/docker-volume-backup:v2
     environment:
       BACKUP_STOP_DURING_BACKUP_LABEL: service2
-      LABEL_MATCH_BEHAVIOR: one-of
+      BACKUP_LABEL_MATCH_BEHAVIOR: one-of
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro

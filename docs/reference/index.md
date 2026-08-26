@@ -561,7 +561,7 @@ If you need to confirm what the container actually loaded, see [Show loaded conf
 # so a single container labeled `stop-during-backup=service1,service2` can be
 # stopped by multiple instances of this image, each configured with a different
 # value.
-# LABEL_MATCH_BEHAVIOR="match"
+# BACKUP_LABEL_MATCH_BEHAVIOR="match"
 
 # When trying to scale down Docker Swarm services, give up after
 # the specified amount of time in case the service has not converged yet.

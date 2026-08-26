@@ -48,7 +48,7 @@ type Config struct {
 	BackupStopContainerLabel             string          `split_words:"true"`
 	BackupStopDuringBackupLabel          string          `split_words:"true" default:"true"`
 	BackupStopDuringBackupNoRestartLabel string          `split_words:"true" default:"true"`
-	LabelMatchBehavior                   MatchBehavior   `split_words:"true" default:"match"`
+	BackupLabelMatchBehavior             MatchBehavior   `split_words:"true" default:"match"`
 	BackupStopServiceTimeout             time.Duration   `split_words:"true" default:"5m"`
 	BackupFromSnapshot                   bool            `split_words:"true"`
 	BackupExcludeRegexp                  RegexpDecoder   `split_words:"true"`
