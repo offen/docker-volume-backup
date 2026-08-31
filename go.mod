@@ -12,7 +12,7 @@ require (
 	github.com/cosiner/argv v0.1.0
 	github.com/docker/cli v29.7.2+incompatible
 	github.com/dropbox/dropbox-sdk-go-unofficial/v6 v6.0.5
-	github.com/gofrs/flock v0.13.0
+	github.com/gofrs/flock v0.13.1
 	github.com/joho/godotenv v1.5.1
 	github.com/klauspost/compress v1.19.2
 	github.com/klauspost/pgzip v1.2.6
