@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -85,14 +86,28 @@ func isSwarm(c interface {
 	return result.Info.Swarm.LocalNodeState != "" && result.Info.Swarm.LocalNodeState != swarm.LocalNodeStateInactive && result.Info.Swarm.ControlAvailable, nil
 }
 
-func hasLabel(labels map[string]string, key, value string) bool {
+func hasLabel(labels map[string]string, key, value string, matchBehavior MatchBehavior, separator string) bool {
 	val, ok := labels[key]
-	return ok && val == value
+	if !ok {
+		return false
+	}
+	if matchBehavior == "one-of" {
+		if separator == "" {
+			separator = ","
+		}
+		for _, candidate := range strings.Split(val, separator) {
+			if strings.TrimSpace(candidate) == value {
+				return true
+			}
+		}
+		return false
+	}
+	return val == value
 }
 
-func checkStopLabels(labels map[string]string, stopDuringBackupLabelValue string, stopDuringBackupNoRestartLabelValue string) (bool, bool, error) {
-	hasStopDuringBackupLabel := hasLabel(labels, "docker-volume-backup.stop-during-backup", stopDuringBackupLabelValue)
-	hasStopDuringBackupNoRestartLabel := hasLabel(labels, "docker-volume-backup.stop-during-backup-no-restart", stopDuringBackupNoRestartLabelValue)
+func checkStopLabels(labels map[string]string, stopDuringBackupLabelValue string, stopDuringBackupNoRestartLabelValue string, matchBehavior MatchBehavior, separator string) (bool, bool, error) {
+	hasStopDuringBackupLabel := hasLabel(labels, "docker-volume-backup.stop-during-backup", stopDuringBackupLabelValue, matchBehavior, separator)
+	hasStopDuringBackupNoRestartLabel := hasLabel(labels, "docker-volume-backup.stop-during-backup-no-restart", stopDuringBackupNoRestartLabelValue, matchBehavior, separator)
 	if hasStopDuringBackupLabel && hasStopDuringBackupNoRestartLabel {
 		return hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, errwrap.Wrap(nil, "both docker-volume-backup.stop-during-backup and docker-volume-backup.stop-during-backup-no-restart have been set, cannot continue")
 	}
@@ -129,7 +144,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 
 	var containersToStop []handledContainer
 	for _, c := range allContainers.Items {
-		hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(c.Labels, s.c.BackupStopDuringBackupLabel, s.c.BackupStopDuringBackupNoRestartLabel)
+		hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(c.Labels, s.c.BackupStopDuringBackupLabel, s.c.BackupStopDuringBackupNoRestartLabel, s.c.BackupLabelMatchBehavior, s.c.BackupLabelMatchSeparator)
 		if err != nil {
 			return noop, errwrap.Wrap(err, "error querying for containers to stop")
 		}
@@ -154,7 +169,7 @@ func (s *script) stopContainersAndServices() (func() error, error) {
 		}
 
 		for _, service := range allServices {
-			hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(service.Spec.Labels, s.c.BackupStopDuringBackupLabel, s.c.BackupStopDuringBackupNoRestartLabel)
+			hasStopDuringBackupLabel, hasStopDuringBackupNoRestartLabel, err := checkStopLabels(service.Spec.Labels, s.c.BackupStopDuringBackupLabel, s.c.BackupStopDuringBackupNoRestartLabel, s.c.BackupLabelMatchBehavior, s.c.BackupLabelMatchSeparator)
 			if err != nil {
 				return noop, errwrap.Wrap(err, "error querying for services to scale down")
 			}

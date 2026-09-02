@@ -555,6 +555,19 @@ If you need to confirm what the container actually loaded, see [Show loaded conf
 # skips restarting the container or service once the backup has finished.
 # BACKUP_STOP_DURING_BACKUP_NO_RESTART_LABEL="true"
 
+# Controls how a container's stop-during-backup label value is matched against
+# the value configured above. The default "match" requires the values to be
+# equal. Setting this to "one-of" splits the container's label value on
+# BACKUP_LABEL_MATCH_SEPARATOR, so a single container labeled
+# `stop-during-backup=service1,service2` can be stopped by multiple instances of
+# this image, each configured with a different value.
+# BACKUP_LABEL_MATCH_BEHAVIOR="match"
+
+# The separator used to split a container's label value when
+# BACKUP_LABEL_MATCH_BEHAVIOR is "one-of". Defaults to a comma. Set it to a
+# different character if your label values themselves contain a comma.
+# BACKUP_LABEL_MATCH_SEPARATOR=","
+
 # When trying to scale down Docker Swarm services, give up after
 # the specified amount of time in case the service has not converged yet.
 # In case you need to adjust this timeout, supply a duration
