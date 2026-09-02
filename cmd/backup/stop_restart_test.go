@@ -26,6 +26,7 @@ func TestHasLabel(t *testing.T) {
 		key           string
 		value         string
 		matchBehavior MatchBehavior
+		separator     string
 		expected      bool
 	}{
 		{
@@ -34,6 +35,7 @@ func TestHasLabel(t *testing.T) {
 			"docker-volume-backup.stop-during-backup",
 			"service1",
 			"match",
+			",",
 			true,
 		},
 		{
@@ -42,6 +44,7 @@ func TestHasLabel(t *testing.T) {
 			"docker-volume-backup.stop-during-backup",
 			"service1",
 			"match",
+			",",
 			false,
 		},
 		{
@@ -50,6 +53,7 @@ func TestHasLabel(t *testing.T) {
 			"docker-volume-backup.stop-during-backup",
 			"service1",
 			"match",
+			",",
 			false,
 		},
 		{
@@ -58,6 +62,7 @@ func TestHasLabel(t *testing.T) {
 			"docker-volume-backup.stop-during-backup",
 			"service1",
 			"one-of",
+			",",
 			true,
 		},
 		{
@@ -66,6 +71,7 @@ func TestHasLabel(t *testing.T) {
 			"docker-volume-backup.stop-during-backup",
 			"service2",
 			"one-of",
+			",",
 			true,
 		},
 		{
@@ -74,6 +80,7 @@ func TestHasLabel(t *testing.T) {
 			"docker-volume-backup.stop-during-backup",
 			"service3",
 			"one-of",
+			",",
 			false,
 		},
 		{
@@ -82,6 +89,25 @@ func TestHasLabel(t *testing.T) {
 			"docker-volume-backup.stop-during-backup",
 			"true",
 			"one-of",
+			",",
+			true,
+		},
+		{
+			"one-of custom separator",
+			map[string]string{"docker-volume-backup.stop-during-backup": "a,b|c,d"},
+			"docker-volume-backup.stop-during-backup",
+			"c,d",
+			"one-of",
+			"|",
+			true,
+		},
+		{
+			"one-of empty separator falls back to comma",
+			map[string]string{"docker-volume-backup.stop-during-backup": "service1,service2"},
+			"docker-volume-backup.stop-during-backup",
+			"service2",
+			"one-of",
+			"",
 			true,
 		},
 		{
@@ -90,13 +116,14 @@ func TestHasLabel(t *testing.T) {
 			"docker-volume-backup.stop-during-backup",
 			"true",
 			"one-of",
+			",",
 			false,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result := hasLabel(test.labels, test.key, test.value, test.matchBehavior)
+			result := hasLabel(test.labels, test.key, test.value, test.matchBehavior, test.separator)
 			if result != test.expected {
 				t.Errorf("Expected %v, got %v", test.expected, result)
 			}

@@ -42,7 +42,9 @@ only one `docker-volume-backup.stop-during-backup` value. If you run multiple
 instances of this image with different `BACKUP_STOP_DURING_BACKUP_LABEL` values
 and want the same container to be stopped by more than one of them, set
 `BACKUP_LABEL_MATCH_BEHAVIOR` to `one-of`. The container's label value is then split on
-commas and matches if any of the entries equals the configured value.
+commas and matches if any of the entries equals the configured value. If your values
+themselves contain a comma, set `BACKUP_LABEL_MATCH_SEPARATOR` to a different character
+to split on instead.
 
 ```yml
 services:
