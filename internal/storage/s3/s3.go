@@ -66,7 +66,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 		options.BucketLookup = minio.BucketLookupDNS
 	case "path":
 		options.BucketLookup = minio.BucketLookupPath
-	case "", "auto":
+	case "auto":
 		options.BucketLookup = minio.BucketLookupAuto
 	default:
 		return nil, errwrap.Wrap(nil, fmt.Sprintf("unknown AWS_S3_BUCKET_LOOKUP value: %s", opts.BucketLookup))
