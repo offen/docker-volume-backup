@@ -38,6 +38,7 @@ type Config struct {
 	BucketName       string
 	StorageClass     string
 	PartSize         int64
+	BucketLookup     string
 	CACert           *x509.Certificate
 }
 
@@ -59,6 +60,16 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, error
 	options := minio.Options{
 		Creds:  creds,
 		Secure: opts.EndpointProto == "https",
+	}
+	switch opts.BucketLookup {
+	case "dns", "virtual":
+		options.BucketLookup = minio.BucketLookupDNS
+	case "path":
+		options.BucketLookup = minio.BucketLookupPath
+	case "auto":
+		options.BucketLookup = minio.BucketLookupAuto
+	default:
+		return nil, errwrap.Wrap(nil, fmt.Sprintf("unknown AWS_S3_BUCKET_LOOKUP value: %s", opts.BucketLookup))
 	}
 
 	transport, err := minio.DefaultTransport(true)

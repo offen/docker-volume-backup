@@ -33,6 +33,7 @@ type Config struct {
 	AwsSecretAccessKey                   string          `split_words:"true"`
 	AwsIamRoleEndpoint                   string          `split_words:"true"`
 	AwsPartSize                          int64           `split_words:"true"`
+	AwsS3BucketLookup                    string          `split_words:"true" default:"auto"`
 	BackupCompression                    CompressionType `split_words:"true" default:"gz"`
 	GzipParallelism                      WholeNumber     `split_words:"true" default:"1"`
 	BackupSources                        string          `split_words:"true" default:"/backup"`
@@ -309,6 +310,17 @@ func (c *Config) resolve() (reset func() error, warnings []string, err error) {
 		return
 	}
 	c.BackupFilename = bf.String()
+
+	awsS3BucketLookupValidSet := map[string]struct{}{
+		"auto":    {},
+		"dns":     {},
+		"virtual": {},
+		"path":    {},
+	}
+	if _, ok := awsS3BucketLookupValidSet[c.AwsS3BucketLookup]; !ok {
+		err = errwrap.Wrap(nil, fmt.Sprintf("unknown AWS_S3_BUCKET_LOOKUP %s", c.AwsS3BucketLookup))
+		return
+	}
 
 	if c.AzureStorageEndpoint != "" {
 		endpointTemplate, tErr := template.New("endpoint").Parse(c.AzureStorageEndpoint)

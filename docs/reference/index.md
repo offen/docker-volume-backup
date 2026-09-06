@@ -237,6 +237,16 @@ If you need to confirm what the container actually loaded, see [Show loaded conf
 
 # AWS_PART_SIZE="16"
 
+# ---
+
+# Controls the bucket lookup style used by the S3 client. Possible values:
+# - "auto": use virtual-host style only for AWS S3, GCS, and Aliyun OSS
+# - "dns" (or "virtual"): force virtual-host style (e.g. Tencent COS)
+# - "path": force path style
+# Defaults to "auto".
+
+# AWS_S3_BUCKET_LOOKUP="auto"
+
 ########### WEBDAV STORAGE
 
 # The URL of the remote WebDAV server
