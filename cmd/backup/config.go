@@ -33,6 +33,7 @@ type Config struct {
 	AwsSecretAccessKey                   string          `split_words:"true"`
 	AwsIamRoleEndpoint                   string          `split_words:"true"`
 	AwsPartSize                          int64           `split_words:"true"`
+	AwsS3BucketLookup                    string          `split_words:"true" default:"auto"`
 	BackupCompression                    CompressionType `split_words:"true" default:"gz"`
 	GzipParallelism                      WholeNumber     `split_words:"true" default:"1"`
 	BackupSources                        string          `split_words:"true" default:"/backup"`
