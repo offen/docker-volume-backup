@@ -102,10 +102,10 @@ func TestHasLabel(t *testing.T) {
 			true,
 		},
 		{
-			"one-of empty separator falls back to comma",
-			map[string]string{"docker-volume-backup.stop-during-backup": "service1,service2"},
+			"one-of empty separator explodes string",
+			map[string]string{"docker-volume-backup.stop-during-backup": "abc"},
 			"docker-volume-backup.stop-during-backup",
-			"service2",
+			"b",
 			"one-of",
 			"",
 			true,
