@@ -92,10 +92,7 @@ func hasLabel(labels map[string]string, key, value string, matchBehavior MatchBe
 		return false
 	}
 	if matchBehavior == "one-of" {
-		if separator == "" {
-			separator = ","
-		}
-		for _, candidate := range strings.Split(val, separator) {
+		for candidate := range strings.SplitSeq(val, separator) {
 			if strings.TrimSpace(candidate) == value {
 				return true
 			}
