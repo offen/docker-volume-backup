@@ -33,7 +33,7 @@ type Config struct {
 	AwsSecretAccessKey                   string          `split_words:"true"`
 	AwsIamRoleEndpoint                   string          `split_words:"true"`
 	AwsPartSize                          int64           `split_words:"true"`
-	AwsS3BucketLookup                    string          `split_words:"true" default:"auto"`
+	AwsS3BucketLookup                    S3BucketLookup  `split_words:"true" default:"auto"`
 	BackupCompression                    CompressionType `split_words:"true" default:"gz"`
 	GzipParallelism                      WholeNumber     `split_words:"true" default:"1"`
 	BackupSources                        string          `split_words:"true" default:"/backup"`
@@ -107,6 +107,22 @@ type Config struct {
 	additionalEnvVars                    map[string]string
 }
 
+type S3BucketLookup string
+
+func (l *S3BucketLookup) Decode(v string) error {
+	switch v {
+	case "auto", "dns", "virtual", "path":
+		*l = S3BucketLookup(v)
+		return nil
+	default:
+		return errwrap.Wrap(nil, fmt.Sprintf("unknown bucket lookup '%s', expected one of 'auto', 'dns', 'virtual', 'path'", v))
+	}
+}
+
+func (l *S3BucketLookup) String() string {
+	return string(*l)
+}
+
 type CompressionType string
 
 func (c *CompressionType) Decode(v string) error {
@@ -115,7 +131,7 @@ func (c *CompressionType) Decode(v string) error {
 		*c = CompressionType(v)
 		return nil
 	default:
-		return errwrap.Wrap(nil, fmt.Sprintf("error decoding compression type %s", v))
+		return errwrap.Wrap(nil, fmt.Sprintf("unknown compression type '%s', expected one of 'none', 'gz', 'zst'", v))
 	}
 }
 
@@ -137,7 +153,7 @@ func (l *MatchBehavior) Decode(v string) error {
 		*l = MatchBehavior(v)
 		return nil
 	default:
-		return errwrap.Wrap(nil, fmt.Sprintf("error decoding label match behavior %s, expected one of \"match\" or \"one-of\"", v))
+		return errwrap.Wrap(nil, fmt.Sprintf("unknown match behavior '%s', expected one of 'match', 'one-of'", v))
 	}
 }
 
@@ -334,17 +350,6 @@ func (c *Config) resolve() (reset func() error, warnings []string, err error) {
 		return
 	}
 	c.BackupFilename = bf.String()
-
-	awsS3BucketLookupValidSet := map[string]struct{}{
-		"auto":    {},
-		"dns":     {},
-		"virtual": {},
-		"path":    {},
-	}
-	if _, ok := awsS3BucketLookupValidSet[c.AwsS3BucketLookup]; !ok {
-		err = errwrap.Wrap(nil, fmt.Sprintf("unknown AWS_S3_BUCKET_LOOKUP %s", c.AwsS3BucketLookup))
-		return
-	}
 
 	if c.AzureStorageEndpoint != "" {
 		endpointTemplate, tErr := template.New("endpoint").Parse(c.AzureStorageEndpoint)

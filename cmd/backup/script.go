@@ -159,7 +159,7 @@ func (s *script) init() error {
 			BucketName:       s.c.AwsS3BucketName,
 			StorageClass:     s.c.AwsStorageClass,
 			CACert:           s.c.AwsEndpointCACert.Cert,
-			BucketLookup:     s.c.AwsS3BucketLookup,
+			BucketLookup:     s.c.AwsS3BucketLookup.String(),
 			PartSize:         s.c.AwsPartSize,
 		}
 		s3Backend, err := s3.NewStorageBackend(s3Config, logFunc)
