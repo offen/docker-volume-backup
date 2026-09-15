@@ -14,16 +14,16 @@ docker volume create app_data
 docker volume create empty_data
 
 docker run -d -q \
-  --name minio \
+  --name storage \
   --network test_network \
-  --env MINIO_ROOT_USER=test \
-  --env MINIO_ROOT_PASSWORD=test \
-  --env MINIO_ACCESS_KEY=test \
-  --env MINIO_SECRET_KEY=GMusLtUmILge2by+z890kQ \
+  --env ROOT_ACCESS_KEY=test \
+  --env ROOT_SECRET_KEY=GMusLtUmILge2by+z890kQ \
+  --env VGW_BACKEND=posix \
+  --env VGW_BACKEND_ARGS=/data \
   -v backup_data:/data \
-  minio/minio:RELEASE.2020-08-04T23-10-51Z server /data
+  versity/versitygw:v1.8.0
 
-docker exec minio mkdir -p /data/backup
+docker exec storage mkdir -p /data/backup
 
 docker run -d -q \
   --name offen \
@@ -40,7 +40,7 @@ docker run --rm -q \
   -v /var/run/docker.sock:/var/run/docker.sock:ro \
   --env AWS_ACCESS_KEY_ID=test \
   --env AWS_SECRET_ACCESS_KEY=GMusLtUmILge2by+z890kQ \
-  --env AWS_ENDPOINT=minio:9000 \
+  --env AWS_ENDPOINT=storage:7070 \
   --env AWS_ENDPOINT_PROTO=http \
   --env AWS_S3_BUCKET_NAME=backup \
   --env BACKUP_FILENAME=test.tar.gz \
@@ -58,6 +58,6 @@ pass "Found relevant files in untared remote backup."
 # purpose in order to cover this setup as well.
 expect_running_containers "2"
 
-docker rm $(docker stop minio offen)
+docker rm $(docker stop storage offen)
 docker volume rm backup_data app_data
 docker network rm test_network
