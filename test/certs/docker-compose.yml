@@ -1,29 +1,30 @@
 services:
-  minio:
-    hostname: minio.local
-    image: minio/minio:RELEASE.2020-08-04T23-10-51Z
+  storage:
+    hostname: storage.local
+    image: versity/versitygw:v1.8.0
     environment:
-      MINIO_ROOT_USER: test
-      MINIO_ROOT_PASSWORD: test
-      MINIO_ACCESS_KEY: test
-      MINIO_SECRET_KEY: GMusLtUmILge2by+z890kQ
-    entrypoint: /bin/ash -c 'mkdir -p /data/backup && minio server --certs-dir "/certs" --address ":443" /data'
+      ROOT_ACCESS_KEY: test
+      ROOT_SECRET_KEY: GMusLtUmILge2by+z890kQ
+      VGW_BACKEND: posix
+      VGW_BACKEND_ARGS: /data
+      VGW_ARGS: --cert /certs/public.crt --key /certs/private.key --port :443
+    entrypoint: /bin/sh -c 'mkdir -p /data/backup && /usr/local/bin/docker-entrypoint.sh'
     volumes:
-      - minio_backup_data:/data
-      - ${CERT_DIR:-.}/minio.crt:/certs/public.crt
-      - ${CERT_DIR:-.}/minio.key:/certs/private.key
+      - storage_data:/data
+      - ${CERT_DIR:-.}/storage.crt:/certs/public.crt
+      - ${CERT_DIR:-.}/storage.key:/certs/private.key
 
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
     depends_on:
-      - minio
+      - storage
     restart: always
     environment:
       BACKUP_FILENAME: test.tar.gz
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: GMusLtUmILge2by+z890kQ
-      AWS_ENDPOINT: minio.local:443
-      AWS_ENDPOINT_CA_CERT: /root/minio-rootCA.crt
+      AWS_ENDPOINT: storage.local:443
+      AWS_ENDPOINT_CA_CERT: /root/storage-rootCA.crt
       AWS_S3_BUCKET_NAME: backup
       BACKUP_CRON_EXPRESSION: 0 0 5 31 2 ?
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
@@ -31,7 +32,7 @@ services:
     volumes:
       - app_data:/backup/app_data:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ${CERT_DIR:-.}/rootCA.crt:/root/minio-rootCA.crt
+      - ${CERT_DIR:-.}/rootCA.crt:/root/storage-rootCA.crt
 
   offen:
     image: offen/offen:latest
@@ -41,6 +42,6 @@ services:
       - app_data:/var/opt/offen
 
 volumes:
-  minio_backup_data:
-    name: minio_backup_data
+  storage_data:
+    name: storage_data
   app_data:
