@@ -10,7 +10,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.3
 	github.com/ProtonMail/go-crypto v1.4.1
 	github.com/cosiner/argv v0.1.0
-	github.com/docker/cli v29.7.2+incompatible
+	github.com/docker/cli v29.8.0+incompatible
 	github.com/dropbox/dropbox-sdk-go-unofficial/v6 v6.0.5
 	github.com/gofrs/flock v0.13.1
 	github.com/joho/godotenv v1.5.1
