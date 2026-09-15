@@ -23,9 +23,9 @@ expect_running_containers "3"
 touch -r "$LOCAL_DIR/test-hostnametoken.tar.gz" -d "14 days ago" "$LOCAL_DIR/test-hostnametoken-old.tar.gz"
 
 docker run --rm \
-  -v minio_backup_data:/minio_data \
+  -v storage_data:/storage_data \
   alpine \
-  ash -c 'touch -d@$(( $(date +%s) - 1209600 )) /minio_data/backup/test-hostnametoken-old.tar.gz'
+  ash -c 'touch -d@$(( $(date +%s) - 1209600 )) /storage_data/backup/test-hostnametoken-old.tar.gz'
 
 # Skip s3 backend from prune
 
@@ -42,9 +42,9 @@ fi
 
 info "Check if old backup has NOT been pruned (s3)"
 docker run --rm \
-  -v minio_backup_data:/minio_data \
+  -v storage_data:/storage_data \
   alpine \
-  ash -c 'test -f /minio_data/backup/test-hostnametoken-old.tar.gz'
+  ash -c 'test -f /storage_data/backup/test-hostnametoken-old.tar.gz'
 
 pass "Old remote backup has been pruned locally, skipped S3 backend is untouched."
 
@@ -65,8 +65,8 @@ fi
 
 info "Check if old backup has NOT been pruned (s3)"
 docker run --rm \
-  -v minio_backup_data:/minio_data \
+  -v storage_data:/storage_data \
   alpine \
-  ash -c 'test -f /minio_data/backup/test-hostnametoken-old.tar.gz'
+  ash -c 'test -f /storage_data/backup/test-hostnametoken-old.tar.gz'
 
 pass "Skipped all backends while pruning."

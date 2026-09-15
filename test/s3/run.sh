@@ -16,9 +16,9 @@ sleep 5
 expect_running_containers "3"
 
 docker run --rm \
-  -v minio_backup_data:/minio_data \
+  -v storage_data:/storage_data \
   alpine \
-  ash -c 'tar -xvf /minio_data/backup/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db'
+  ash -c 'tar -xvf /storage_data/backup/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db'
 
 pass "Found relevant files in untared remote backups."
 
@@ -30,9 +30,9 @@ sleep 5
 docker compose exec backup backup
 
 docker run --rm \
-  -v minio_backup_data:/minio_data \
+  -v storage_data:/storage_data \
   alpine \
-  ash -c '[ $(find /minio_data/backup/ -type f | wc -l) = "1" ]'
+  ash -c '[ $(find /storage_data/backup/ -type f | wc -l) = "1" ]'
 
 pass "Remote backups have not been deleted."
 
@@ -46,16 +46,16 @@ info "Create first backup with no prune"
 docker compose exec backup backup
 
 docker run --rm \
-  -v minio_backup_data:/minio_data \
+  -v storage_data:/storage_data \
   alpine \
-  ash -c 'touch -d@$(( $(date +%s) - 1209600 )) /minio_data/backup/test-hostnametoken-old.tar.gz'
+  ash -c 'touch -d@$(( $(date +%s) - 1209600 )) /storage_data/backup/test-hostnametoken-old.tar.gz'
 
 info "Create second backup and prune"
 docker compose exec backup backup
 
 docker run --rm \
-  -v minio_backup_data:/minio_data \
+  -v storage_data:/storage_data \
   alpine \
-  ash -c 'test ! -f /minio_data/backup/test-hostnametoken-old.tar.gz && test -f /minio_data/backup/test-hostnametoken.tar.gz'
+  ash -c 'test ! -f /storage_data/backup/test-hostnametoken-old.tar.gz && test -f /storage_data/backup/test-hostnametoken.tar.gz'
 
 pass "Old remote backup has been pruned, new one is still present."

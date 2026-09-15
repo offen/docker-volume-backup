@@ -18,7 +18,7 @@ sleep 20
 docker exec $(docker ps -q -f name=backup) backup
 
 docker run --rm \
-  -v backup_data:/data alpine \
+  -v storage_data:/data alpine \
   ash -c 'tar -xf /data/backup/test.tar.gz && test -f /backup/pg_data/PG_VERSION'
 
 pass "Found relevant files in untared backup."
