@@ -28,7 +28,7 @@ require (
 	github.com/studio-b12/gowebdav v0.13.0
 	golang.org/x/crypto v0.55.0
 	golang.org/x/oauth2 v0.36.0
-	golang.org/x/sync v0.22.0
+	golang.org/x/sync v0.23.0
 	google.golang.org/api v0.297.0
 	mvdan.cc/sh/v3 v3.14.0
 )
