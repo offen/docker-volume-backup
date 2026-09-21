@@ -99,7 +99,7 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, func(
 		client:     sshClient,
 		sftpClient: sftpClient,
 		hostName:   opts.HostName,
-	}, sshClient.Close, nil
+	}, startKeepAlive(sshClient, keepAliveInterval), nil
 }
 
 // Name returns the name of the storage backend
