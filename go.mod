@@ -8,7 +8,7 @@ require (
 	filippo.io/age v1.3.2
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.1
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.3
-	github.com/ProtonMail/go-crypto v1.4.1
+	github.com/ProtonMail/go-crypto v1.5.2
 	github.com/cosiner/argv v0.1.0
 	github.com/docker/cli v29.8.1+incompatible
 	github.com/dropbox/dropbox-sdk-go-unofficial/v6 v6.0.5
