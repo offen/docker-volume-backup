@@ -193,6 +193,8 @@ func (s *script) init() error {
 			IdentityFile:       s.c.SSHIdentityFile,
 			IdentityPassphrase: s.c.SSHIdentityPassphrase,
 			RemotePath:         s.c.SSHRemotePath,
+			UploadRetries:      int(s.c.SSHUploadRetries),
+			UploadRetryDelay:   s.c.SSHUploadRetryDelay,
 		}
 
 		sshBackend, closeSSHConnection, err := ssh.NewStorageBackend(sshConfig, logFunc)

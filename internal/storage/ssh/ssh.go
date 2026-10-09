@@ -7,9 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/offen/docker-volume-backup/internal/errwrap"
@@ -20,9 +23,25 @@ import (
 
 type sshStorage struct {
 	*storage.StorageBackend
-	client     *ssh.Client
-	sftpClient *sftp.Client
-	hostName   string
+	sftpClient       sftpClient
+	connect          func() (sftpClient, func() error, error)
+	closeSession     func() error
+	hostName         string
+	uploadRetries    int
+	uploadRetryDelay time.Duration
+}
+
+type sftpClient interface {
+	MkdirAll(string) error
+	Create(string) (io.WriteCloser, error)
+	ReadDir(string) ([]os.FileInfo, error)
+	Remove(string) error
+}
+
+type sftpConnection struct{ *sftp.Client }
+
+func (c sftpConnection) Create(name string) (io.WriteCloser, error) {
+	return c.Client.Create(name)
 }
 
 // Config allows to configure a SSH backend.
@@ -34,12 +53,17 @@ type Config struct {
 	IdentityFile       string
 	IdentityPassphrase string
 	RemotePath         string
+	UploadRetries      int
+	UploadRetryDelay   time.Duration
 }
 
 var noop = func() error { return nil }
 
 // NewStorageBackend creates and initializes a new SSH storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, func() error, error) {
+	if opts.UploadRetries < 0 || opts.UploadRetryDelay < 0 {
+		return nil, noop, errwrap.Wrap(nil, "SSH upload retries and retry delay must not be negative")
+	}
 	var authMethods []ssh.AuthMethod
 
 	if opts.Password != "" {
@@ -73,33 +97,54 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, func(
 		Auth:            authMethods,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
-	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", opts.HostName, opts.Port), sshClientConfig)
-	if err != nil || sshClient == nil {
-		return nil, noop, errwrap.Wrap(err, "error creating ssh client")
-	}
-	_, _, err = sshClient.SendRequest("keepalive", false, nil)
-	if err != nil {
-		return nil, sshClient.Close, err
+	connect := func() (sftpClient, func() error, error) {
+		client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", opts.HostName, opts.Port), sshClientConfig)
+		if err != nil {
+			return nil, noop, errwrap.Wrap(err, "error creating ssh client")
+		}
+		if _, _, err := client.SendRequest("keepalive", false, nil); err != nil {
+			_ = client.Close()
+			return nil, noop, err
+		}
+
+		sftpClient, err := sftp.NewClient(client,
+			sftp.UseConcurrentReads(true),
+			sftp.UseConcurrentWrites(true),
+			sftp.MaxConcurrentRequestsPerFile(64),
+		)
+		if err != nil {
+			_ = client.Close()
+			return nil, noop, errwrap.Wrap(err, "error creating sftp client")
+		}
+		return sftpConnection{sftpClient}, startKeepAlive(client, keepAliveInterval), nil
 	}
 
-	sftpClient, err := sftp.NewClient(sshClient,
-		sftp.UseConcurrentReads(true),
-		sftp.UseConcurrentWrites(true),
-		sftp.MaxConcurrentRequestsPerFile(64),
-	)
-	if err != nil {
-		return nil, sshClient.Close, errwrap.Wrap(err, "error creating sftp client")
-	}
-
-	return &sshStorage{
+	b := &sshStorage{
 		StorageBackend: &storage.StorageBackend{
 			DestinationPath: opts.RemotePath,
 			Log:             logFunc,
 		},
-		client:     sshClient,
-		sftpClient: sftpClient,
-		hostName:   opts.HostName,
-	}, startKeepAlive(sshClient, keepAliveInterval), nil
+		connect:          connect,
+		hostName:         opts.HostName,
+		uploadRetries:    opts.UploadRetries,
+		uploadRetryDelay: opts.UploadRetryDelay,
+	}
+	var err error
+	b.sftpClient, b.closeSession, err = connect()
+	if err != nil {
+		return nil, noop, err
+	}
+	// Resolve the current session at cleanup time, as Copy can replace it.
+	return b, sync.OnceValue(b.close), nil
+}
+
+func (b *sshStorage) close() error {
+	if b.closeSession == nil {
+		return nil
+	}
+	closeSession := b.closeSession
+	b.closeSession = nil
+	return closeSession()
 }
 
 // Name returns the name of the storage backend
@@ -109,15 +154,9 @@ func (b *sshStorage) Name() string {
 
 // Copy copies the given file to the SSH storage backend.
 func (b *sshStorage) Copy(file string) (returnErr error) {
-	if err := b.sftpClient.MkdirAll(b.DestinationPath); err != nil {
-		returnErr = errwrap.Wrap(err, "error ensuring destination directory")
-		return
-	}
-
 	source, err := os.Open(file)
-	_, name := path.Split(file)
 	if err != nil {
-		returnErr = errwrap.Wrap(err, " error reading the file to be uploaded")
+		returnErr = errwrap.Wrap(err, "error reading the file to be uploaded")
 		return
 	}
 	defer func() {
@@ -130,13 +169,44 @@ func (b *sshStorage) Copy(file string) (returnErr error) {
 		return
 	}
 
+	err = b.copyFile(source, sourceFileInfo.Size(), filepath.Base(file))
+	for retry := 0; err != nil && retry < b.uploadRetries && retryableUploadError(err); retry++ {
+		// The failed session (including its keepalive) must be stopped before
+		// reconnecting. Its close error must not taint a successful later upload.
+		_ = b.close()
+		b.Log(storage.LogLevelWarning, b.Name(), "SSH upload failed, retrying (%d/%d) in %s: %v", retry+1, b.uploadRetries, b.uploadRetryDelay, err)
+		time.Sleep(b.uploadRetryDelay)
+		b.sftpClient, b.closeSession, err = b.connect()
+		if err != nil {
+			continue
+		}
+		err = b.copyFile(source, sourceFileInfo.Size(), filepath.Base(file))
+	}
+	if err != nil {
+		return err
+	}
+
+	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup `%s` to '%s' at path '%s'.", file, b.hostName, b.DestinationPath)
+	return nil
+}
+
+func (b *sshStorage) copyFile(source *os.File, size int64, name string) (returnErr error) {
+	if _, err := source.Seek(0, io.SeekStart); err != nil {
+		return errwrap.Wrap(err, "error rewinding the source file")
+	}
+	if err := b.sftpClient.MkdirAll(b.DestinationPath); err != nil {
+		return errwrap.Wrap(err, "error ensuring destination directory")
+	}
+	// Create truncates a partial upload left by an earlier attempt.
 	destination, err := b.sftpClient.Create(path.Join(b.DestinationPath, name))
 	if err != nil {
 		returnErr = errwrap.Wrap(err, "error creating file")
 		return
 	}
 	defer func() {
-		returnErr = errors.Join(returnErr, destination.Close())
+		if err := destination.Close(); err != nil {
+			returnErr = errors.Join(returnErr, errwrap.Wrap(err, "error closing the uploaded file"))
+		}
 	}()
 
 	written, err := io.Copy(destination, source)
@@ -145,20 +215,51 @@ func (b *sshStorage) Copy(file string) (returnErr error) {
 		return
 	}
 
-	if written != sourceFileInfo.Size() {
+	if written != size {
 		msg := fmt.Sprintf(
 			"failed to upload the file completely: wrote %d, expected %d",
 			written,
-			sourceFileInfo.Size(),
+			size,
 		)
 
 		returnErr = errwrap.Wrap(err, msg)
 		return
 	}
 
-	b.Log(storage.LogLevelInfo, b.Name(), "Uploaded a copy of backup `%s` to '%s' at path '%s'.", file, b.hostName, b.DestinationPath)
-
 	return nil
+}
+
+// Retry only transport failures. A joined permanent error, such as a full disk
+// followed by a failed close, must not become retryable because of the close.
+func retryableUploadError(err error) bool {
+	if err == nil {
+		return false
+	}
+	switch err := err.(type) {
+	case interface{ Unwrap() []error }:
+		causes := err.Unwrap()
+		if len(causes) == 0 {
+			return false
+		}
+		for _, cause := range causes {
+			if !retryableUploadError(cause) {
+				return false
+			}
+		}
+		return true
+	case *os.PathError:
+		return false // Local source open, read, stat, and seek errors.
+	case *sftp.StatusError:
+		return err.FxCode() == sftp.ErrSSHFxConnectionLost || err.FxCode() == sftp.ErrSSHFxNoConnection
+	case net.Error:
+		return true
+	}
+	switch err {
+	case io.EOF, io.ErrUnexpectedEOF, io.ErrClosedPipe, net.ErrClosed,
+		sftp.ErrSSHFxConnectionLost, sftp.ErrSSHFxNoConnection:
+		return true
+	}
+	return retryableUploadError(errors.Unwrap(err))
 }
 
 // Prune rotates away backups according to the configuration and provided deadline for the SSH storage backend.
