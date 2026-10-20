@@ -293,6 +293,24 @@ If you need to confirm what the container actually loaded, see [Show loaded conf
 
 # ---
 
+# The host's public SSH key
+# If you want to mount a file containing the key instead, provide `SSH_HOST_PUBLIC_KEY_FILE`
+# Alternatively, provide the location of a known hosts file as shown below.
+# If you do not want to provide the key, set `SSH_IGNORE_HOST_KEY` at your own risk
+
+# SSH_HOST_PUBLIC_KEY=""
+
+# ---
+
+# The location of a known_hosts file used when checking the identity of the remote server.
+# Alternatively, provide the server's public key as shown above.
+# If both a public key and a known_hosts file are set, the key takes precedence.
+# If you do not want to provide such a file, set `SSH_IGNORE_HOST_KEY` at your own risk
+
+# SSH_KNOWN_HOSTS_FILE=""
+
+# ---
+
 # The port of the remote SSH server
 
 # SSH_PORT="22"
@@ -333,6 +351,15 @@ If you need to confirm what the container actually loaded, see [Show loaded conf
 # Example: "pass"
 
 # SSH_IDENTITY_PASSPHRASE=""
+
+# ---
+
+# Ignore all host key checks. This should be used as a last resort or in
+# airgapped environments only. Instead, provide the host's public key as
+# described above. Backup integrity and credential confindentiality are at
+# risk if using this option.
+
+# SSH_IGNORE_HOST_KEY="false"
 
 ########### AZURE BLOB STORAGE
 

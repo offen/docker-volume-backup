@@ -186,13 +186,16 @@ func (s *script) init() error {
 
 	if s.c.SSHHostName != "" {
 		sshConfig := ssh.Config{
-			HostName:           s.c.SSHHostName,
-			Port:               s.c.SSHPort,
-			User:               s.c.SSHUser,
-			Password:           s.c.SSHPassword,
-			IdentityFile:       s.c.SSHIdentityFile,
-			IdentityPassphrase: s.c.SSHIdentityPassphrase,
-			RemotePath:         s.c.SSHRemotePath,
+			HostName:              s.c.SSHHostName,
+			Port:                  s.c.SSHPort,
+			User:                  s.c.SSHUser,
+			Password:              s.c.SSHPassword,
+			IdentityFile:          s.c.SSHIdentityFile,
+			IdentityPassphrase:    s.c.SSHIdentityPassphrase,
+			RemotePath:            s.c.SSHRemotePath,
+			InsecureIgnoreHostKey: s.c.SSHInsecureIgnoreHostKey,
+			HostPublicKey:         s.c.SSHHostPublicKey,
+			KnownHostsFile:        s.c.SSHKnownHostsFile,
 		}
 
 		sshBackend, closeSSHConnection, err := ssh.NewStorageBackend(sshConfig, logFunc)

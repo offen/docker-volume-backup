@@ -130,6 +130,7 @@ services:
     image: offen/docker-volume-backup:v2
     environment:
       SSH_HOST_NAME: server.local
+      SSH_HOST_PUBLIC_KEY_FILE: /config/host_key_ecdsa.pub
       SSH_PORT: 2222
       SSH_USER: user
       SSH_REMOTE_PATH: /data
@@ -137,6 +138,7 @@ services:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /path/to/private_key:/root/.ssh/id_rsa
+      - /path/to/host_key:/config/host_key_ecdsa.pub
 
 volumes:
   data:
