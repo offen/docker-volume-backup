@@ -8,6 +8,7 @@ services:
     volumes:
       - ${KEY_DIR:-.}/id_rsa.pub:/config/.ssh/authorized_keys
       - ssh_backup_data:/tmp
+      - ssh_config_data:/config
 
   backup:
     image: offen/docker-volume-backup:${TEST_VERSION:-canary}
@@ -23,6 +24,7 @@ services:
       BACKUP_PRUNING_LEEWAY: 5s
       BACKUP_PRUNING_PREFIX: test
       SSH_HOST_NAME: ssh
+      SSH_HOST_PUBLIC_KEY_FILE: /ssh_config_data/ssh_host_keys/ssh_host_ecdsa_key.pub
       SSH_PORT: 2222
       SSH_USER: test
       SSH_REMOTE_PATH: /tmp
@@ -30,6 +32,7 @@ services:
     volumes:
       - ${KEY_DIR:-.}/id_rsa:/root/.ssh/id_rsa
       - app_data:/backup/app_data:ro
+      - ssh_config_data:/ssh_config_data
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   offen:
@@ -41,5 +44,5 @@ services:
 
 volumes:
   ssh_backup_data:
-    name: ssh_backup_data
   app_data:
+  ssh_config_data:

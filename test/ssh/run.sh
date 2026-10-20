@@ -20,7 +20,7 @@ sleep 5
 expect_running_containers 3
 
 docker run --rm \
-  -v ssh_backup_data:/ssh_data \
+  -v ssh_ssh_backup_data:/ssh_data \
   alpine \
   ash -c 'tar -xvf /ssh_data/test-hostnametoken.tar.gz -C /tmp && test -f /tmp/backup/app_data/offen.db'
 
@@ -34,7 +34,7 @@ sleep 5
 docker compose exec backup backup
 
 docker run --rm \
-  -v ssh_backup_data:/ssh_data \
+  -v ssh_ssh_backup_data:/ssh_data \
   alpine \
   ash -c '[ $(find /ssh_data/ -type f | wc -l) = "1" ]'
 
@@ -51,7 +51,7 @@ docker compose exec backup backup
 
 # Set the modification date of the old backup to 14 days ago
 docker run --rm \
-  -v ssh_backup_data:/ssh_data \
+  -v ssh_ssh_backup_data:/ssh_data \
   --user 1000 \
   alpine \
   ash -c 'touch -d@$(( $(date +%s) - 1209600 )) /ssh_data/test-hostnametoken-old.tar.gz'
@@ -60,7 +60,7 @@ info "Create second backup and prune"
 docker compose exec backup backup
 
 docker run --rm \
-  -v ssh_backup_data:/ssh_data \
+  -v ssh_ssh_backup_data:/ssh_data \
   alpine \
   ash -c 'test ! -f /ssh_data/test-hostnametoken-old.tar.gz && test -f /ssh_data/test-hostnametoken.tar.gz'
 
