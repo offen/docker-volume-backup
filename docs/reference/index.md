@@ -340,11 +340,12 @@ If you need to confirm what the container actually loaded, see [Show loaded conf
 # Each retry opens a new connection and transfers the existing archive from the
 # beginning; containers are not stopped again and the archive is not recreated.
 # Permission errors and other non-connection errors are not retried.
-# Set to 0 to disable retries. Initial connection failures during backup setup
-# and pruning are not retried. Exhausted retries still fail the backup run;
-# this setting does not retain temporary archives after a failed run.
+# Retries are disabled by default. Set to a positive number to enable them.
+# Initial connection failures during backup setup and pruning are not retried.
+# Exhausted retries still fail the backup run; this setting does not retain
+# temporary archives after a failed run.
 
-# SSH_UPLOAD_RETRIES="2"
+# SSH_UPLOAD_RETRIES="0"
 
 # ---
 

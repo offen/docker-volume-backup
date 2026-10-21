@@ -61,8 +61,8 @@ var noop = func() error { return nil }
 
 // NewStorageBackend creates and initializes a new SSH storage backend.
 func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, func() error, error) {
-	if opts.UploadRetries < 0 || opts.UploadRetryDelay < 0 {
-		return nil, noop, errwrap.Wrap(nil, "SSH upload retries and retry delay must not be negative")
+	if opts.UploadRetryDelay < 0 {
+		return nil, noop, errwrap.Wrap(nil, "SSH upload retry delay must not be negative")
 	}
 	var authMethods []ssh.AuthMethod
 

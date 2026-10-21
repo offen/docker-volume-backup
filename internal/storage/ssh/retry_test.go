@@ -269,7 +269,11 @@ func TestCopyFileChecksSizeAndClosesRemoteFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer source.Close()
+	t.Cleanup(func() {
+		if err := source.Close(); err != nil {
+			t.Errorf("Close source: %v", err)
+		}
+	})
 	var logs []string
 	var closes int
 	client := &uploadTestClient{create: func(string) (io.WriteCloser, error) {
@@ -321,14 +325,12 @@ func TestRetryableUploadError(t *testing.T) {
 	}
 }
 
-func TestNewStorageBackendRejectsNegativeRetrySettings(t *testing.T) {
-	for _, cfg := range []Config{{UploadRetries: -1}, {UploadRetryDelay: -time.Second}} {
-		_, cleanup, err := NewStorageBackend(cfg, nil)
-		if err == nil || !strings.Contains(err.Error(), "must not be negative") {
-			t.Fatalf("Config %+v: %v", cfg, err)
-		}
-		if err := cleanup(); err != nil {
-			t.Fatal(err)
-		}
+func TestNewStorageBackendRejectsNegativeRetryDelay(t *testing.T) {
+	_, cleanup, err := NewStorageBackend(Config{UploadRetryDelay: -time.Second}, nil)
+	if err == nil || !strings.Contains(err.Error(), "must not be negative") {
+		t.Fatalf("Expected negative retry delay to be rejected, got: %v", err)
+	}
+	if err := cleanup(); err != nil {
+		t.Fatal(err)
 	}
 }

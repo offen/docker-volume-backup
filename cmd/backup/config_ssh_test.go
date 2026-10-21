@@ -20,7 +20,7 @@ func TestSSHUploadRetryConfiguration(t *testing.T) {
 		delay   time.Duration
 		invalid bool
 	}{
-		{name: "defaults", retries: 2, delay: 5 * time.Second},
+		{name: "defaults", retries: 0, delay: 5 * time.Second},
 		{name: "disabled", values: map[string]string{"SSH_UPLOAD_RETRIES": "0"}, delay: 5 * time.Second},
 		{name: "custom", values: map[string]string{"SSH_UPLOAD_RETRIES": "4", "SSH_UPLOAD_RETRY_DELAY": "500ms"}, retries: 4, delay: 500 * time.Millisecond},
 		{name: "negative retries", values: map[string]string{"SSH_UPLOAD_RETRIES": "-1"}, invalid: true},
