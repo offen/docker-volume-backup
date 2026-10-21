@@ -19,6 +19,7 @@ import (
 	"github.com/offen/docker-volume-backup/internal/storage"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
 type sshStorage struct {
@@ -46,15 +47,18 @@ func (c sftpConnection) Create(name string) (io.WriteCloser, error) {
 
 // Config allows to configure a SSH backend.
 type Config struct {
-	HostName           string
-	Port               string
-	User               string
-	Password           string
-	IdentityFile       string
-	IdentityPassphrase string
-	RemotePath         string
-	UploadRetries      int
-	UploadRetryDelay   time.Duration
+	HostName              string
+	HostPublicKey         string
+	Port                  string
+	User                  string
+	Password              string
+	IdentityFile          string
+	IdentityPassphrase    string
+	RemotePath            string
+	KnownHostsFile        string
+	InsecureIgnoreHostKey bool
+	UploadRetries         int
+	UploadRetryDelay      time.Duration
 }
 
 var noop = func() error { return nil }
@@ -93,10 +97,26 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, func(
 	}
 
 	sshClientConfig := &ssh.ClientConfig{
-		User:            opts.User,
-		Auth:            authMethods,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		User: opts.User,
+		Auth: authMethods,
 	}
+
+	if opts.InsecureIgnoreHostKey {
+		sshClientConfig.HostKeyCallback = ssh.InsecureIgnoreHostKey()
+	} else if opts.HostPublicKey != "" {
+		cb, _, _, _, err := ssh.ParseAuthorizedKey([]byte(opts.HostPublicKey))
+		if err != nil {
+			return nil, noop, errwrap.Wrap(err, "error parsing public host key")
+		}
+		sshClientConfig.HostKeyCallback = ssh.FixedHostKey(cb)
+	} else if opts.KnownHostsFile != "" {
+		cb, err := knownhosts.New(opts.KnownHostsFile)
+		if err != nil {
+			return nil, noop, errwrap.Wrap(err, "error parsing knownhosts file")
+		}
+		sshClientConfig.HostKeyCallback = cb
+	}
+
 	connect := func() (sftpClient, func() error, error) {
 		client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", opts.HostName, opts.Port), sshClientConfig)
 		if err != nil {

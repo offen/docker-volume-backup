@@ -26,7 +26,7 @@ import (
 // receiving part of the archive, then the retry must upload every byte again.
 func TestCopyReconnectsAfterInterruptedSFTPUpload(t *testing.T) {
 	handlers := sftp.InMemHandler()
-	address, accepted, disconnected := startInterruptingSFTPServer(t, handlers)
+	address, hostKey, accepted, disconnected := startInterruptingSFTPServer(t, handlers)
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		t.Fatal(err)
@@ -39,6 +39,7 @@ func TestCopyReconnectsAfterInterruptedSFTPUpload(t *testing.T) {
 	var successes, warnings int
 	backend, cleanup, err := NewStorageBackend(Config{
 		HostName: host, Port: port, User: "test", RemotePath: "/backups",
+		HostPublicKey: string(gossh.MarshalAuthorizedKey(hostKey)),
 		UploadRetries: 2, UploadRetryDelay: time.Millisecond,
 	}, func(level storage.LogLevel, _ string, message string, _ ...any) {
 		if level == storage.LogLevelInfo && strings.HasPrefix(message, "Uploaded a copy") {
@@ -123,7 +124,7 @@ func (f *interruptedSFTPFile) Close() error {
 	return nil
 }
 
-func startInterruptingSFTPServer(t *testing.T, handlers sftp.Handlers) (string, *atomic.Int32, *atomic.Int32) {
+func startInterruptingSFTPServer(t *testing.T, handlers sftp.Handlers) (string, gossh.PublicKey, *atomic.Int32, *atomic.Int32) {
 	t.Helper()
 	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -207,5 +208,5 @@ func startInterruptingSFTPServer(t *testing.T, handlers sftp.Handlers) (string, 
 			}()
 		}
 	}()
-	return listener.Addr().String(), &accepted, &disconnected
+	return listener.Addr().String(), signer.PublicKey(), &accepted, &disconnected
 }

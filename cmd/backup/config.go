@@ -74,11 +74,14 @@ type Config struct {
 	WebdavPassword                       string          `split_words:"true"`
 	SSHHostName                          string          `split_words:"true"`
 	SSHPort                              string          `split_words:"true" default:"22"`
+	SSHHostPublicKey                     string          `split_words:"true"`
+	SSHKnownHostsFile                    string          `split_words:"true"`
 	SSHUser                              string          `split_words:"true"`
 	SSHPassword                          string          `split_words:"true"`
 	SSHIdentityFile                      string          `split_words:"true" default:"/root/.ssh/id_rsa"`
 	SSHIdentityPassphrase                string          `split_words:"true"`
 	SSHRemotePath                        string          `split_words:"true"`
+	SSHInsecureIgnoreHostKey             bool            `split_words:"true"`
 	SSHUploadRetries                     WholeNumber     `split_words:"true" default:"0"`
 	SSHUploadRetryDelay                  time.Duration   `split_words:"true" default:"5s"`
 	ExecLabel                            string          `split_words:"true"`
@@ -365,6 +368,11 @@ func (c *Config) resolve() (reset func() error, warnings []string, err error) {
 			return
 		}
 		c.AzureStorageEndpoint = fmt.Sprintf("%s/", strings.TrimSuffix(ep.String(), "/"))
+	}
+
+	if c.SSHHostName != "" && !c.SSHInsecureIgnoreHostKey && (c.SSHHostPublicKey == "" || c.SSHKnownHostsFile != "") {
+		err = errwrap.Wrap(nil, "SSH hostname given without a public key or known_hosts, refer to the documentation for guidance")
+		return
 	}
 	return
 }
