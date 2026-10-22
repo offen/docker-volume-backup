@@ -368,7 +368,7 @@ func (c *Config) resolve() (reset func() error, warnings []string, err error) {
 		c.AzureStorageEndpoint = fmt.Sprintf("%s/", strings.TrimSuffix(ep.String(), "/"))
 	}
 
-	if c.SSHHostName != "" && !c.SSHInsecureIgnoreHostKey && (c.SSHHostPublicKey == "" || c.SSHKnownHostsFile != "") {
+	if c.SSHHostName != "" && !c.SSHInsecureIgnoreHostKey && c.SSHHostPublicKey == "" && c.SSHKnownHostsFile == "" {
 		err = errwrap.Wrap(nil, "SSH hostname given without a public key or known_hosts, refer to the documentation for guidance")
 		return
 	}
