@@ -82,6 +82,8 @@ type Config struct {
 	SSHIdentityPassphrase                string          `split_words:"true"`
 	SSHRemotePath                        string          `split_words:"true"`
 	SSHInsecureIgnoreHostKey             bool            `split_words:"true"`
+	SSHUploadRetries                     WholeNumber     `split_words:"true" default:"0"`
+	SSHUploadRetryDelay                  time.Duration   `split_words:"true" default:"5s"`
 	ExecLabel                            string          `split_words:"true"`
 	ExecForwardOutput                    bool            `split_words:"true"`
 	LockTimeout                          time.Duration   `split_words:"true" default:"60m"`
