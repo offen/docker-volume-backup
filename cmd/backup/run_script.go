@@ -13,11 +13,27 @@ import (
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
+type runScriptOpts struct {
+	// scheduled is set when the run has been triggered by a cron schedule
+	// instead of being invoked manually. Only scheduled runs honor the
+	// configured jitter.
+	scheduled bool
+}
+
+// jitterDelay returns a random delay between 0 and the given maximum.
+// Runs that were not triggered by a schedule are never delayed.
+func jitterDelay(max time.Duration, scheduled bool) time.Duration {
+	if !scheduled || max <= 0 {
+		return 0
+	}
+	return time.Duration(rand.Int63n(int64(max) + 1))
+}
+
 // runScript instantiates a new script object and orchestrates a backup run.
 // To ensure it runs mutually exclusive a global file lock is acquired before
 // it starts running. Any panic within the script will be recovered and returned
 // as an error.
-func runScript(c *Config) (err error) {
+func runScript(c *Config, opts runScriptOpts) (err error) {
 	defer func() {
 		if derr := recover(); derr != nil {
 			fmt.Printf("%s: %s\n", derr, debug.Stack())
@@ -56,10 +72,8 @@ func runScript(c *Config) (err error) {
 		s.logger.Warn(w)
 	}
 
-	if s.c != nil && s.c.BackupJitter > 0 {
-		max := s.c.BackupJitter
-		delay := time.Duration(rand.Int63n(int64(max) + 1))
-		if delay > 0 {
+	if s.c != nil {
+		if delay := jitterDelay(s.c.BackupJitter, opts.scheduled); delay > 0 {
 			s.logger.Info(fmt.Sprintf("Applying startup jitter of %v", delay))
 			time.Sleep(delay)
 		}
