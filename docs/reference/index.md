@@ -361,6 +361,25 @@ If you need to confirm what the container actually loaded, see [Show loaded conf
 
 # SSH_IGNORE_HOST_KEY="false"
 
+# ---
+
+# The number of additional upload attempts after an SSH/SFTP connection error.
+# Each retry opens a new connection and transfers the existing archive from the
+# beginning; containers are not stopped again and the archive is not recreated.
+# Permission errors and other non-connection errors are not retried.
+# Retries are disabled by default. Set to a positive number to enable them.
+# Initial connection failures during backup setup and pruning are not retried.
+# Exhausted retries still fail the backup run; this setting does not retain
+# temporary archives after a failed run.
+
+# SSH_UPLOAD_RETRIES="0"
+
+# ---
+
+# The delay before each upload retry, as a non-negative duration.
+
+# SSH_UPLOAD_RETRY_DELAY="5s"
+
 ########### AZURE BLOB STORAGE
 
 # The credential's account name when using Azure Blob Storage. This has to be

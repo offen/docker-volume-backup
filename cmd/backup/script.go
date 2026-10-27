@@ -196,6 +196,8 @@ func (s *script) init() error {
 			InsecureIgnoreHostKey: s.c.SSHInsecureIgnoreHostKey,
 			HostPublicKey:         s.c.SSHHostPublicKey,
 			KnownHostsFile:        s.c.SSHKnownHostsFile,
+			UploadRetries:         int(s.c.SSHUploadRetries),
+			UploadRetryDelay:      s.c.SSHUploadRetryDelay,
 		}
 
 		sshBackend, closeSSHConnection, err := ssh.NewStorageBackend(sshConfig, logFunc)
