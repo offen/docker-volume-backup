@@ -48,8 +48,10 @@ If you need to confirm what the container actually loaded, see [Show loaded conf
 
 # ---
 
-# Optional startup delay ("jitter") applied before each backup run.
-# The jitter introduces a random delay between 0 and the given duration,
+# Optional startup delay ("jitter") applied before each scheduled backup run.
+# The jitter introduces a random delay between 0 and the given duration.
+# Backups that are triggered manually (e.g. by running `backup` inside the
+# container) do not apply the jitter.
 #
 # Set to "0s" or omit the variable to disable jitter completely.
 # Default = "0s". In case you need to adjust this value, supply a duration

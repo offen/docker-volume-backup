@@ -43,7 +43,7 @@ func (c *command) runAsCommand() error {
 		for _, w := range warnings {
 			c.logger.Warn(w)
 		}
-		if err := runScript(config); err != nil {
+		if err := runScript(config, runScriptOpts{}); err != nil {
 			return errwrap.Wrap(err, "error running script")
 		}
 	}
@@ -125,7 +125,7 @@ func (c *command) schedule(strategy configStrategy) error {
 				),
 			)
 
-			if err := runScript(config); err != nil {
+			if err := runScript(config, runScriptOpts{scheduled: true}); err != nil {
 				c.logger.Error(
 					fmt.Sprintf(
 						"Unexpected error running schedule %s: %v",
