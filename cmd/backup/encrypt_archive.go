@@ -115,10 +115,7 @@ func (s *script) encryptWithAge(rec []age.Recipient) error {
 }
 
 func (s *script) encryptWithGPGSymmetric() error {
-	useArmoredOutput := false
-	if s.c.GpgOutput == "armored" {
-		useArmoredOutput = true
-	}
+	useArmoredOutput := s.c.GpgOutput == "armored"
 	return s.doEncrypt("gpg", useArmoredOutput, func(ciphertextWriter io.Writer) (io.WriteCloser, error) {
 		_, name := path.Split(s.file)
 		return openpgp.SymmetricallyEncrypt(ciphertextWriter, []byte(s.c.GpgPassphrase), &openpgp.FileHints{
@@ -142,10 +139,7 @@ func (c *closeAllWriter) Close() (err error) {
 var _ io.WriteCloser = (*closeAllWriter)(nil)
 
 func (s *script) encryptWithGPGAsymmetric() error {
-	useArmoredOutput := false
-	if s.c.GpgOutput == "armored" {
-		useArmoredOutput = true
-	}
+	useArmoredOutput := s.c.GpgOutput == "armored"
 	return s.doEncrypt("gpg", useArmoredOutput, func(ciphertextWriter io.Writer) (_ io.WriteCloser, outerr error) {
 		entityList, err := openpgp.ReadArmoredKeyRing(bytes.NewReader([]byte(s.c.GpgPublicKeyRing)))
 		if err != nil {
