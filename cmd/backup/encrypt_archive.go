@@ -154,6 +154,12 @@ func (s *script) encryptWithGPGAsymmetric() error {
 			}
 		}()
 
+		if s.c.GpgOutput == "ascii" {
+			encodedWriter := armoredWriter
+		} else {
+			encodedWriter := ciphertextWriter
+		}
+
 		_, name := path.Split(s.file)
 		encWriter, err := openpgp.Encrypt(armoredWriter, entityList, nil, nil, &openpgp.FileHints{
 			FileName: name,
