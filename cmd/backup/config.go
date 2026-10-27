@@ -57,6 +57,7 @@ type Config struct {
 	BackupSkipBackendsFromPrune          []string        `split_words:"true"`
 	GpgPassphrase                        string          `split_words:"true"`
 	GpgPublicKeyRing                     string          `split_words:"true"`
+	GpgOutput                            GpgOutput       `split_words:"true" default:"binary"`
 	AgePassphrase                        string          `split_words:"true"`
 	AgePublicKeys                        []string        `split_words:"true"`
 	NotificationURLs                     []string        `envconfig:"NOTIFICATION_URLS"`
@@ -142,6 +143,22 @@ func (c *CompressionType) Decode(v string) error {
 
 func (c *CompressionType) String() string {
 	return string(*c)
+}
+
+type GpgOutput string
+
+func (g *GpgOutput) Decode(v string) error {
+	switch v {
+	case "armored", "binary":
+		*g = GpgOutput(v)
+		return nil
+	default:
+		return errwrap.Wrap(nil, fmt.Sprintf("unknown gpg output '%s', expected one of 'armored', 'binary'", v))
+	}
+}
+
+func (g *GpgOutput) String() string {
+	return string(*g)
 }
 
 // MatchBehavior controls how the value of a container's stop-during-backup

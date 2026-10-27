@@ -109,13 +109,14 @@ func parseAgeRecipient(arg string) (age.Recipient, error) {
 }
 
 func (s *script) encryptWithAge(rec []age.Recipient) error {
-	return s.doEncrypt("age", func(ciphertextWriter io.Writer) (io.WriteCloser, error) {
+	return s.doEncrypt("age", false, func(ciphertextWriter io.Writer) (io.WriteCloser, error) {
 		return age.Encrypt(ciphertextWriter, rec...)
 	})
 }
 
 func (s *script) encryptWithGPGSymmetric() error {
-	return s.doEncrypt("gpg", func(ciphertextWriter io.Writer) (io.WriteCloser, error) {
+	useArmoredOutput := s.c.GpgOutput == "armored"
+	return s.doEncrypt("gpg", useArmoredOutput, func(ciphertextWriter io.Writer) (io.WriteCloser, error) {
 		_, name := path.Split(s.file)
 		return openpgp.SymmetricallyEncrypt(ciphertextWriter, []byte(s.c.GpgPassphrase), &openpgp.FileHints{
 			FileName: name,
@@ -123,53 +124,29 @@ func (s *script) encryptWithGPGSymmetric() error {
 	})
 }
 
-type closeAllWriter struct {
-	io.Writer
-	closers []io.Closer
-}
-
-func (c *closeAllWriter) Close() (err error) {
-	for _, cl := range c.closers {
-		err = errors.Join(err, cl.Close())
-	}
-	return
-}
-
-var _ io.WriteCloser = (*closeAllWriter)(nil)
-
 func (s *script) encryptWithGPGAsymmetric() error {
-	return s.doEncrypt("gpg", func(ciphertextWriter io.Writer) (_ io.WriteCloser, outerr error) {
+	useArmoredOutput := s.c.GpgOutput == "armored"
+	return s.doEncrypt("gpg", useArmoredOutput, func(ciphertextWriter io.Writer) (_ io.WriteCloser, outerr error) {
 		entityList, err := openpgp.ReadArmoredKeyRing(bytes.NewReader([]byte(s.c.GpgPublicKeyRing)))
 		if err != nil {
 			return nil, errwrap.Wrap(err, "error parsing armored keyring")
 		}
 
-		armoredWriter, err := armor.Encode(ciphertextWriter, "PGP MESSAGE", nil)
-		if err != nil {
-			return nil, errwrap.Wrap(err, "error preparing encryption")
-		}
-		defer func() {
-			if outerr != nil {
-				_ = armoredWriter.Close()
-			}
-		}()
-
 		_, name := path.Split(s.file)
-		encWriter, err := openpgp.Encrypt(armoredWriter, entityList, nil, nil, &openpgp.FileHints{
+		encWriter, err := openpgp.Encrypt(ciphertextWriter, entityList, nil, nil, &openpgp.FileHints{
 			FileName: name,
 		}, nil)
 		if err != nil {
 			return nil, err
 		}
-		return &closeAllWriter{
-			Writer:  encWriter,
-			closers: []io.Closer{encWriter, armoredWriter},
-		}, nil
+
+		return encWriter, nil
 	})
 }
 
 func (s *script) doEncrypt(
 	extension string,
+	useArmoredOutput bool,
 	encryptor func(ciphertextWriter io.Writer) (io.WriteCloser, error),
 ) (outerr error) {
 	encFile := fmt.Sprintf("%s.%s", s.file, extension)
@@ -193,13 +170,35 @@ func (s *script) doEncrypt(
 		}
 	}()
 
-	dst, err := encryptor(outFile)
+	var cipherTextWriter io.Writer = outFile
+	var armorCloser io.Closer
+
+	if useArmoredOutput {
+		armoredWriter, err := armor.Encode(outFile, "PGP MESSAGE", nil)
+		if err != nil {
+			return errwrap.Wrap(err, "error preparing encryption")
+		}
+		cipherTextWriter = armoredWriter
+		armorCloser = armoredWriter
+		defer func() {
+			if outerr != nil {
+				outerr = errors.Join(outerr, armoredWriter.Close())
+			}
+		}()
+	}
+
+	dst, err := encryptor(cipherTextWriter)
 	if err != nil {
 		return errwrap.Wrap(err, "error encrypting backup file")
 	}
 	defer func() {
 		if err := dst.Close(); err != nil {
 			outerr = errors.Join(outerr, errwrap.Wrap(err, "error closing encrypted backup file"))
+		}
+		if armorCloser != nil {
+			if err := armorCloser.Close(); err != nil {
+				outerr = errors.Join(outerr, errwrap.Wrap(err, "error closing armored writer"))
+			}
 		}
 	}()
 

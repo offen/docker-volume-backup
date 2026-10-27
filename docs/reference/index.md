@@ -585,6 +585,13 @@ If you need to confirm what the container actually loaded, see [Show loaded conf
 
 # ---
 
+# The output format of the encrypted file. By default, a `binary` file is generated
+# but you can use `armored` to generate base64 encoded output.
+
+# GPG_OUTPUT="binary"
+
+# ---
+
 # Backups can be encrypted symmetrically using age in case a passphrase is given.
 
 # AGE_PASSPHRASE=""
