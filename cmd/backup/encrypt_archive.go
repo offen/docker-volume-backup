@@ -124,20 +124,6 @@ func (s *script) encryptWithGPGSymmetric() error {
 	})
 }
 
-type closeAllWriter struct {
-	io.Writer
-	closers []io.Closer
-}
-
-func (c *closeAllWriter) Close() (err error) {
-	for _, cl := range c.closers {
-		err = errors.Join(err, cl.Close())
-	}
-	return
-}
-
-var _ io.WriteCloser = (*closeAllWriter)(nil)
-
 func (s *script) encryptWithGPGAsymmetric() error {
 	useArmoredOutput := s.c.GpgOutput == "armored"
 	return s.doEncrypt("gpg", useArmoredOutput, func(ciphertextWriter io.Writer) (_ io.WriteCloser, outerr error) {
@@ -154,10 +140,7 @@ func (s *script) encryptWithGPGAsymmetric() error {
 			return nil, err
 		}
 
-		return &closeAllWriter{
-			Writer:  encWriter,
-			closers: []io.Closer{encWriter},
-		}, nil
+		return encWriter, nil
 	})
 }
 
