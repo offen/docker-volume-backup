@@ -16,5 +16,8 @@ Starting with version 2.49.2, this is prevented, requiring you to either:
 - provide the location of a valid known_hosts file by setting `SSH_KNOWN_HOSTS_FILE`
 - dangerously set `SSH_INSECURE_IGNORE_HOST_KEY` to ignore host key checks
 
+The key may be of any type the server offers (e.g. ED25519, ECDSA or RSA).
+Only the configured key types are negotiated with the server, so it presents a matching key.
+
 {: .warning }
 Only set `SSH_INSECURE_IGNORE_HOST_KEY` as a last resort or in entirely airgapped environments.

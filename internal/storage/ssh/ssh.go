@@ -109,12 +109,16 @@ func NewStorageBackend(opts Config, logFunc storage.Log) (storage.Backend, func(
 			return nil, noop, errwrap.Wrap(err, "error parsing public host key")
 		}
 		sshClientConfig.HostKeyCallback = ssh.FixedHostKey(cb)
+		// Without this, the server presents its key for the client's default
+		// preference (ECDSA first), so a pinned key of another type never matches.
+		sshClientConfig.HostKeyAlgorithms = hostKeyAlgorithms(cb.Type())
 	} else if opts.KnownHostsFile != "" {
 		cb, err := knownhosts.New(opts.KnownHostsFile)
 		if err != nil {
 			return nil, noop, errwrap.Wrap(err, "error parsing knownhosts file")
 		}
 		sshClientConfig.HostKeyCallback = cb
+		sshClientConfig.HostKeyAlgorithms = knownHostKeyAlgorithms(cb, opts.HostName, opts.Port)
 	}
 
 	connect := func() (sftpClient, func() error, error) {
