@@ -65,3 +65,24 @@ docker run --rm \
   ash -c 'test ! -f /ssh_data/test-hostnametoken-old.tar.gz && test -f /ssh_data/test-hostnametoken.tar.gz'
 
 pass "Old remote backup has been pruned, new one is still present."
+
+# The fourth part checks that a host key other than the client's preferred
+# ECDSA key can be pinned, as the server offers both ECDSA and ED25519 keys.
+
+SSH_HOST_KEY_TYPE="ed25519" docker compose up -d
+sleep 5
+
+docker run --rm \
+  -v ssh_ssh_backup_data:/ssh_data \
+  alpine \
+  ash -c 'rm -f /ssh_data/test-hostnametoken.tar.gz'
+
+info "Create backup with pinned ED25519 host key"
+docker compose exec backup backup
+
+docker run --rm \
+  -v ssh_ssh_backup_data:/ssh_data \
+  alpine \
+  ash -c 'test -f /ssh_data/test-hostnametoken.tar.gz'
+
+pass "Backup with pinned ED25519 host key has been uploaded."

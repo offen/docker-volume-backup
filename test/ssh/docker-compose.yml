@@ -24,7 +24,7 @@ services:
       BACKUP_PRUNING_LEEWAY: 5s
       BACKUP_PRUNING_PREFIX: test
       SSH_HOST_NAME: ssh
-      SSH_HOST_PUBLIC_KEY_FILE: /ssh_config_data/ssh_host_keys/ssh_host_ecdsa_key.pub
+      SSH_HOST_PUBLIC_KEY_FILE: /ssh_config_data/ssh_host_keys/ssh_host_${SSH_HOST_KEY_TYPE:-ecdsa}_key.pub
       SSH_PORT: 2222
       SSH_USER: test
       SSH_REMOTE_PATH: /tmp
