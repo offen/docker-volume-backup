@@ -23,7 +23,7 @@ require (
 	github.com/nicholas-fedor/shoutrrr v0.21.1
 	github.com/offen/envconfig v1.5.0
 	github.com/otiai10/copy v1.14.1
-	github.com/pkg/sftp v1.13.11
+	github.com/pkg/sftp v1.13.12
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/studio-b12/gowebdav v0.13.0
 	golang.org/x/crypto v0.57.0
