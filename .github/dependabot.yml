@@ -1,11 +1,11 @@
 version: 2
-open-pull-requests-limit: 25
 updates:
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
   - package-ecosystem: gomod
+    open-pull-requests-limit: 25
     directory: /
     schedule:
       interval: monthly
