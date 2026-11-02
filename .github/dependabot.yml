@@ -1,4 +1,5 @@
 version: 2
+open-pull-requests-limit: 25
 updates:
   - package-ecosystem: docker
     directory: /
