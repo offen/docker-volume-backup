@@ -31,7 +31,7 @@ volumes:
   data:
 ```
 
-## Backing up to Filebase
+## Backing up to S3 compatible storage
 
 ```yml
 services:
@@ -39,30 +39,10 @@ services:
   backup:
     image: offen/docker-volume-backup:v2
     environment:
-      AWS_ENDPOINT: s3.filebase.com
-      AWS_S3_BUCKET_NAME: filebase-bucket
-      AWS_ACCESS_KEY_ID: FILEBASE-ACCESS-KEY
-      AWS_SECRET_ACCESS_KEY: FILEBASE-SECRET-KEY
-    volumes:
-      - data:/backup/my-app-backup:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-
-volumes:
-  data:
-```
-
-## Backing up to MinIO
-
-```yml
-services:
-  # ... define other services using the `data` volume here
-  backup:
-    image: offen/docker-volume-backup:v2
-    environment:
-      AWS_ENDPOINT: minio.example.com
+      AWS_ENDPOINT: objectstorage.example.com
       AWS_S3_BUCKET_NAME: backup-bucket
-      AWS_ACCESS_KEY_ID: MINIOACCESSKEY
-      AWS_SECRET_ACCESS_KEY: MINIOSECRETKEY
+      AWS_ACCESS_KEY_ID: ACCESSKEY
+      AWS_SECRET_ACCESS_KEY: SECRETKEY
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -72,7 +52,7 @@ volumes:
 ```
 
 
-## Backing up to MinIO (using Docker secrets)
+## Backing up to S3 compatible storage (using Docker secrets)
 
 ```yml
 services:
@@ -80,24 +60,24 @@ services:
   backup:
     image: offen/docker-volume-backup:v2
     environment:
-      AWS_ENDPOINT: minio.example.com
+      AWS_ENDPOINT: objectstorage.example.com
       AWS_S3_BUCKET_NAME: backup-bucket
-      AWS_ACCESS_KEY_ID_FILE: /run/secrets/minio_access_key
-      AWS_SECRET_ACCESS_KEY_FILE: /run/secrets/minio_secret_key
+      AWS_ACCESS_KEY_ID_FILE: /run/secrets/access_key
+      AWS_SECRET_ACCESS_KEY_FILE: /run/secrets/secret_key
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     secrets:
-      - minio_access_key
-      - minio_secret_key
+      - access_key
+      - secret_key
 
 volumes:
   data:
 
 secrets:
-  minio_access_key:
+  access_key:
     # ... define how secret is accessed
-  minio_secret_key:
+  secret_key:
     # ... define how secret is accessed
 ```
 
