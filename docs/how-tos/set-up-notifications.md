@@ -31,7 +31,7 @@ If you also want notifications on successful executions, set `NOTIFICATION_LEVEL
 ## Monitor backup runs with a heartbeat monitoring service
 
 Failure notifications cannot tell you about backups that never ran, for example because the container is stopped or fails before notifications are set up.
-Heartbeat (dead man's switch) monitoring services such as [Watchgoose](https://watchgoose.com/docs/) cover this case: they expect a ping on every scheduled run and alert you when it is late or reports a failure.
+Heartbeat (dead man's switch) monitoring services cover this case: they expect a ping on every scheduled run and alert you when it is late or reports a failure.
 
 `NOTIFICATION_URLS` sends success and failure notifications to the same URLs, so use it for the failure ping only, and send the start and success pings from [custom commands](run-custom-commands.md) labeled on the `docker-volume-backup` container itself:
 
@@ -41,10 +41,10 @@ services:
     image: offen/docker-volume-backup:v2
     environment:
       # ... other configuration values go here
-      NOTIFICATION_URLS: generic+https://watchgoose.com/ping/your-check-uuid/fail
+      NOTIFICATION_URLS: generic+https://monitor.example.com/ping/your-check-uuid/fail
     labels:
-      - docker-volume-backup.archive-pre=/bin/sh -c 'wget -q -T 10 -O /dev/null https://watchgoose.com/ping/your-check-uuid/start || true'
-      - docker-volume-backup.prune-post=/bin/sh -c 'wget -q -T 10 -O /dev/null https://watchgoose.com/ping/your-check-uuid || true'
+      - docker-volume-backup.archive-pre=/bin/sh -c 'wget -q -T 10 -O /dev/null https://monitor.example.com/ping/your-check-uuid/start || true'
+      - docker-volume-backup.prune-post=/bin/sh -c 'wget -q -T 10 -O /dev/null https://monitor.example.com/ping/your-check-uuid || true'
     volumes:
       - data:/backup/my-app-backup:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -54,6 +54,8 @@ The `prune` step only runs after the backup has been copied to all storages, so 
 The failure notification posts the error and the log output of the run to the `/fail` URL.
 `|| true` makes sure an unreachable monitoring service does not fail the backup itself.
 If you use `EXEC_LABEL`, add the matching `docker-volume-backup.exec-label` label to the `backup` service as well.
+
+This setup was tested with [Watchgoose](https://watchgoose.com/docs/) monitoring platform.
 
 ## Customize notifications
 
