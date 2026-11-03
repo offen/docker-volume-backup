@@ -341,11 +341,14 @@ func (c *Config) resolve() (reset func() error, warnings []string, err error) {
 		)
 	}
 
-	if c.BackupStopDuringBackupLabel != "" && c.BackupStopContainerLabel != "" {
-		err = errwrap.Wrap(nil, "both BACKUP_STOP_DURING_BACKUP_LABEL and BACKUP_STOP_CONTAINER_LABEL have been set, cannot continue")
-		return
-	}
 	if c.BackupStopContainerLabel != "" {
+		// BACKUP_STOP_DURING_BACKUP_LABEL defaults to true, so the parsed values
+		// cannot tell whether the user has set it on purpose. Look at the
+		// environment instead, the same way DOCKER_HOST is checked in script.go.
+		if os.Getenv("BACKUP_STOP_DURING_BACKUP_LABEL") != "" {
+			err = errwrap.Wrap(nil, "both BACKUP_STOP_DURING_BACKUP_LABEL and BACKUP_STOP_CONTAINER_LABEL have been set, cannot continue")
+			return
+		}
 		warnings = append(warnings,
 			"Using BACKUP_STOP_CONTAINER_LABEL has been deprecated and will be removed in the next major version.",
 			"Please use BACKUP_STOP_DURING_BACKUP_LABEL instead. Refer to the docs for an upgrade guide.",
