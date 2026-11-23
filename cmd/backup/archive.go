@@ -32,7 +32,7 @@ func createArchive(files []string, inputFilePath, outputFilePath string, compres
 	}
 
 	if err := compress(files, outputFilePath, compression, compressionConcurrency); err != nil {
-		return errwrap.Wrap(err, "error creating archive")
+		return errwrap.Wrap(err, "error compressing archive")
 	}
 
 	return nil
@@ -55,41 +55,42 @@ func makeAbsolute(inputFilePath, outputFilePath string) (string, string, error) 
 	return inputFilePath, outputFilePath, err
 }
 
-func compress(paths []string, outFilePath, algo string, concurrency int) error {
+func compress(paths []string, outFilePath, algo string, concurrency int) (retErr error) {
 	file, err := os.Create(outFilePath)
 	if err != nil {
-		return errwrap.Wrap(err, "error creating out file")
+		retErr = errwrap.Wrap(err, "error creating out file")
+		return
 	}
+	defer func() {
+		retErr = errors.Join(retErr, file.Close())
+	}()
 
 	prefix := path.Dir(outFilePath)
 	compressWriter, err := getCompressionWriter(file, algo, concurrency)
 	if err != nil {
-		return errwrap.Wrap(err, "error getting compression writer")
+		retErr = errwrap.Wrap(err, "error getting compression writer")
+		return
 	}
 	tarWriter := tar.NewWriter(compressWriter)
 
 	for _, p := range paths {
 		if err := writeTarball(p, tarWriter, prefix); err != nil {
-			return errwrap.Wrap(err, fmt.Sprintf("error writing %s to archive", p))
+			retErr = errwrap.Wrap(err, fmt.Sprintf("error writing %s to archive", p))
+			return
 		}
 	}
 
-	err = tarWriter.Close()
-	if err != nil {
-		return errwrap.Wrap(err, "error closing tar writer")
+	if err := tarWriter.Close(); err != nil {
+		retErr = errwrap.Wrap(err, "error closing tar writer")
+		return
 	}
 
-	err = compressWriter.Close()
-	if err != nil {
-		return errwrap.Wrap(err, "error closing compression writer")
+	if err := compressWriter.Close(); err != nil {
+		retErr = errwrap.Wrap(err, "error closing compression writer")
+		return
 	}
 
-	err = file.Close()
-	if err != nil {
-		return errwrap.Wrap(err, "error closing file")
-	}
-
-	return nil
+	return
 }
 
 func getCompressionWriter(file *os.File, algo string, concurrency int) (io.WriteCloser, error) {
