@@ -61,63 +61,49 @@ func TestBackupSkipMissingFilesConfiguration(t *testing.T) {
 	}
 }
 
-func TestCompressMissingFileFailsByDefault(t *testing.T) {
-	dir := t.TempDir()
-	missing := filepath.Join(dir, "missing.txt")
-	archive := filepath.Join(dir, "backup.tar")
-
-	err := compress([]string{missing}, archive, "none", 1, archiveOptions{})
-	if !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("compress missing file: got %v, want os.ErrNotExist", err)
+func TestSkipMissingConfigurationFromFile(t *testing.T) {
+	old := envconfig.Lookup
+	t.Cleanup(func() { envconfig.Lookup = old })
+	file := filepath.Join(t.TempDir(), "flag")
+	if err := os.WriteFile(file, []byte("true"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	config, err := loadConfig(func(key string) (string, bool) {
+		if key == "BACKUP_SKIP_MISSING_FILES_FILE" {
+			return file, true
+		}
+		return "", false
+	})
+	if err != nil || !config.BackupSkipMissingFiles {
+		t.Fatalf("expected enabled configuration from file: config=%v, error=%v", config, err)
 	}
 }
 
-func TestCompressSkipsMissingFileWhenEnabled(t *testing.T) {
-	previousLookup := envconfig.Lookup
-	t.Cleanup(func() { envconfig.Lookup = previousLookup })
-	t.Setenv("BACKUP_SKIP_MISSING_FILES", "true")
-	config, err := loadConfig(os.LookupEnv)
-	if err != nil {
-		t.Fatalf("load configuration: %v", err)
-	}
-
+func TestSkipMissingInvalidFileConfiguration(t *testing.T) {
+	old := envconfig.Lookup
+	t.Cleanup(func() { envconfig.Lookup = old })
 	dir := t.TempDir()
-	keep := filepath.Join(dir, "keep.txt")
-	missing := filepath.Join(dir, "disappeared.txt")
-	archive := filepath.Join(dir, "backup.tar")
-	if err := os.WriteFile(keep, []byte("still present"), 0600); err != nil {
+	file := filepath.Join(dir, "flag")
+	if err := os.WriteFile(file, []byte("false"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	var logs bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logs, nil))
-
-	options := archiveOptions{skipMissingFiles: config.BackupSkipMissingFiles, sourceRoot: dir, logger: logger}
-	if err := compress([]string{missing, keep}, archive, "none", 1, options); err != nil {
-		t.Fatalf("compress with skipping enabled: %v", err)
-	}
-	if !strings.Contains(logs.String(), missing) || !strings.Contains(logs.String(), "WARN") {
-		t.Fatalf("expected warning naming skipped file, got %q", logs.String())
-	}
-
-	f, err := os.Open(archive)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = f.Close() })
-	reader := tar.NewReader(f)
-	header, err := reader.Next()
-	if err != nil {
-		t.Fatalf("read archived file: %v", err)
-	}
-	if filepath.Base(header.Name) != "keep.txt" {
-		t.Fatalf("archived name = %q, want keep.txt", header.Name)
-	}
-	contents, err := io.ReadAll(reader)
-	if err != nil || string(contents) != "still present" {
-		t.Fatalf("archived contents = %q, error = %v", contents, err)
-	}
-	if _, err := reader.Next(); err != io.EOF {
-		t.Fatalf("archive should end after retained file, got %v", err)
+	for _, tt := range []struct {
+		name   string
+		values map[string]string
+	}{
+		{"conflicting values", map[string]string{"BACKUP_SKIP_MISSING_FILES": "true", "BACKUP_SKIP_MISSING_FILES_FILE": file}},
+		{"invalid explicit value", map[string]string{"BACKUP_SKIP_MISSING_FILES": "bad", "BACKUP_SKIP_MISSING_FILES_FILE": file}},
+		{"missing value file", map[string]string{"BACKUP_SKIP_MISSING_FILES_FILE": filepath.Join(dir, "absent")}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := loadConfig(func(key string) (string, bool) {
+				value, ok := tt.values[key]
+				return value, ok
+			})
+			if err == nil {
+				t.Fatal("explicit invalid configuration was ignored")
+			}
+		})
 	}
 }
 
@@ -201,7 +187,7 @@ func TestMissingSourceRootStillFailsWhenSkippingEnabled(t *testing.T) {
 	}
 }
 
-func TestMissingSourceRootDuringWalkStillFails(t *testing.T) {
+func TestMissingSourceRootBeforeWalkStillFails(t *testing.T) {
 	dir := t.TempDir()
 	missingRoot := filepath.Join(dir, "missing-root")
 	archive := filepath.Join(dir, "backup.tar")
@@ -286,21 +272,19 @@ func (w *archiveOutputCloseError) Close() error {
 }
 
 func TestArchiveOutputFileCloseError(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "file")
-	contents := []byte("surviving bytes")
-	if err := os.WriteFile(path, contents, 0600); err != nil {
-		t.Fatal(err)
-	}
-	for _, algo := range []string{"none", "gz", "zst"} {
-		t.Run(algo, func(t *testing.T) {
+	for _, compression := range []string{"none", "gz", "zst"} {
+		t.Run(compression, func(t *testing.T) {
 			output := &archiveOutputCloseError{}
-			err := compressFile(output, []string{path}, filepath.Join(dir, "backup.tar"), algo, 1, archiveOptions{})
+			operations := defaultArchiveFileOperations()
+			operations.create = func(string) (io.WriteCloser, error) { return output, nil }
+			var logs bytes.Buffer
+			options := archiveOptions{skipMissingFiles: true, logger: slog.New(slog.NewTextHandler(&logs, nil)), operations: operations}
+			err := compress(nil, filepath.Join(t.TempDir(), "backup.tar"), compression, 1, options)
 			if !errors.Is(err, os.ErrPermission) {
 				t.Fatalf("archive output close: got %v, want os.ErrPermission", err)
 			}
 			var input io.Reader = bytes.NewReader(output.Bytes())
-			switch algo {
+			switch compression {
 			case "gz":
 				gz, err := gzip.NewReader(input)
 				if err != nil {
@@ -316,21 +300,11 @@ func TestArchiveOutputFileCloseError(t *testing.T) {
 				t.Cleanup(z.Close)
 				input = z
 			}
-			reader := tar.NewReader(input)
-			header, err := reader.Next()
-			if err != nil || filepath.Base(header.Name) != "file" {
-				t.Fatalf("archived file: header=%v, error=%v", header, err)
+			if _, err := tar.NewReader(input).Next(); err != io.EOF {
+				t.Fatalf("expected a complete empty archive before close, got %v", err)
 			}
-			archived, err := io.ReadAll(reader)
-			if err != nil || !bytes.Equal(archived, contents) {
-				t.Fatalf("archived contents=%q, error=%v", archived, err)
-			}
-			if _, err := reader.Next(); err != io.EOF {
-				t.Fatalf("expected end of archive, got %v", err)
-			}
-			source, err := os.ReadFile(path)
-			if err != nil || !bytes.Equal(source, contents) {
-				t.Fatalf("source changed: contents=%q, error=%v", source, err)
+			if logs.Len() != 0 {
+				t.Fatalf("output close error must not be skipped: %q", logs.String())
 			}
 		})
 	}

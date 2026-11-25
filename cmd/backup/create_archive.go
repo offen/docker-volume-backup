@@ -16,6 +16,10 @@ import (
 // createArchive creates a tar archive of the configured backup location and
 // saves it to disk.
 func (s *script) createArchive() error {
+	operations := defaultArchiveFileOperations()
+	if s.archiveLstat != nil {
+		operations.lstat = s.archiveLstat
+	}
 	backupSources := s.c.BackupSources
 
 	if s.c.BackupFromSnapshot {
@@ -57,10 +61,15 @@ func (s *script) createArchive() error {
 		return errwrap.Wrap(err, "error getting absolute path")
 	}
 	var sourceRoot os.FileInfo
+	var sourceDirectories map[string]os.FileInfo
 	if s.c.BackupSkipMissingFiles {
-		sourceRoot, err = os.Lstat(backupPath)
+		sourceRoot, err = operations.lstat(backupPath)
 		if err != nil {
 			return errwrap.Wrap(err, "error getting backup source root")
+		}
+		sourceDirectories = make(map[string]os.FileInfo)
+		if sourceRoot.IsDir() {
+			sourceDirectories[backupPath] = sourceRoot
 		}
 	}
 
@@ -73,6 +82,34 @@ func (s *script) createArchive() error {
 		if s.c.BackupExcludeRegexp.Re != nil && s.c.BackupExcludeRegexp.Re.MatchString(path) {
 			return nil
 		}
+		if sourceDirectories != nil && path != backupPath {
+			if di.IsDir() {
+				info, err := di.Info()
+				if err != nil {
+					return err
+				}
+				if !info.IsDir() {
+					return errwrap.Wrap(nil, fmt.Sprintf("backup source directory changed while listing: %s", path))
+				}
+				sourceDirectories[path] = info
+			}
+			for parent := filepath.Dir(path); ; parent = filepath.Dir(parent) {
+				if _, tracked := sourceDirectories[parent]; tracked {
+					break
+				}
+				info, err := os.Lstat(parent)
+				if err != nil {
+					return err
+				}
+				if !info.IsDir() {
+					return errwrap.Wrap(nil, fmt.Sprintf("backup source directory changed while listing: %s", parent))
+				}
+				sourceDirectories[parent] = info
+				if parent == backupPath || parent == filepath.Dir(parent) {
+					break
+				}
+			}
+		}
 		filesEligibleForBackup = append(filesEligibleForBackup, path)
 		return nil
 	}); err != nil {
@@ -80,19 +117,34 @@ func (s *script) createArchive() error {
 	}
 
 	options := archiveOptions{
-		skipMissingFiles: s.c.BackupSkipMissingFiles,
-		logger:           s.logger,
+		skipMissingFiles:  s.c.BackupSkipMissingFiles,
+		sourceRootInfo:    sourceRoot,
+		sourceDirectories: sourceDirectories,
+		logger:            s.logger,
+		operations:        operations,
 	}
 	if err := createArchive(filesEligibleForBackup, backupSources, tarFile, s.c.BackupCompression.String(), s.c.GzipParallelism.Int(), options); err != nil {
 		return errwrap.Wrap(err, "error compressing backup folder")
 	}
 	if s.c.BackupSkipMissingFiles {
-		currentRoot, err := os.Lstat(backupPath)
+		currentRoot, err := operations.lstat(backupPath)
 		if err != nil {
 			return errwrap.Wrap(err, "error verifying backup source root")
 		}
 		if !os.SameFile(sourceRoot, currentRoot) {
 			return errwrap.Wrap(nil, "backup source root changed while creating archive")
+		}
+		for path, original := range sourceDirectories {
+			if path == backupPath {
+				continue
+			}
+			current, err := operations.lstat(path)
+			if err != nil {
+				return errwrap.Wrap(err, fmt.Sprintf("error verifying backup source directory %s", path))
+			}
+			if !os.SameFile(original, current) {
+				return errwrap.Wrap(nil, fmt.Sprintf("backup source directory changed while creating archive: %s", path))
+			}
 		}
 	}
 
