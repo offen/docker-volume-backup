@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 
 	"github.com/offen/docker-volume-backup/internal/errwrap"
@@ -55,6 +56,13 @@ func (s *script) createArchive() error {
 	if err != nil {
 		return errwrap.Wrap(err, "error getting absolute path")
 	}
+	var sourceRoot os.FileInfo
+	if s.c.BackupSkipMissingFiles {
+		sourceRoot, err = os.Lstat(backupPath)
+		if err != nil {
+			return errwrap.Wrap(err, "error getting backup source root")
+		}
+	}
 
 	var filesEligibleForBackup []string
 	if err := filepath.WalkDir(backupPath, func(path string, di fs.DirEntry, err error) error {
@@ -71,8 +79,21 @@ func (s *script) createArchive() error {
 		return errwrap.Wrap(err, "error walking filesystem tree")
 	}
 
-	if err := createArchive(filesEligibleForBackup, backupSources, tarFile, s.c.BackupCompression.String(), s.c.GzipParallelism.Int()); err != nil {
+	options := archiveOptions{
+		skipMissingFiles: s.c.BackupSkipMissingFiles,
+		logger:           s.logger,
+	}
+	if err := createArchive(filesEligibleForBackup, backupSources, tarFile, s.c.BackupCompression.String(), s.c.GzipParallelism.Int(), options); err != nil {
 		return errwrap.Wrap(err, "error compressing backup folder")
+	}
+	if s.c.BackupSkipMissingFiles {
+		currentRoot, err := os.Lstat(backupPath)
+		if err != nil {
+			return errwrap.Wrap(err, "error verifying backup source root")
+		}
+		if !os.SameFile(sourceRoot, currentRoot) {
+			return errwrap.Wrap(nil, "backup source root changed while creating archive")
+		}
 	}
 
 	s.logger.Info(

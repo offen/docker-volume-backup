@@ -50,6 +50,7 @@ type envProxy func(string) (string, bool)
 
 // loadConfig creates a config object using the given lookup function
 func loadConfig(lookup envProxy) (*Config, error) {
+	var skipMissingConfigError error
 	envconfig.Lookup = func(key string) (string, bool) {
 		value, okValue := lookup(key)
 		location, okFile := lookup(key + "_FILE")
@@ -60,10 +61,16 @@ func loadConfig(lookup envProxy) (*Config, error) {
 		case !okValue && okFile: // only file
 			contents, err := os.ReadFile(location)
 			if err != nil {
+				if key == "BACKUP_SKIP_MISSING_FILES" {
+					skipMissingConfigError = errwrap.Wrap(err, "failed to read BACKUP_SKIP_MISSING_FILES_FILE")
+				}
 				return "", false
 			}
 			return string(contents), true
 		case okValue && okFile: // both
+			if key == "BACKUP_SKIP_MISSING_FILES" {
+				skipMissingConfigError = errwrap.Wrap(nil, "BACKUP_SKIP_MISSING_FILES and BACKUP_SKIP_MISSING_FILES_FILE cannot both be set")
+			}
 			return "", false
 		default: // neither, ignore
 			return "", false
@@ -73,6 +80,9 @@ func loadConfig(lookup envProxy) (*Config, error) {
 	var c = &Config{}
 	if err := envconfig.Process("", c); err != nil {
 		return nil, errwrap.Wrap(err, "failed to process configuration values")
+	}
+	if skipMissingConfigError != nil {
+		return nil, errwrap.Wrap(skipMissingConfigError, "failed to process configuration values")
 	}
 
 	return c, nil

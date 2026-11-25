@@ -142,6 +142,16 @@ If you need to confirm what the container actually loaded, see [Show loaded conf
 
 # ---
 
+# When enabled, entries that disappear after the source tree is listed and before
+# they are added to the archive are skipped with a warning instead of failing the
+# backup. The source root and other errors still fail the backup. This does not
+# guarantee a consistent backup of files that are being modified, such as live
+# databases. Use an application-consistent snapshot when consistency is required.
+
+# BACKUP_SKIP_MISSING_FILES="false"
+
+# ---
+
 # Exclude one or many storage backends from the pruning process.
 # Available backends are: S3, WebDAV, SSH, Local, Dropbox, Azure
 # E.g. with one backend excluded: BACKUP_SKIP_BACKENDS_FROM_PRUNE=s3
