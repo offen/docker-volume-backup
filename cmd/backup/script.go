@@ -39,9 +39,8 @@ type script struct {
 	hooks     []hook
 	hookLevel hookLevel
 
-	file         string
-	stats        *Stats
-	archiveLstat func(string) (os.FileInfo, error)
+	file  string
+	stats *Stats
 
 	encounteredLock bool
 

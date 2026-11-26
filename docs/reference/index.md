@@ -142,17 +142,14 @@ If you need to confirm what the container actually loaded, see [Show loaded conf
 
 # ---
 
-# When enabled, files that disappear after the source tree is listed and before
-# they are added to the archive are skipped with a warning instead of failing the
-# backup. Source directories needed by the backup are checked for disappearance
-# or replacement; these and other errors still fail the backup. These additional
-# directory checks are not a snapshot and cannot detect every transient change.
-# They do not guarantee a consistent backup of files being modified, such as live
-# databases. Use an application-consistent snapshot when needed.
-# Setting both BACKUP_SKIP_MISSING_FILES and BACKUP_SKIP_MISSING_FILES_FILE, or
-# pointing the latter at an unreadable file, causes a configuration error.
+# By default, the backup fails if an entry disappears after the source tree is
+# listed. Set this to false to skip missing entries with a warning and continue.
+# Missing directories can cause multiple entries to be skipped, and the resulting
+# backup may be incomplete. Other errors still fail the backup. This option is
+# not a snapshot and does not guarantee consistent live data, such as databases.
+# Use an application-consistent snapshot when needed.
 
-# BACKUP_SKIP_MISSING_FILES="false"
+# BACKUP_FAIL_ON_VOLATILE_FILESYSTEM="true"
 
 # ---
 

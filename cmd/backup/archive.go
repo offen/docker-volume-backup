@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -22,15 +21,6 @@ import (
 	"github.com/klauspost/pgzip"
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
-
-type archiveOptions struct {
-	skipMissingFiles  bool
-	sourceRoot        string
-	sourceRootInfo    os.FileInfo
-	sourceDirectories map[string]os.FileInfo
-	logger            *slog.Logger
-	operations        archiveFileOperations
-}
 
 type archiveFileOperations struct {
 	lstat    func(string) (os.FileInfo, error)
@@ -48,45 +38,36 @@ func defaultArchiveFileOperations() archiveFileOperations {
 	}
 }
 
-func (o archiveOptions) skipMissing(path string, err error, operations archiveFileOperations) bool {
-	if !o.skipMissingFiles || path == o.sourceRoot || !errors.Is(err, os.ErrNotExist) {
-		return false
-	}
-	if _, isDirectory := o.sourceDirectories[path]; isDirectory {
-		return false
-	}
-	if len(o.sourceDirectories) > 0 {
-		for parent := filepath.Dir(path); ; parent = filepath.Dir(parent) {
-			if original, tracked := o.sourceDirectories[parent]; tracked {
-				current, statErr := operations.lstat(parent)
-				if statErr != nil || !os.SameFile(original, current) {
-					return false
-				}
-			}
-			if parent == o.sourceRoot || parent == filepath.Dir(parent) {
-				break
-			}
-		}
-	}
-	o.logger.Warn("Skipping missing backup entry", "path", path)
-	return true
+type missingSourceError struct {
+	error
 }
 
-func createArchive(files []string, inputFilePath, outputFilePath string, compression string, compressionConcurrency int, options archiveOptions) error {
-	inputFilePath, outputFilePath, err := makeAbsolute(stripTrailingSlashes(inputFilePath), outputFilePath)
+func (e missingSourceError) Unwrap() error {
+	return e.error
+}
+
+func markMissingSource(err error) error {
+	if errors.Is(err, os.ErrNotExist) {
+		return missingSourceError{err}
+	}
+	return err
+}
+
+func createArchive(files []string, inputFilePath, outputFilePath string, compression string, compressionConcurrency int, failOnMissing bool) ([]error, error) {
+	_, outputFilePath, err := makeAbsolute(stripTrailingSlashes(inputFilePath), outputFilePath)
 	if err != nil {
-		return errwrap.Wrap(err, "error transposing given file paths")
+		return nil, errwrap.Wrap(err, "error transposing given file paths")
 	}
 	if err := os.MkdirAll(filepath.Dir(outputFilePath), 0755); err != nil {
-		return errwrap.Wrap(err, "error creating output file path")
+		return nil, errwrap.Wrap(err, "error creating output file path")
 	}
 
-	options.sourceRoot = inputFilePath
-	if err := compress(files, outputFilePath, compression, compressionConcurrency, options); err != nil {
-		return errwrap.Wrap(err, "error compressing archive")
+	warnings, err := compress(files, outputFilePath, compression, compressionConcurrency, failOnMissing)
+	if err != nil {
+		return warnings, errwrap.Wrap(err, "error compressing archive")
 	}
 
-	return nil
+	return warnings, nil
 }
 
 func stripTrailingSlashes(path string) string {
@@ -106,10 +87,10 @@ func makeAbsolute(inputFilePath, outputFilePath string) (string, string, error) 
 	return inputFilePath, outputFilePath, err
 }
 
-func compress(paths []string, outFilePath, algo string, concurrency int, options archiveOptions) (retErr error) {
-	operations := options.operations
-	if operations.lstat == nil {
-		operations = defaultArchiveFileOperations()
+func compress(paths []string, outFilePath, algo string, concurrency int, failOnMissing bool, operationOverrides ...archiveFileOperations) (warnings []error, retErr error) {
+	operations := defaultArchiveFileOperations()
+	if len(operationOverrides) > 0 {
+		operations = operationOverrides[0]
 	}
 	file, err := operations.create(outFilePath)
 	if err != nil {
@@ -129,8 +110,14 @@ func compress(paths []string, outFilePath, algo string, concurrency int, options
 	tarWriter := tar.NewWriter(compressWriter)
 
 	for _, p := range paths {
-		if err := writeTarball(p, tarWriter, prefix, options, operations); err != nil {
-			retErr = errwrap.Wrap(err, fmt.Sprintf("error writing %s to archive", p))
+		if err := writeTarball(p, tarWriter, prefix, operations); err != nil {
+			wrapped := errwrap.Wrap(err, fmt.Sprintf("error writing %s to archive", p))
+			var missing missingSourceError
+			if !failOnMissing && errors.As(err, &missing) {
+				warnings = append(warnings, wrapped)
+				continue
+			}
+			retErr = wrapped
 			return
 		}
 	}
@@ -178,21 +165,10 @@ func getCompressionWriter(file io.WriteCloser, algo string, concurrency int) (io
 	}
 }
 
-func writeTarball(path string, tarWriter *tar.Writer, prefix string, options archiveOptions, operations archiveFileOperations) (returnErr error) {
+func writeTarball(path string, tarWriter *tar.Writer, prefix string, operations archiveFileOperations) (returnErr error) {
 	fileInfo, err := operations.lstat(path)
 	if err != nil {
-		if options.skipMissing(path, err, operations) {
-			return nil
-		}
-		returnErr = errwrap.Wrap(err, fmt.Sprintf("error getting file info for %s", path))
-		return
-	}
-	if path == options.sourceRoot && options.sourceRootInfo != nil && !os.SameFile(options.sourceRootInfo, fileInfo) {
-		returnErr = errwrap.Wrap(nil, "backup source root changed while creating archive")
-		return
-	}
-	if original, tracked := options.sourceDirectories[path]; tracked && !os.SameFile(original, fileInfo) {
-		returnErr = errwrap.Wrap(nil, fmt.Sprintf("backup source directory changed while creating archive: %s", path))
+		returnErr = markMissingSource(errwrap.Wrap(err, fmt.Sprintf("error getting file info for %s", path)))
 		return
 	}
 
@@ -204,10 +180,7 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string, options arc
 	if fileInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
 		var err error
 		if link, err = operations.readlink(path); err != nil {
-			if options.skipMissing(path, err, operations) {
-				return nil
-			}
-			returnErr = errwrap.Wrap(err, fmt.Sprintf("error resolving symlink %s", path))
+			returnErr = markMissingSource(errwrap.Wrap(err, fmt.Sprintf("error resolving symlink %s", path)))
 			return
 		}
 	}
@@ -216,10 +189,7 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string, options arc
 	if fileInfo.Mode().IsRegular() {
 		file, err = operations.open(path)
 		if err != nil {
-			if options.skipMissing(path, err, operations) {
-				return nil
-			}
-			returnErr = errwrap.Wrap(err, fmt.Sprintf("error opening %s", path))
+			returnErr = markMissingSource(errwrap.Wrap(err, fmt.Sprintf("error opening %s", path)))
 			return
 		}
 		defer func() {

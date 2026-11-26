@@ -54,7 +54,7 @@ type Config struct {
 	BackupStopServiceTimeout             time.Duration   `split_words:"true" default:"5m"`
 	BackupFromSnapshot                   bool            `split_words:"true"`
 	BackupExcludeRegexp                  RegexpDecoder   `split_words:"true"`
-	BackupSkipMissingFiles               bool            `split_words:"true"`
+	BackupFailOnVolatileFilesystem       bool            `split_words:"true" default:"true"`
 	BackupSkipBackendsFromPrune          []string        `split_words:"true"`
 	GpgPassphrase                        string          `split_words:"true"`
 	GpgPublicKeyRing                     string          `split_words:"true"`
