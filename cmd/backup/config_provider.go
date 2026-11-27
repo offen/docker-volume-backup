@@ -64,7 +64,7 @@ func loadConfig(lookup envProxy) (*Config, error) {
 			}
 			return string(contents), true
 		case okValue && okFile: // both
-			return "", false
+			panic(errwrap.Wrap(nil, fmt.Sprintf("both %s and %s_FILE are set!", key, key)))
 		default: // neither, ignore
 			return "", false
 		}
