@@ -127,12 +127,13 @@ func (b *s3Storage) Copy(file string) error {
 			return errwrap.Wrap(err, "error reading the local file")
 		}
 
-		_, partSize, _, err := minio.OptimalPartInfo(srcFileInfo.Size(), uint64(b.partSize*1024*1024))
-		if err != nil {
-			return errwrap.Wrap(err, "error computing the optimal s3 part size")
+		if srcFileInfo.Size() > b.partSize*1024*1024 {
+			_, partSize, _, err := minio.OptimalPartInfo(srcFileInfo.Size(), uint64(b.partSize*1024*1024))
+			if err != nil {
+				return errwrap.Wrap(err, "error computing the optimal s3 part size")
+			}
+			putObjectOptions.PartSize = uint64(partSize)
 		}
-
-		putObjectOptions.PartSize = uint64(partSize)
 	}
 
 	if _, err := b.client.FPutObject(context.Background(), b.bucket, path.Join(b.DestinationPath, name), file, putObjectOptions); err != nil {
