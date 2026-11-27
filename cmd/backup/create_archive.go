@@ -73,7 +73,7 @@ func (s *script) createArchive() error {
 
 	warnings, err := createArchive(filesEligibleForBackup, backupSources, tarFile, s.c.BackupCompression.String(), s.c.GzipParallelism.Int(), s.c.BackupFailOnVolatileFilesystem)
 	for _, warning := range warnings {
-		s.logger.Warn("Skipping missing backup entry", "error", warning)
+		s.logger.Warn("Skipped file when creating archive", "error", warning)
 	}
 	if err != nil {
 		return errwrap.Wrap(err, "error compressing backup folder")

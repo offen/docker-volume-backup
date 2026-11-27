@@ -22,22 +22,6 @@ import (
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
-type archiveFileOperations struct {
-	lstat    func(string) (os.FileInfo, error)
-	readlink func(string) (string, error)
-	open     func(string) (*os.File, error)
-	create   func(string) (io.WriteCloser, error)
-}
-
-func defaultArchiveFileOperations() archiveFileOperations {
-	return archiveFileOperations{
-		lstat:    os.Lstat,
-		readlink: os.Readlink,
-		open:     os.Open,
-		create:   func(path string) (io.WriteCloser, error) { return os.Create(path) },
-	}
-}
-
 type missingSourceError struct {
 	error
 }
@@ -87,12 +71,8 @@ func makeAbsolute(inputFilePath, outputFilePath string) (string, string, error) 
 	return inputFilePath, outputFilePath, err
 }
 
-func compress(paths []string, outFilePath, algo string, concurrency int, failOnMissing bool, operationOverrides ...archiveFileOperations) (warnings []error, retErr error) {
-	operations := defaultArchiveFileOperations()
-	if len(operationOverrides) > 0 {
-		operations = operationOverrides[0]
-	}
-	file, err := operations.create(outFilePath)
+func compress(paths []string, outFilePath, algo string, concurrency int, failOnMissing bool) (warnings []error, retErr error) {
+	file, err := os.Create(outFilePath)
 	if err != nil {
 		retErr = errwrap.Wrap(err, "error creating out file")
 		return
@@ -110,7 +90,7 @@ func compress(paths []string, outFilePath, algo string, concurrency int, failOnM
 	tarWriter := tar.NewWriter(compressWriter)
 
 	for _, p := range paths {
-		if err := writeTarball(p, tarWriter, prefix, operations); err != nil {
+		if err := writeTarball(p, tarWriter, prefix); err != nil {
 			wrapped := errwrap.Wrap(err, fmt.Sprintf("error writing %s to archive", p))
 			var missing missingSourceError
 			if !failOnMissing && errors.As(err, &missing) {
@@ -135,7 +115,7 @@ func compress(paths []string, outFilePath, algo string, concurrency int, failOnM
 	return
 }
 
-func getCompressionWriter(file io.WriteCloser, algo string, concurrency int) (io.WriteCloser, error) {
+func getCompressionWriter(file *os.File, algo string, concurrency int) (io.WriteCloser, error) {
 	switch algo {
 	case "none":
 		return &passThroughWriteCloser{file}, nil
@@ -165,8 +145,8 @@ func getCompressionWriter(file io.WriteCloser, algo string, concurrency int) (io
 	}
 }
 
-func writeTarball(path string, tarWriter *tar.Writer, prefix string, operations archiveFileOperations) (returnErr error) {
-	fileInfo, err := operations.lstat(path)
+func writeTarball(path string, tarWriter *tar.Writer, prefix string) (returnErr error) {
+	fileInfo, err := os.Lstat(path)
 	if err != nil {
 		returnErr = markMissingSource(errwrap.Wrap(err, fmt.Sprintf("error getting file info for %s", path)))
 		return
@@ -179,7 +159,7 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string, operations 
 	var link string
 	if fileInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
 		var err error
-		if link, err = operations.readlink(path); err != nil {
+		if link, err = os.Readlink(path); err != nil {
 			returnErr = markMissingSource(errwrap.Wrap(err, fmt.Sprintf("error resolving symlink %s", path)))
 			return
 		}
@@ -187,7 +167,7 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string, operations 
 
 	var file *os.File
 	if fileInfo.Mode().IsRegular() {
-		file, err = operations.open(path)
+		file, err = os.Open(path)
 		if err != nil {
 			returnErr = markMissingSource(errwrap.Wrap(err, fmt.Sprintf("error opening %s", path)))
 			return

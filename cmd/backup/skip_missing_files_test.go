@@ -11,13 +11,15 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/klauspost/compress/zstd"
 )
 
-func TestMissingEntryBeforeHeaderLeavesValidArchive(t *testing.T) {
+func TestMissingListedEntryLeavesValidArchive(t *testing.T) {
 	for _, kind := range []string{"file", "empty file", "symlink"} {
 		for _, compression := range []string{"none", "gz", "zst"} {
 			t.Run(kind+"/"+compression, func(t *testing.T) {
@@ -40,22 +42,13 @@ func TestMissingEntryBeforeHeaderLeavesValidArchive(t *testing.T) {
 				if err := os.WriteFile(keep, []byte("kept"), 0600); err != nil {
 					t.Fatal(err)
 				}
-
-				operations := defaultArchiveFileOperations()
-				if kind == "symlink" {
-					operations.readlink = func(path string) (string, error) {
-						return "", &os.PathError{Op: "readlink", Path: path, Err: os.ErrNotExist}
-					}
-				} else {
-					operations.open = func(path string) (*os.File, error) {
-						if path == missing {
-							return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
-						}
-						return os.Open(path)
-					}
+				paths := []string{missing, keep}
+				if err := os.Remove(missing); err != nil {
+					t.Fatal(err)
 				}
+
 				archive := filepath.Join(dir, "backup.tar")
-				warnings, err := compress([]string{missing, keep}, archive, compression, 1, false, operations)
+				warnings, err := compress(paths, archive, compression, 1, false)
 				if err != nil || len(warnings) != 1 || !strings.Contains(warnings[0].Error(), missing) {
 					t.Fatalf("warnings=%v error=%v", warnings, err)
 				}
@@ -98,25 +91,76 @@ func TestMissingEntryBeforeHeaderLeavesValidArchive(t *testing.T) {
 	}
 }
 
-func TestOtherSourceErrorsStillFail(t *testing.T) {
+type removeSourceOnHeader struct {
+	path    string
+	removed bool
+	output  bytes.Buffer
+}
+
+func (w *removeSourceOnHeader) Write(p []byte) (int, error) {
+	if !w.removed {
+		if err := os.Remove(w.path); err != nil {
+			return 0, err
+		}
+		w.removed = true
+	}
+	return w.output.Write(p)
+}
+
+func TestOpenFileBeforeWritingTarHeader(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("removing an open file is not portable to Windows")
+	}
 	dir := t.TempDir()
 	file := filepath.Join(dir, "file")
-	if err := os.WriteFile(file, []byte("data"), 0600); err != nil {
+	if err := os.WriteFile(file, []byte("kept"), 0600); err != nil {
 		t.Fatal(err)
+	}
+	output := &removeSourceOnHeader{path: file}
+	writer := tar.NewWriter(output)
+	if err := writeTarball(file, writer, dir); err != nil {
+		t.Fatalf("write archive after removal: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !output.removed {
+		t.Fatal("source was not removed during header write")
+	}
+	reader := tar.NewReader(&output.output)
+	if _, err := reader.Next(); err != nil {
+		t.Fatal(err)
+	}
+	content, err := io.ReadAll(reader)
+	if err != nil || string(content) != "kept" {
+		t.Fatalf("archived contents=%q error=%v", content, err)
+	}
+}
+
+func TestOtherSourceErrorsStillFail(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("filesystem permissions cannot be tested as root or on Windows")
 	}
 	for _, operation := range []string{"lstat", "open"} {
 		t.Run(operation, func(t *testing.T) {
-			operations := defaultArchiveFileOperations()
-			if operation == "lstat" {
-				operations.lstat = func(path string) (os.FileInfo, error) {
-					return nil, &os.PathError{Op: "lstat", Path: path, Err: os.ErrPermission}
-				}
-			} else {
-				operations.open = func(path string) (*os.File, error) {
-					return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrPermission}
-				}
+			dir := t.TempDir()
+			sourceDir := filepath.Join(dir, "source")
+			if err := os.Mkdir(sourceDir, 0700); err != nil {
+				t.Fatal(err)
 			}
-			warnings, err := compress([]string{file}, filepath.Join(t.TempDir(), "backup.tar"), "none", 1, false, operations)
+			file := filepath.Join(sourceDir, "file")
+			if err := os.WriteFile(file, []byte("data"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			denied := file
+			if operation == "lstat" {
+				denied = sourceDir
+			}
+			if err := os.Chmod(denied, 0); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Chmod(denied, 0700) })
+			warnings, err := compress([]string{file}, filepath.Join(dir, "backup.tar"), "none", 1, false)
 			if !errors.Is(err, os.ErrPermission) || len(warnings) != 0 {
 				t.Fatalf("permission error: warnings=%v error=%v", warnings, err)
 			}
@@ -127,7 +171,6 @@ func TestOtherSourceErrorsStillFail(t *testing.T) {
 type missingOutputWriter struct{}
 
 func (missingOutputWriter) Write([]byte) (int, error) { return 0, os.ErrNotExist }
-func (missingOutputWriter) Close() error              { return nil }
 
 func TestMissingArchiveOutputStillFails(t *testing.T) {
 	dir := t.TempDir()
@@ -135,43 +178,48 @@ func TestMissingArchiveOutputStillFails(t *testing.T) {
 	if err := os.WriteFile(file, []byte("data"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	operations := defaultArchiveFileOperations()
-	operations.create = func(string) (io.WriteCloser, error) { return missingOutputWriter{}, nil }
-	warnings, err := compress([]string{file}, filepath.Join(dir, "backup.tar"), "none", 1, false, operations)
-	if !errors.Is(err, os.ErrNotExist) || len(warnings) != 0 {
-		t.Fatalf("output error: warnings=%v error=%v", warnings, err)
+	err := writeTarball(file, tar.NewWriter(missingOutputWriter{}), dir)
+	var missing missingSourceError
+	if !errors.Is(err, os.ErrNotExist) || errors.As(err, &missing) {
+		t.Fatalf("output error must not be a skippable missing source: %v", err)
 	}
 }
 
-type archiveOutputCloseError struct{ bytes.Buffer }
-
-func (w *archiveOutputCloseError) Close() error { return os.ErrPermission }
-
-func TestArchiveOutputFileCloseError(t *testing.T) {
+func TestArchiveOutputWriteError(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("/dev/full is only available on Linux")
+	}
+	if _, err := os.Stat("/dev/full"); err != nil {
+		t.Skip("/dev/full is unavailable")
+	}
+	file := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(file, []byte("data"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	for _, compression := range []string{"none", "gz", "zst"} {
 		t.Run(compression, func(t *testing.T) {
-			output := &archiveOutputCloseError{}
-			operations := defaultArchiveFileOperations()
-			operations.create = func(string) (io.WriteCloser, error) { return output, nil }
-			warnings, err := compress(nil, filepath.Join(t.TempDir(), "backup.tar"), compression, 1, false, operations)
-			if !errors.Is(err, os.ErrPermission) || len(warnings) != 0 {
-				t.Fatalf("output close: warnings=%v error=%v", warnings, err)
+			warnings, err := compress([]string{file}, "/dev/full", compression, 1, false)
+			if !errors.Is(err, syscall.ENOSPC) || len(warnings) != 0 {
+				t.Fatalf("output write: warnings=%v error=%v", warnings, err)
 			}
 		})
 	}
 }
 
 func TestWarningsAreReturnedBeforeLaterFatalError(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("filesystem permissions cannot be tested as root or on Windows")
+	}
 	dir := t.TempDir()
 	missing, denied := filepath.Join(dir, "missing"), filepath.Join(dir, "denied")
-	operations := defaultArchiveFileOperations()
-	operations.lstat = func(path string) (os.FileInfo, error) {
-		if path == denied {
-			return nil, &os.PathError{Op: "lstat", Path: path, Err: os.ErrPermission}
-		}
-		return os.Lstat(path)
+	if err := os.WriteFile(denied, []byte("denied"), 0600); err != nil {
+		t.Fatal(err)
 	}
-	warnings, err := compress([]string{missing, denied}, filepath.Join(dir, "backup.tar"), "none", 1, false, operations)
+	if err := os.Chmod(denied, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(denied, 0600) })
+	warnings, err := compress([]string{missing, denied}, filepath.Join(dir, "backup.tar"), "none", 1, false)
 	if !errors.Is(err, os.ErrPermission) || len(warnings) != 1 || !strings.Contains(warnings[0].Error(), missing) {
 		t.Fatalf("warnings=%v error=%v", warnings, err)
 	}

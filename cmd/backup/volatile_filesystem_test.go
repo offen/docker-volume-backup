@@ -5,6 +5,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,22 +24,31 @@ func TestFailOnVolatileFilesystemConfiguration(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		values  map[string]string
-		want    bool
-		wantErr bool
+		name      string
+		values    map[string]string
+		want      bool
+		wantErr   bool
+		wantPanic string
 	}{
 		{name: "unset remains strict", want: true},
 		{name: "true remains strict", values: map[string]string{"BACKUP_FAIL_ON_VOLATILE_FILESYSTEM": "true"}, want: true},
 		{name: "false permits missing entries", values: map[string]string{"BACKUP_FAIL_ON_VOLATILE_FILESYSTEM": "false"}},
 		{name: "file provides value", values: map[string]string{"BACKUP_FAIL_ON_VOLATILE_FILESYSTEM_FILE": configFile}},
-		{name: "conflicting values use existing provider behavior", values: map[string]string{"BACKUP_FAIL_ON_VOLATILE_FILESYSTEM": "false", "BACKUP_FAIL_ON_VOLATILE_FILESYSTEM_FILE": configFile}, want: true},
+		{name: "conflicting values are rejected", values: map[string]string{"BACKUP_FAIL_ON_VOLATILE_FILESYSTEM": "false", "BACKUP_FAIL_ON_VOLATILE_FILESYSTEM_FILE": configFile}, wantPanic: "both BACKUP_FAIL_ON_VOLATILE_FILESYSTEM and BACKUP_FAIL_ON_VOLATILE_FILESYSTEM_FILE are set!"},
 		{name: "missing file uses existing provider behavior", values: map[string]string{"BACKUP_FAIL_ON_VOLATILE_FILESYSTEM_FILE": filepath.Join(t.TempDir(), "missing")}, want: true},
 		{name: "invalid value fails", values: map[string]string{"BACKUP_FAIL_ON_VOLATILE_FILESYSTEM": "invalid"}, wantErr: true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.wantPanic != "" {
+				defer func() {
+					got := recover()
+					if got == nil || !strings.Contains(fmt.Sprint(got), tt.wantPanic) {
+						t.Errorf("panic = %v, want %q", got, tt.wantPanic)
+					}
+				}()
+			}
 			config, err := loadConfig(func(key string) (string, bool) {
 				if key == "BACKUP_SOURCES" {
 					return "/existing-source", true
