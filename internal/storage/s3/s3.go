@@ -121,20 +121,26 @@ func (b *s3Storage) Copy(file string) error {
 		SendContentMd5: true,
 	}
 
-	if b.partSize > 0 {
-		srcFileInfo, err := os.Stat(file)
-		if err != nil {
-			return errwrap.Wrap(err, "error reading the local file")
-		}
-
-		if srcFileInfo.Size() > b.partSize*1024*1024 {
-			_, partSize, _, err := minio.OptimalPartInfo(srcFileInfo.Size(), uint64(b.partSize*1024*1024))
-			if err != nil {
-				return errwrap.Wrap(err, "error computing the optimal s3 part size")
-			}
-			putObjectOptions.PartSize = uint64(partSize)
-		}
+	srcFileInfo, err := os.Stat(file)
+	if err != nil {
+		return errwrap.Wrap(err, "error reading the local file")
 	}
+
+	var configuredPartSize uint64
+	if b.partSize > 0 && srcFileInfo.Size() > b.partSize*1024*1024 {
+		configuredPartSize = uint64(b.partSize * 1024 * 1024)
+	}
+	// The concurrent uploader does not know the file size and would otherwise
+	// size parts (and allocate NumThreads buffers) for a 5 TiB object.
+	_, partSize, _, err := minio.OptimalPartInfo(srcFileInfo.Size(), configuredPartSize)
+	if err != nil {
+		return errwrap.Wrap(err, "error computing the optimal s3 part size")
+	}
+	putObjectOptions.PartSize = uint64(partSize)
+	// SendContentMd5 disables minio-go's parallel ReadAt uploader, use the
+	// concurrent streaming one, which still sends Content-MD5 per part.
+	putObjectOptions.ConcurrentStreamParts = true
+	putObjectOptions.NumThreads = 4
 
 	if _, err := b.client.FPutObject(context.Background(), b.bucket, path.Join(b.DestinationPath, name), file, putObjectOptions); err != nil {
 		if errResp := minio.ToErrorResponse(err); errResp.Message != "" {
