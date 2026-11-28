@@ -142,6 +142,17 @@ If you need to confirm what the container actually loaded, see [Show loaded conf
 
 # ---
 
+# By default, the backup fails if an entry disappears after the source tree is
+# listed. Set this to false to skip missing entries with a warning and continue.
+# Missing directories can cause multiple entries to be skipped, and the resulting
+# backup may be incomplete. Other errors still fail the backup. This option is
+# not a snapshot and does not guarantee consistent live data, such as databases.
+# Use an application-consistent snapshot when needed.
+
+# BACKUP_FAIL_ON_VOLATILE_FILESYSTEM="true"
+
+# ---
+
 # Exclude one or many storage backends from the pruning process.
 # Available backends are: S3, WebDAV, SSH, Local, Dropbox, Azure
 # E.g. with one backend excluded: BACKUP_SKIP_BACKENDS_FROM_PRUNE=s3

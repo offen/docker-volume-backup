@@ -71,7 +71,11 @@ func (s *script) createArchive() error {
 		return errwrap.Wrap(err, "error walking filesystem tree")
 	}
 
-	if err := createArchive(filesEligibleForBackup, backupSources, tarFile, s.c.BackupCompression.String(), s.c.GzipParallelism.Int()); err != nil {
+	warnings, err := createArchive(filesEligibleForBackup, backupSources, tarFile, s.c.BackupCompression.String(), s.c.GzipParallelism.Int(), s.c.BackupFailOnVolatileFilesystem)
+	for _, warning := range warnings {
+		s.logger.Warn("Skipped file when creating archive", "error", warning)
+	}
+	if err != nil {
 		return errwrap.Wrap(err, "error compressing backup folder")
 	}
 

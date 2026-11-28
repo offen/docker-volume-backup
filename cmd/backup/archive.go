@@ -22,20 +22,36 @@ import (
 	"github.com/offen/docker-volume-backup/internal/errwrap"
 )
 
-func createArchive(files []string, inputFilePath, outputFilePath string, compression string, compressionConcurrency int) error {
+type missingSourceError struct {
+	error
+}
+
+func (e missingSourceError) Unwrap() error {
+	return e.error
+}
+
+func markMissingSource(err error) error {
+	if errors.Is(err, os.ErrNotExist) {
+		return missingSourceError{err}
+	}
+	return err
+}
+
+func createArchive(files []string, inputFilePath, outputFilePath string, compression string, compressionConcurrency int, failOnMissing bool) ([]error, error) {
 	_, outputFilePath, err := makeAbsolute(stripTrailingSlashes(inputFilePath), outputFilePath)
 	if err != nil {
-		return errwrap.Wrap(err, "error transposing given file paths")
+		return nil, errwrap.Wrap(err, "error transposing given file paths")
 	}
 	if err := os.MkdirAll(filepath.Dir(outputFilePath), 0755); err != nil {
-		return errwrap.Wrap(err, "error creating output file path")
+		return nil, errwrap.Wrap(err, "error creating output file path")
 	}
 
-	if err := compress(files, outputFilePath, compression, compressionConcurrency); err != nil {
-		return errwrap.Wrap(err, "error compressing archive")
+	warnings, err := compress(files, outputFilePath, compression, compressionConcurrency, failOnMissing)
+	if err != nil {
+		return warnings, errwrap.Wrap(err, "error compressing archive")
 	}
 
-	return nil
+	return warnings, nil
 }
 
 func stripTrailingSlashes(path string) string {
@@ -55,7 +71,7 @@ func makeAbsolute(inputFilePath, outputFilePath string) (string, string, error) 
 	return inputFilePath, outputFilePath, err
 }
 
-func compress(paths []string, outFilePath, algo string, concurrency int) (retErr error) {
+func compress(paths []string, outFilePath, algo string, concurrency int, failOnMissing bool) (warnings []error, retErr error) {
 	file, err := os.Create(outFilePath)
 	if err != nil {
 		retErr = errwrap.Wrap(err, "error creating out file")
@@ -75,7 +91,13 @@ func compress(paths []string, outFilePath, algo string, concurrency int) (retErr
 
 	for _, p := range paths {
 		if err := writeTarball(p, tarWriter, prefix); err != nil {
-			retErr = errwrap.Wrap(err, fmt.Sprintf("error writing %s to archive", p))
+			wrapped := errwrap.Wrap(err, fmt.Sprintf("error writing %s to archive", p))
+			var missing missingSourceError
+			if !failOnMissing && errors.As(err, &missing) {
+				warnings = append(warnings, wrapped)
+				continue
+			}
+			retErr = wrapped
 			return
 		}
 	}
@@ -126,7 +148,7 @@ func getCompressionWriter(file *os.File, algo string, concurrency int) (io.Write
 func writeTarball(path string, tarWriter *tar.Writer, prefix string) (returnErr error) {
 	fileInfo, err := os.Lstat(path)
 	if err != nil {
-		returnErr = errwrap.Wrap(err, fmt.Sprintf("error getting file info for %s", path))
+		returnErr = markMissingSource(errwrap.Wrap(err, fmt.Sprintf("error getting file info for %s", path)))
 		return
 	}
 
@@ -138,9 +160,21 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string) (returnErr 
 	if fileInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
 		var err error
 		if link, err = os.Readlink(path); err != nil {
-			returnErr = errwrap.Wrap(err, fmt.Sprintf("error resolving symlink %s", path))
+			returnErr = markMissingSource(errwrap.Wrap(err, fmt.Sprintf("error resolving symlink %s", path)))
 			return
 		}
+	}
+
+	var file *os.File
+	if fileInfo.Mode().IsRegular() {
+		file, err = os.Open(path)
+		if err != nil {
+			returnErr = markMissingSource(errwrap.Wrap(err, fmt.Sprintf("error opening %s", path)))
+			return
+		}
+		defer func() {
+			returnErr = errors.Join(returnErr, file.Close())
+		}()
 	}
 
 	header, err := tar.FileInfoHeader(fileInfo, link)
@@ -156,18 +190,9 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string) (returnErr 
 		return
 	}
 
-	if !fileInfo.Mode().IsRegular() {
+	if file == nil {
 		return nil
 	}
-
-	file, err := os.Open(path)
-	if err != nil {
-		returnErr = errwrap.Wrap(err, fmt.Sprintf("error opening %s", path))
-		return
-	}
-	defer func() {
-		returnErr = errors.Join(returnErr, file.Close())
-	}()
 
 	_, err = io.Copy(tarWriter, file)
 	if err != nil {
