@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/klauspost/compress/zstd"
 	"github.com/klauspost/pgzip"
@@ -160,7 +161,7 @@ func writeTarball(path string, tarWriter *tar.Writer, prefix string) (returnErr 
 		return nil
 	}
 
-	file, err := os.Open(path)
+	file, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		returnErr = errwrap.Wrap(err, fmt.Sprintf("error opening %s", path))
 		return
