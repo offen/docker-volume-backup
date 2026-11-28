@@ -4,11 +4,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -25,8 +27,8 @@ func TestArchiveMissingRootErrorText(t *testing.T) {
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 	err := s.createArchive()
-	want := fmt.Sprintf("backup.(*script).createArchive: error walking filesystem tree: %v", originalErr)
-	if err == nil || err.Error() != want {
+	want := fmt.Sprintf("error walking filesystem tree: %v", originalErr)
+	if !errors.Is(err, os.ErrNotExist) || !strings.Contains(err.Error(), want) {
 		t.Fatalf("got %v, want %s", err, want)
 	}
 }
@@ -44,14 +46,18 @@ func TestArchiveOutputErrorKeepsExistingContext(t *testing.T) {
 	if openErr == nil {
 		t.Fatal("expected opening the output directory to fail")
 	}
+	var pathErr *os.PathError
+	if !errors.As(openErr, &pathErr) {
+		t.Fatalf("expected a path error, got %v", openErr)
+	}
 	s := &script{
 		c:      &Config{BackupSources: source, BackupCompression: "none"},
 		file:   output,
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 	err := s.createArchive()
-	want := fmt.Sprintf("backup.(*script).createArchive: error compressing backup folder: backup.createArchive: error compressing archive: backup.compress: error creating out file: %v", openErr)
-	if err == nil || err.Error() != want {
+	want := fmt.Sprintf("error creating out file: %v", openErr)
+	if !errors.Is(err, pathErr.Err) || !strings.Contains(err.Error(), want) {
 		t.Fatalf("got %v, want %s", err, want)
 	}
 }

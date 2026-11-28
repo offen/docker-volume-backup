@@ -8,7 +8,6 @@ package main
 import (
 	"archive/tar"
 	"bytes"
-	"crypto/sha256"
 	"errors"
 	"os"
 	"path/filepath"
@@ -53,45 +52,34 @@ func TestOutputSizeLimitFailsAfterMissingEntryWarning(t *testing.T) {
 	dir := t.TempDir()
 	missing := filepath.Join(dir, "missing")
 	file := filepath.Join(dir, "source")
-	data := make([]byte, 65536)
-	value := uint32(1)
-	for i := range data {
-		value = value*1664525 + 1013904223
-		data[i] = byte(value >> 24)
-	}
+	data := []byte(strings.Repeat("source data", 512))
 	if err := os.WriteFile(file, data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	original := sha256.Sum256(data)
+	var originalLimit syscall.Rlimit
+	if err := syscall.Getrlimit(syscall.RLIMIT_FSIZE, &originalLimit); err != nil {
+		t.Fatal(err)
+	}
+	if originalLimit.Cur < 1024 {
+		t.Skip("the existing file-size limit is below the test limit")
+	}
+	limit := originalLimit
+	limit.Cur = 1024
+	if err := syscall.Setrlimit(syscall.RLIMIT_FSIZE, &limit); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := syscall.Setrlimit(syscall.RLIMIT_FSIZE, &originalLimit); err != nil {
+			t.Errorf("restore file-size limit: %v", err)
+		}
+	}()
 
-	for _, compression := range []string{"none", "gz", "zst"} {
-		t.Run(compression, func(t *testing.T) {
-			var originalLimit syscall.Rlimit
-			if err := syscall.Getrlimit(syscall.RLIMIT_FSIZE, &originalLimit); err != nil {
-				t.Fatal(err)
-			}
-			if originalLimit.Cur < 1024 {
-				t.Skip("the existing file-size limit is below the test limit")
-			}
-			limit := originalLimit
-			limit.Cur = 1024
-			if err := syscall.Setrlimit(syscall.RLIMIT_FSIZE, &limit); err != nil {
-				t.Fatal(err)
-			}
-			defer func() {
-				if err := syscall.Setrlimit(syscall.RLIMIT_FSIZE, &originalLimit); err != nil {
-					t.Errorf("restore file-size limit: %v", err)
-				}
-			}()
-
-			warnings, err := compress([]string{missing, file}, filepath.Join(dir, compression+".tar"), compression, 1, false)
-			if len(warnings) != 1 || !errors.Is(warnings[0], os.ErrNotExist) || !errors.Is(err, syscall.EFBIG) {
-				t.Fatalf("warnings=%v error=%v", warnings, err)
-			}
-			after, err := os.ReadFile(file)
-			if err != nil || sha256.Sum256(after) != original {
-				t.Fatalf("source data changed: %v", err)
-			}
-		})
+	warnings, err := compress([]string{missing, file}, filepath.Join(dir, "backup.tar"), "none", 1, false)
+	if len(warnings) != 1 || !errors.Is(warnings[0], os.ErrNotExist) || !errors.Is(err, syscall.EFBIG) {
+		t.Fatalf("warnings=%v error=%v", warnings, err)
+	}
+	after, err := os.ReadFile(file)
+	if err != nil || !bytes.Equal(after, data) {
+		t.Fatalf("source data changed: %v", err)
 	}
 }

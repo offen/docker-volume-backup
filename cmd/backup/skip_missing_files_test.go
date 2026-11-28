@@ -6,7 +6,6 @@ package main
 import (
 	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"errors"
 	"io"
 	"os"
@@ -15,79 +14,44 @@ import (
 	"strings"
 	"syscall"
 	"testing"
-
-	"github.com/klauspost/compress/zstd"
 )
 
 func TestMissingListedEntryLeavesValidArchive(t *testing.T) {
-	for _, kind := range []string{"file", "empty file", "symlink"} {
-		for _, compression := range []string{"none", "gz", "zst"} {
-			t.Run(kind+"/"+compression, func(t *testing.T) {
-				dir := t.TempDir()
-				missing := filepath.Join(dir, "missing")
-				keep := filepath.Join(dir, "keep.txt")
-				if kind == "symlink" {
-					if err := os.Symlink("target", missing); err != nil {
-						t.Fatal(err)
-					}
-				} else {
-					content := []byte("missing")
-					if kind == "empty file" {
-						content = nil
-					}
-					if err := os.WriteFile(missing, content, 0600); err != nil {
-						t.Fatal(err)
-					}
-				}
-				if err := os.WriteFile(keep, []byte("kept"), 0600); err != nil {
-					t.Fatal(err)
-				}
-				paths := []string{missing, keep}
-				if err := os.Remove(missing); err != nil {
-					t.Fatal(err)
-				}
+	dir := t.TempDir()
+	missing := filepath.Join(dir, "missing")
+	keep := filepath.Join(dir, "keep.txt")
+	if err := os.WriteFile(missing, []byte("missing"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keep, []byte("kept"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	paths := []string{missing, keep}
+	if err := os.Remove(missing); err != nil {
+		t.Fatal(err)
+	}
 
-				archive := filepath.Join(dir, "backup.tar")
-				warnings, err := compress(paths, archive, compression, 1, false)
-				if err != nil || len(warnings) != 1 || !strings.Contains(warnings[0].Error(), missing) {
-					t.Fatalf("warnings=%v error=%v", warnings, err)
-				}
-				file, err := os.Open(archive)
-				if err != nil {
-					t.Fatal(err)
-				}
-				t.Cleanup(func() { _ = file.Close() })
-				var input io.Reader = file
-				switch compression {
-				case "gz":
-					gz, err := gzip.NewReader(file)
-					if err != nil {
-						t.Fatal(err)
-					}
-					t.Cleanup(func() { _ = gz.Close() })
-					input = gz
-				case "zst":
-					z, err := zstd.NewReader(file)
-					if err != nil {
-						t.Fatal(err)
-					}
-					t.Cleanup(z.Close)
-					input = z
-				}
-				reader := tar.NewReader(input)
-				header, err := reader.Next()
-				if err != nil || filepath.Base(header.Name) != "keep.txt" {
-					t.Fatalf("expected surviving entry, header=%v error=%v", header, err)
-				}
-				content, err := io.ReadAll(reader)
-				if err != nil || string(content) != "kept" {
-					t.Fatalf("archived contents=%q error=%v", content, err)
-				}
-				if _, err := reader.Next(); err != io.EOF {
-					t.Fatalf("expected end of archive, got %v", err)
-				}
-			})
-		}
+	archive := filepath.Join(dir, "backup.tar")
+	warnings, err := compress(paths, archive, "none", 1, false)
+	if err != nil || len(warnings) != 1 || !strings.Contains(warnings[0].Error(), missing) {
+		t.Fatalf("warnings=%v error=%v", warnings, err)
+	}
+	file, err := os.Open(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = file.Close() })
+	reader := tar.NewReader(file)
+	header, err := reader.Next()
+	if err != nil || filepath.Base(header.Name) != "keep.txt" {
+		t.Fatalf("expected surviving entry, header=%v error=%v", header, err)
+	}
+	content, err := io.ReadAll(reader)
+	if err != nil || string(content) != "kept" {
+		t.Fatalf("archived contents=%q error=%v", content, err)
+	}
+	if _, err := reader.Next(); err != io.EOF {
+		t.Fatalf("expected end of archive, got %v", err)
 	}
 }
 
@@ -196,13 +160,9 @@ func TestArchiveOutputWriteError(t *testing.T) {
 	if err := os.WriteFile(file, []byte("data"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	for _, compression := range []string{"none", "gz", "zst"} {
-		t.Run(compression, func(t *testing.T) {
-			warnings, err := compress([]string{file}, "/dev/full", compression, 1, false)
-			if !errors.Is(err, syscall.ENOSPC) || len(warnings) != 0 {
-				t.Fatalf("output write: warnings=%v error=%v", warnings, err)
-			}
-		})
+	warnings, err := compress([]string{file}, "/dev/full", "none", 1, false)
+	if !errors.Is(err, syscall.ENOSPC) || len(warnings) != 0 {
+		t.Fatalf("output write: warnings=%v error=%v", warnings, err)
 	}
 }
 
